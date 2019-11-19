@@ -1,0 +1,8 @@
+(
+  axes: {
+    "player": Emulated(pos: Key(W), neg: Key(S)),
+  },
+  actions: {
+    "exit": [[Key(Escape)]],
+  },
+)
