@@ -15,7 +15,6 @@ pub struct CollideeDetails {
     pub correction: f32,
 }
 
-#[derive(SmartDefault)]
 pub struct Collidee {
     horizontal: Option<CollideeDetails>,
     vertical: Option<CollideeDetails>,
@@ -25,50 +24,54 @@ impl Component for Collidee {
     type Storage = DenseVecStorage<Self>;
 }
 
-pub struct Velocity(f32, f32);
+pub struct Velocity(pub Vec2);
 
 impl Component for Velocity {
     type Storage = DenseVecStorage<Self>;
 }
 
-pub struct Cuboid {
-    pub width: f32,
-    pub height: f32,
-}
+pub struct Position(pub Vec2);
 
-impl Cuboid {
-    pub fn new() -> Cuboid {
-        Cuboid {
-            width: TILE_WIDTH,
-            height: TILE_HEIGHT,
-        }
-    }
-
-    pub fn create(size_x: f32, size_y: f32) -> Cuboid {
-        Cuboid {
-            width: CAM_WIDTH,
-            height: TILE_HEIGHT,
-        }
-    }
-}
-
-impl Component for Cuboid {
+impl Component for Position {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::components::physics::Collidee;
+// The points represent offsets from Position
+pub struct PlatformCollisionPoints(pub Vec<Vec2>);
 
-    #[test]
-    fn smart_default() {
-        let collidee = Collidee {
-            horizontal: None,
-            vertical: None,
-        };
-        assert_eq!(
-            Collidee::default().horizontal.is_none(),
-            collidee.horizontal.is_none()
-        );
+impl Component for PlatformCollisionPoints {
+    type Storage = DenseVecStorage<Self>;
+}
+impl PlatformCollisionPoints {
+    pub fn vertical_line(half_height: f32) -> PlatformCollisionPoints {
+        let mut vec = Vec::new();
+        vec.push(Vec2::new(0.0, -half_height));
+        vec.push(Vec2::new(0.0, half_height));
+        PlatformCollisionPoints(vec)
     }
+}
+
+pub struct PlatformCuboid {
+    pub half_width: f32,
+    pub half_height: f32,
+}
+
+impl PlatformCuboid {
+    pub fn new() -> PlatformCuboid {
+        PlatformCuboid {
+            half_width: TILE_WIDTH / 2.0,
+            half_height: TILE_HEIGHT / 2.0,
+        }
+    }
+
+    pub fn create(size_x: f32, size_y: f32) -> PlatformCuboid {
+        PlatformCuboid {
+            half_width: CAM_WIDTH,
+            half_height: TILE_HEIGHT,
+        }
+    }
+}
+
+impl Component for PlatformCuboid {
+    type Storage = DenseVecStorage<Self>;
 }

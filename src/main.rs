@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 use amethyst::input::{InputBundle, StringBindings};
 use amethyst::{
     core::transform::TransformBundle,
@@ -12,9 +14,6 @@ use amethyst::{
     utils::application_root_dir,
     Logger,
 };
-
-#[macro_use]
-extern crate smart_default;
 
 mod components;
 mod pizzatopia;
@@ -48,7 +47,26 @@ fn main() -> amethyst::Result<()> {
         )?
         .with_bundle(input_bundle)?
         .with_bundle(TransformBundle::new())?
-        .with(systems::PlayerSystem, "player_system", &["input_system"]);
+        .with(
+            systems::PlayerInputSystem,
+            "player_input_system",
+            &["input_system"],
+        )
+        .with(
+            systems::physics::PlatformCollisionSystem,
+            "platform_collision_system",
+            &["player_input_system"],
+        )
+        .with(
+            systems::physics::ApplyVelocitySystem,
+            "apply_velocity_system",
+            &["platform_collision_system"],
+        )
+        .with(
+            systems::graphics::PositionDrawUpdateSystem,
+            "position_draw_update_system",
+            &["apply_velocity_system"],
+        );
 
     let assets_dir = app_root.join("assets");
 

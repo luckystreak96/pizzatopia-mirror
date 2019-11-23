@@ -1,4 +1,6 @@
-use crate::components::physics::Cuboid;
+use crate::components::physics::{PlatformCollisionPoints, PlatformCuboid, Position, Velocity};
+use crate::components::player::Player;
+use crate::utils::Vec2;
 use amethyst::input::{InputHandler, StringBindings};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
@@ -20,9 +22,13 @@ impl SimpleState for Pizzatopia {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
 
+        world.register::<PlatformCuboid>();
+        world.register::<PlatformCollisionPoints>();
+
         let sprite_sheet_handle = load_sprite_sheet(world);
 
-        initialise_tile(world, sprite_sheet_handle);
+        initialise_player(world, sprite_sheet_handle.clone());
+        initialise_ground(world, sprite_sheet_handle.clone());
         initialise_camera(world);
     }
 
@@ -66,7 +72,7 @@ fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
     let mut transform = Transform::default();
 
     // Correctly position the paddles.
-    transform.set_translation_xyz(CAM_WIDTH / 2.0, 32.0, 0.0);
+    let pos = Position(Vec2::new(CAM_WIDTH / 2.0, 0.0));
 
     // Assign the sprite
     let sprite_render = SpriteRender {
@@ -77,19 +83,20 @@ fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
     // Create a left plank entity.
     world
         .create_entity()
-        .with(Cuboid::new())
+        .with(PlatformCuboid::new())
+        .with(pos)
         .with(transform)
         .with(sprite_render.clone())
         .build();
 }
 
 /// Initialises one tile.
-fn initialise_tile(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
+fn initialise_player(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
     let mut transform = Transform::default();
 
     // Correctly position the paddles.
-    let y = CAM_HEIGHT / 2.0;
-    transform.set_translation_xyz(0.0, y, 0.0);
+    let pos = Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0);
+    transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
     // Assign the sprite
     let sprite_render = SpriteRender {
@@ -100,9 +107,12 @@ fn initialise_tile(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
     // Create a left plank entity.
     world
         .create_entity()
-        .with(Cuboid::new())
         .with(transform)
         .with(sprite_render.clone())
+        .with(Player)
+        .with(Position(Vec2::new(pos.x, pos.y)))
+        .with(Velocity(Vec2::new(0.0, 0.0)))
+        .with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
         .build();
 }
 

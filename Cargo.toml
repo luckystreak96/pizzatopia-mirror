@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 amethyst = "0.13.2"
-smart-default = "0.5.2"
 
 [features]
 default = ["vulkan"]
