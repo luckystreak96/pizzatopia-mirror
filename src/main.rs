@@ -53,9 +53,19 @@ fn main() -> amethyst::Result<()> {
             &["input_system"],
         )
         .with(
+            systems::physics::ApplyGravitySystem,
+            "apply_gravity_system",
+            &[],
+        )
+        .with(
             systems::physics::PlatformCollisionSystem,
             "platform_collision_system",
-            &["player_input_system"],
+            &["player_input_system", "apply_gravity_system"],
+        )
+        .with(
+            systems::physics::ApplyCollisionSystem,
+            "apply_collision_system",
+            &["platform_collision_system"],
         )
         .with(
             systems::physics::ApplyVelocitySystem,

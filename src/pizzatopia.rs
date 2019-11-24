@@ -1,4 +1,6 @@
-use crate::components::physics::{PlatformCollisionPoints, PlatformCuboid, Position, Velocity};
+use crate::components::physics::{
+    Collidee, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
+};
 use crate::components::player::Player;
 use crate::utils::Vec2;
 use amethyst::input::{InputHandler, StringBindings};
@@ -15,6 +17,8 @@ pub const CAM_WIDTH: f32 = 512.0;
 
 pub const TILE_WIDTH: f32 = 32.0;
 pub const TILE_HEIGHT: f32 = 32.0;
+
+pub const MAX_FALL_SPEED: f32 = 5.0;
 
 pub(crate) struct Pizzatopia;
 
@@ -113,6 +117,7 @@ fn initialise_player(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
         .with(Position(Vec2::new(pos.x, pos.y)))
         .with(Velocity(Vec2::new(0.0, 0.0)))
         .with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
+        .with(Collidee::new())
         .build();
 }
 

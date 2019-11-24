@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 amethyst = "0.13.2"
+log = "0.4.8"
 
 [features]
 default = ["vulkan"]

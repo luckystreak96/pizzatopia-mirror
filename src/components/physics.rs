@@ -8,16 +8,34 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 
+#[derive(Clone)]
+pub enum CollisionSideOfBlock {
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
 pub struct CollideeDetails {
     pub name: String,
     pub position: Vec2,
     pub half_size: Vec2,
     pub correction: f32,
+    pub side: CollisionSideOfBlock,
 }
 
 pub struct Collidee {
-    horizontal: Option<CollideeDetails>,
-    vertical: Option<CollideeDetails>,
+    pub horizontal: Option<CollideeDetails>,
+    pub vertical: Option<CollideeDetails>,
+}
+
+impl Collidee {
+    pub fn new() -> Collidee {
+        Collidee {
+            horizontal: None,
+            vertical: None,
+        }
+    }
 }
 
 impl Component for Collidee {
@@ -30,6 +48,7 @@ impl Component for Velocity {
     type Storage = DenseVecStorage<Self>;
 }
 
+#[derive(Debug)]
 pub struct Position(pub Vec2);
 
 impl Component for Position {
