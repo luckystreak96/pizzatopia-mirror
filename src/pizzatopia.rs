@@ -32,7 +32,7 @@ impl SimpleState for Pizzatopia {
         let sprite_sheet_handle = load_sprite_sheet(world);
 
         initialise_player(world, sprite_sheet_handle.clone());
-        initialise_ground(world, sprite_sheet_handle.clone());
+        initialise_playground(world, sprite_sheet_handle.clone());
         initialise_camera(world);
     }
 
@@ -72,11 +72,11 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
 }
 
 /// Initialises the ground.
-fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
+fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, pos: Vec2) {
     let mut transform = Transform::default();
 
-    // Correctly position the paddles.
-    let pos = Position(Vec2::new(CAM_WIDTH / 2.0, 0.0));
+    // Correctly position the tile.
+    let pos = Position(pos);
 
     // Assign the sprite
     let sprite_render = SpriteRender {
@@ -92,6 +92,18 @@ fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
         .with(transform)
         .with(sprite_render.clone())
         .build();
+}
+
+fn initialise_playground(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
+    // Correctly position the tile.
+    for i in 0..(((CAM_WIDTH / 32.0) + 1.0) as i32) {
+        initialise_ground(world, sprite_sheet.clone(), Vec2::new(32.0 * i as f32, 0.0));
+    }
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(0.0, 32.0));
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 32.0));
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 64.0));
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 96.0));
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(CAM_WIDTH, 32.0));
 }
 
 /// Initialises one tile.
@@ -116,7 +128,8 @@ fn initialise_player(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
         .with(Player)
         .with(Position(Vec2::new(pos.x, pos.y)))
         .with(Velocity(Vec2::new(0.0, 0.0)))
-        .with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
+        //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
+        .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
         .with(Collidee::new())
         .build();
 }

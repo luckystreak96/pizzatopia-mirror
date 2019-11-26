@@ -22,13 +22,15 @@ impl<'s> System<'s> for PlayerInputSystem {
 
     fn run(&mut self, (mut velocities, input, players): Self::SystemData) {
         for (velocity, player) in (&mut velocities, &players).join() {
-            let movement = input.axis_value("player");
-            if let Some(mv_amount) = movement {
-                if mv_amount == 0. {
-                    continue;
-                }
-                let scaled_amount = 1.2 * mv_amount as f32;
+            let v_move = input.axis_value("vertical_move");
+            let h_move = input.axis_value("horizontal_move");
+            if let Some(mv_amount) = v_move {
+                let scaled_amount = 0.3 * mv_amount as f32;
                 velocity.0.y += scaled_amount;
+            }
+            if let Some(mv_amount) = h_move {
+                let scaled_amount = 0.1 * mv_amount as f32;
+                velocity.0.x += scaled_amount;
             }
         }
     }

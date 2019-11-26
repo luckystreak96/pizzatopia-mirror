@@ -1,6 +1,7 @@
 (
   axes: {
-    "player": Emulated(pos: Key(W), neg: Key(S)),
+    "vertical_move": Emulated(pos: Key(W), neg: Key(S)),
+    "horizontal_move": Emulated(pos: Key(D), neg: Key(A)),
   },
   actions: {
     "exit": [[Key(Escape)]],
