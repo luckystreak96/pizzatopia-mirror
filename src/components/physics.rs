@@ -8,7 +8,7 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CollisionSideOfBlock {
     Top,
     Bottom,
@@ -16,12 +16,30 @@ pub enum CollisionSideOfBlock {
     Right,
 }
 
+impl CollisionSideOfBlock {
+    pub fn is_horizontal(&self) -> bool {
+        match self {
+            CollisionSideOfBlock::Left => true,
+            CollisionSideOfBlock::Right => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_vertical(&self) -> bool {
+        match self {
+            CollisionSideOfBlock::Top => true,
+            CollisionSideOfBlock::Bottom => true,
+            _ => false,
+        }
+    }
+}
+
 pub struct CollideeDetails {
     pub name: String,
     pub position: Vec2,
     pub half_size: Vec2,
     pub correction: f32,
-    pub indecision: bool,
+    pub distance: f32,
     pub side: CollisionSideOfBlock,
 }
 impl CollideeDetails {
@@ -31,7 +49,7 @@ impl CollideeDetails {
             position: Vec2::new(0.0, 0.0),
             half_size: Vec2::new(0.0, 0.0),
             correction: 0.0,
-            indecision: false,
+            distance: 0.0,
             side: CollisionSideOfBlock::Top,
         }
     }
@@ -69,7 +87,7 @@ impl Component for Position {
 }
 
 // The points represent offsets from Position
-pub struct PlatformCollisionPoints(pub Vec<(Vec2, bool)>);
+pub struct PlatformCollisionPoints(pub Vec<Vec2>);
 
 impl Component for PlatformCollisionPoints {
     type Storage = DenseVecStorage<Self>;
@@ -77,17 +95,17 @@ impl Component for PlatformCollisionPoints {
 impl PlatformCollisionPoints {
     pub fn vertical_line(half_height: f32) -> PlatformCollisionPoints {
         let mut vec = Vec::new();
-        vec.push((Vec2::new(0.0, -half_height), true));
-        vec.push((Vec2::new(0.0, half_height), false));
-        vec.push((Vec2::new(0.0, 0.0), false));
+        vec.push(Vec2::new(0.0, -half_height));
+        vec.push(Vec2::new(0.0, half_height));
+        vec.push(Vec2::new(0.0, 0.0));
         PlatformCollisionPoints(vec)
     }
 
     pub fn triangle(half_height: f32) -> PlatformCollisionPoints {
         let mut vec = Vec::new();
-        vec.push((Vec2::new(-half_height, -half_height), true));
-        vec.push((Vec2::new(0.0, half_height), false));
-        vec.push((Vec2::new(half_height, -half_height), true));
+        vec.push(Vec2::new(-half_height, -half_height));
+        vec.push(Vec2::new(0.0, half_height));
+        vec.push(Vec2::new(half_height, -half_height));
         PlatformCollisionPoints(vec)
     }
 }
