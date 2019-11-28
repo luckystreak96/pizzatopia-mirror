@@ -8,7 +8,7 @@ use crate::utils::Vec2;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 
 pub(crate) enum CollisionDirection {
     FromTop,
@@ -51,26 +51,29 @@ impl<'s> System<'s> for ApplyGravitySystem {
 pub struct PlatformCollisionSystem;
 
 impl PlatformCollisionSystem {
-    fn raycast(point: &Vec2, vel: &Vec2, pos: &Vec2, cuboid: &PlatformCuboid) -> Option<Vec2> {
+    fn raycast(
+        point: &Vec2,
+        vel: &Vec2,
+        pos: &Vec2,
+        cuboid: &PlatformCuboid,
+    ) -> Option<(Vec2, CollisionSideOfBlock)> {
         let x_intersects = Self::intersect_x(point, pos, cuboid);
         let y_intersects = Self::intersect_y(point, pos, cuboid);
 
         // The point must be outside the tile
         if x_intersects && y_intersects {
-            error!("Already inside block!");
+            debug!("Already inside block!");
             return None;
         }
 
         // Find out which sides of the block we want to use
-        let mut hor_side = pos.x;
-        let mut ver_side = pos.y;
-        match vel.x > 0.0 {
-            true => hor_side -= cuboid.half_width,
-            false => hor_side += cuboid.half_width,
+        let hor_side = match vel.x > 0.0 {
+            true => pos.x - cuboid.half_width,
+            false => pos.x + cuboid.half_width,
         };
-        match vel.y > 0.0 {
-            true => ver_side -= cuboid.half_height,
-            false => ver_side += cuboid.half_height,
+        let ver_side = match vel.y > 0.0 {
+            true => pos.y - cuboid.half_height,
+            false => pos.y + cuboid.half_height,
         };
 
         let hor_dist = hor_side - point.x;
@@ -83,7 +86,7 @@ impl PlatformCollisionSystem {
             false => match y_intersects {
                 true => magic_number,
                 false => {
-                    error!(
+                    debug!(
                         "Division by 0 and no y-collision! Point: {:?}, Block: {:?}",
                         point, pos
                     );
@@ -91,8 +94,8 @@ impl PlatformCollisionSystem {
                 }
             },
         };
-        info!("Point: {:?}, Block: {:?}", point, pos);
-        warn!(
+        debug!("Point: {:?}, Block: {:?}", point, pos);
+        debug!(
             "Percentage calc vertical: distance({}) / vel({})",
             ver_dist, vel.y
         );
@@ -102,7 +105,7 @@ impl PlatformCollisionSystem {
             false => match x_intersects {
                 true => magic_number,
                 false => {
-                    error!(
+                    debug!(
                         "Division by 0 and no x-collision! Point: {:?}, Block: {:?}",
                         point, pos
                     );
@@ -111,7 +114,7 @@ impl PlatformCollisionSystem {
             },
         };
 
-        warn!(
+        debug!(
             "Percentage calc horizontal: distance({}) / vel({})",
             hor_dist, vel.x
         );
@@ -122,13 +125,6 @@ impl PlatformCollisionSystem {
         }
         if vertical_perc_to_collision > 1.0 {
             vertical_perc_to_collision = magic_number;
-        }
-
-        // There's no collision at all, they both go to infinity
-        if horizontal_perc_to_collision == magic_number
-            && vertical_perc_to_collision == magic_number
-        {
-            return None;
         }
 
         // Doesn't collide at all - need to go in the opposite direction
@@ -142,6 +138,14 @@ impl PlatformCollisionSystem {
             return None;
         }
 
+        // There's no collision at all, they both go to infinity
+        if horizontal_perc_to_collision == magic_number
+            && vertical_perc_to_collision == magic_number
+        {
+            return None;
+        }
+
+        // If neither directions are legit, there's no collision
         if horizontal_perc_to_collision >= 0.0 && horizontal_perc_to_collision <= 1.0
             || vertical_perc_to_collision <= 1.0 && vertical_perc_to_collision >= 0.0
         {
@@ -149,25 +153,30 @@ impl PlatformCollisionSystem {
             return None;
         }
 
-        info!(
-            "Percentages = x:{}, y:{}",
-            horizontal_perc_to_collision, vertical_perc_to_collision
-        );
-        info!(
-            "Values = {:?}",
-            match horizontal_perc_to_collision > vertical_perc_to_collision {
-                true => Vec2::new(hor_side, point.y + horizontal_perc_to_collision * vel.y),
-                false => Vec2::new(point.x + vertical_perc_to_collision * vel.x, ver_side),
-            }
-        );
+        let side = match horizontal_perc_to_collision > vertical_perc_to_collision {
+            true => match vel.x > 0.0 {
+                true => CollisionSideOfBlock::Left,
+                false => CollisionSideOfBlock::Right,
+            },
+            false => match vel.y > 0.0 {
+                true => CollisionSideOfBlock::Bottom,
+                false => CollisionSideOfBlock::Top,
+            },
+        };
 
-        let result = match horizontal_perc_to_collision > vertical_perc_to_collision {
+        let result = match side.is_horizontal() {
             true => Vec2::new(hor_side, point.y + horizontal_perc_to_collision * vel.y),
             false => Vec2::new(point.x + vertical_perc_to_collision * vel.x, ver_side),
         };
 
+        debug!(
+            "Percentages = x:{}, y:{}",
+            horizontal_perc_to_collision, vertical_perc_to_collision
+        );
+        debug!("Values = {:?}", result);
+
         match Self::intersect_x(&result, &pos, cuboid) && Self::intersect_y(&result, &pos, cuboid) {
-            true => Some(result),
+            true => Some((result, side)),
             false => None,
         }
     }
@@ -197,20 +206,6 @@ impl PlatformCollisionSystem {
         }
         return false;
     }
-
-    fn can_collide_with_vel(
-        horizontal: bool,
-        point: &Vec2,
-        vel: &Vec2,
-        pos: &Vec2,
-        cuboid: &PlatformCuboid,
-    ) -> bool {
-        let new_pos = Vec2::new(point.x + vel.x, point.y + vel.y);
-        match horizontal {
-            true => Self::intersect_y(&new_pos, pos, cuboid),
-            false => Self::intersect_x(&new_pos, pos, cuboid),
-        }
-    }
 }
 
 impl<'s> System<'s> for PlatformCollisionSystem {
@@ -222,9 +217,6 @@ impl<'s> System<'s> for PlatformCollisionSystem {
         ReadStorage<'s, PlatformCollisionPoints>,
     );
 
-    // ---------------------------------------------------
-    // TODO: Make this all work with collidee!!!
-    // ---------------------------------------------------
     fn run(
         &mut self,
         (mut velocities, mut collidees, positions, cuboids, coll_points): Self::SystemData,
@@ -232,191 +224,132 @@ impl<'s> System<'s> for PlatformCollisionSystem {
         for (velocity, collidee, ent_pos, coll_point) in
             (&mut velocities, &mut collidees, &positions, &coll_points).join()
         {
-            let mut prev_distance_to_collision = Vec2::new(9999.0, 9999.0);
-            for point in &coll_point.0 {
-                info!(
-                    "Point: {:?}",
-                    Vec2::new(ent_pos.0.x + point.x, ent_pos.0.y + point.y)
-                );
-                let vel = velocity.0.clone();
-                let mut side_confirmed = None;
+            // We want to loop up to twice here
+            // First loop finds the closest collision of all the points
+            // Second loop tries to find a collision in the other axis
+            //  given the changes in position and velocity
+            // These bad boys get modified at the end of the loop
+            let mut current_vel = velocity.0.clone();
+            let mut current_ent_pos = ent_pos.0.clone();
+            loop {
+                debug!("Velocity: {:?}", current_vel);
+                // We want the shortest distance collision of all points
+                let mut prev_distance_to_collision = 9999.0;
+                let mut details = None;
 
-                let point_pos = Vec2::new(point.x + ent_pos.0.x, point.y + ent_pos.0.y);
-                for (plat_pos, cuboid) in (&positions, &cuboids).join() {
-                    // delta so if we go through the corner of a block we still check
-                    let delta = 5.0;
-                    let point_vel_pos =
-                        Vec2::new(point.x + ent_pos.0.x + vel.x, point.y + ent_pos.0.y + vel.y);
-                    if Self::within_range_x(&point_vel_pos, &plat_pos.0, cuboid, delta) {
-                        if Self::within_range_y(&point_vel_pos, &plat_pos.0, cuboid, delta) {
-                            let name = String::from("Some block");
-                            let position = Vec2::new(plat_pos.0.x, plat_pos.0.y);
-                            let half_size = Vec2::new(cuboid.half_width, cuboid.half_height);
+                // Go through every collision point
+                for collider_offset in &coll_point.0 {
+                    let point_pos = Vec2::new(
+                        collider_offset.x + current_ent_pos.x,
+                        collider_offset.y + current_ent_pos.y,
+                    );
+                    debug!("Point: {:?}", point_pos);
 
-                            // point of collision will allow us to identify the side
-                            let point_of_collision =
-                                Self::raycast(&point_pos, &vel, &position, cuboid);
+                    for (plat_pos, cuboid) in (&positions, &cuboids).join() {
+                        // delta so if we go through the corner of a block we still check
+                        // Must stay gt or eq to the max speed that will be reached
+                        let delta = 10.0;
+                        let platform_position = plat_pos.0.clone();
+                        let point_vel_pos = Vec2::new(
+                            collider_offset.x + ent_pos.0.x + current_vel.x,
+                            collider_offset.y + ent_pos.0.y + current_vel.y,
+                        );
 
-                            // find the distance to the point to see if another collision was closer
-                            let cur_distance_to_collision = match &point_of_collision {
-                                Some(c) => (c.x.powi(2) + c.y.powi(2)).sqrt(),
-                                None => continue,
-                            };
+                        // Is the block even close to us
+                        if Self::within_range_x(&point_vel_pos, &plat_pos.0, cuboid, delta) {
+                            if Self::within_range_y(&point_vel_pos, &plat_pos.0, cuboid, delta) {
+                                // point of collision and side
+                                let point_of_collision = Self::raycast(
+                                    &point_pos,
+                                    &current_vel,
+                                    &platform_position,
+                                    cuboid,
+                                );
 
-                            let side;
+                                // skip if no collision
+                                if point_of_collision.is_none() {
+                                    continue;
+                                }
+                                let (mut point_of_collision, side) = point_of_collision.unwrap();
 
-                            let coll_pnt = &point_of_collision.unwrap();
-                            info!("ColPoint: {:?}, Position: {:?}", coll_pnt, position);
-                            // The collision is vertical
-                            if coll_pnt.y == position.y + half_size.y
-                                || coll_pnt.y == position.y - half_size.y
-                            {
-                                side = match vel.y > 0.0 {
-                                    true => CollisionSideOfBlock::Bottom,
-                                    false => CollisionSideOfBlock::Top,
-                                };
-                            }
-                            // The collision is horizontal
-                            // If both vert and horizontal are equal - vertical is chosen
-                            else {
-                                side = match vel.x > 0.0 {
-                                    true => CollisionSideOfBlock::Left,
-                                    false => CollisionSideOfBlock::Right,
-                                };
-                            }
+                                // find the distance to the point to see if another collision was closer
+                                let distance_to_point_vec =
+                                    Vec2::subtract(&point_pos, &point_of_collision);
+                                let cur_distance_to_collision = (distance_to_point_vec.x.powi(2)
+                                    + distance_to_point_vec.y.powi(2))
+                                .sqrt();
 
-                            match side.is_horizontal() {
-                                true => {
-                                    match cur_distance_to_collision > prev_distance_to_collision.x {
-                                        true => continue,
-                                        false => {
-                                            // Check if another collision exists
-                                            if let Some(ver) = &collidee.vertical {
-                                                // If that collision happens before you, ensure that you adjust vel and re-check
-                                                if ver.distance < cur_distance_to_collision {
-                                                    let new_vel = Vec2::new(vel.x, 0.0);
-                                                    // Discard this collision if collision no longer applies
-                                                    if !Self::can_collide_with_vel(
-                                                        true, &point_pos, &new_vel, &position,
-                                                        cuboid,
-                                                    ) {
-                                                        continue;
-                                                    }
-                                                }
-                                                // TODO: If that collision happens after, do the reverse thing
-                                            }
-                                            prev_distance_to_collision.x = cur_distance_to_collision
-                                        }
+                                if cur_distance_to_collision > prev_distance_to_collision {
+                                    continue;
+                                }
+                                prev_distance_to_collision = cur_distance_to_collision;
+
+                                // Calculate the vertical/horizontal correction to be applied
+                                let mut correction = 0.01;
+                                let mut new_velocity =
+                                    Vec2::subtract(&current_vel, &distance_to_point_vec);
+                                match side.clone() {
+                                    CollisionSideOfBlock::Top => {
+                                        new_velocity.y = 0.0;
+                                        point_of_collision.y += correction;
+                                        correction = point_of_collision.y - point_pos.y;
                                     }
-                                }
-                                false => {
-                                    match cur_distance_to_collision > prev_distance_to_collision.y {
-                                        true => continue,
-                                        false => {
-                                            // Check if another collision exists
-                                            if let Some(hor) = &collidee.horizontal {
-                                                // If that collision happens before you, ensure that you adjust vel and re-check
-                                                if hor.distance < cur_distance_to_collision {
-                                                    let new_vel = Vec2::new(0.0, vel.y);
-                                                    // Discard this collision if collision no longer applies
-                                                    if !Self::can_collide_with_vel(
-                                                        false, &point_pos, &new_vel, &position,
-                                                        cuboid,
-                                                    ) {
-                                                        continue;
-                                                    }
-                                                }
-                                                // TODO: If that collision happens after, do the reverse thing
-                                            }
-                                            prev_distance_to_collision.y = cur_distance_to_collision
-                                        }
+                                    CollisionSideOfBlock::Bottom => {
+                                        new_velocity.y = 0.0;
+                                        point_of_collision.y -= correction;
+                                        correction = point_of_collision.y - point_pos.y;
                                     }
-                                }
-                            }
+                                    CollisionSideOfBlock::Left => {
+                                        new_velocity.x = 0.0;
+                                        point_of_collision.x -= correction;
+                                        correction = point_of_collision.x - point_pos.x;
+                                    }
+                                    CollisionSideOfBlock::Right => {
+                                        new_velocity.x = 0.0;
+                                        point_of_collision.x += correction;
+                                        correction =
+                                            point_of_collision.x + correction - point_pos.x;
+                                    }
+                                };
+                                debug!("Side: {:?}", side.clone());
+                                debug!("Correction: {}", correction);
 
-                            info!("Side: {:?}", side.clone());
-
-                            // Calculate the vertical/horizontal correction to be applied
-                            let mut correction = 0.01;
-                            match side.clone() {
-                                CollisionSideOfBlock::Top => {
-                                    correction = coll_pnt.y + correction - point_pos.y
-                                }
-                                CollisionSideOfBlock::Bottom => {
-                                    correction = coll_pnt.y - correction - point_pos.y
-                                }
-                                CollisionSideOfBlock::Left => {
-                                    correction = coll_pnt.x - correction - point_pos.x
-                                }
-                                CollisionSideOfBlock::Right => {
-                                    correction = coll_pnt.x + correction - point_pos.x
-                                }
-                            };
-                            info!("Correction: {}", correction);
-
-                            side_confirmed = Some(side.clone());
-
-                            let details = Some(CollideeDetails {
-                                name,
-                                position,
-                                half_size,
-                                correction,
-                                distance: cur_distance_to_collision,
-                                side: side.clone(),
-                            });
-                            match side.is_horizontal() {
-                                true => collidee.horizontal = details,
-                                false => collidee.vertical = details,
+                                details = Some(CollideeDetails {
+                                    name: String::from("Some block"),
+                                    position: platform_position,
+                                    half_size: Vec2::new(cuboid.half_width, cuboid.half_height),
+                                    correction,
+                                    distance: cur_distance_to_collision,
+                                    new_collider_pos: Vec2::subtract(
+                                        &point_of_collision,
+                                        &collider_offset,
+                                    ),
+                                    new_collider_vel: new_velocity,
+                                    side: side.clone(),
+                                });
                             }
                         }
                     }
                 }
 
-                let mut will_apply = true;
-                if let Some(hor) = &collidee.horizontal {
-                    if side.is_horizontal() {
-                        // Check if hor has smaller correction
-                        // If so, skip this guy
-                        if hor.correction < det.correction {
-                            will_apply = false;
+                match details {
+                    Some(det) => {
+                        debug!("Collided on side: {:?}", det.side);
+                        current_ent_pos = det.new_collider_pos.clone();
+                        current_vel = det.new_collider_vel.clone();
+                        match det.side.is_horizontal() {
+                            true => collidee.horizontal = Some(det),
+                            false => collidee.vertical = Some(det),
+                        };
+                        // Both collisions are found -> we done
+                        if collidee.both() {
+                            break;
                         }
                     }
-                } else if let Some(ver) = &collidee.vertical {
-                    if side.is_vertical() {
-                        // Check if ver has smaller correction
-                        // If so, skip this guy
-                        if ver.correction < det.correction {
-                            will_apply = false;
-                        }
+                    // No collision -> we done
+                    None => {
+                        break;
                     }
-                }
-
-                // If there's 2 collisions with the same block, remove the horizontal collision
-                if let Some(hor) = &collidee.horizontal {
-                    // TODO: Same block recognition uses position for now
-                    if det.position == hor.position {
-                        if det.side.is_vertical() {
-                            collidee.horizontal = None;
-                        }
-                    }
-                }
-                if let Some(vert) = &collidee.vertical {
-                    // TODO: Same block recognition uses position for now
-                    if det.position == vert.position {
-                        if det.side.is_horizontal() {
-                            will_apply = false;
-                        }
-                    }
-                }
-
-                if will_apply {
-                    match side.is_horizontal() {
-                        true => collidee.horizontal = Some(det),
-                        false => collidee.vertical = Some(det),
-                    };
-                    info!("Collided on side: {:?}", side);
-                } else {
-                    warn!("Will not apply collision!");
                 }
             }
         }

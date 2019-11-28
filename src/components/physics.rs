@@ -38,6 +38,8 @@ pub struct CollideeDetails {
     pub name: String,
     pub position: Vec2,
     pub half_size: Vec2,
+    pub new_collider_pos: Vec2,
+    pub new_collider_vel: Vec2,
     pub correction: f32,
     pub distance: f32,
     pub side: CollisionSideOfBlock,
@@ -48,6 +50,8 @@ impl CollideeDetails {
             name: String::from(""),
             position: Vec2::new(0.0, 0.0),
             half_size: Vec2::new(0.0, 0.0),
+            new_collider_pos: Vec2::new(0.0, 0.0),
+            new_collider_vel: Vec2::new(0.0, 0.0),
             correction: 0.0,
             distance: 0.0,
             side: CollisionSideOfBlock::Top,
@@ -66,6 +70,10 @@ impl Collidee {
             horizontal: None,
             vertical: None,
         }
+    }
+
+    pub fn both(&self) -> bool {
+        self.horizontal.is_some() && self.vertical.is_some()
     }
 }
 

@@ -8,6 +8,13 @@ impl Vec2 {
     pub fn new(x: f32, y: f32) -> Vec2 {
         Vec2 { x, y }
     }
+
+    pub fn subtract(first: &Vec2, subtract_by: &Vec2) -> Vec2 {
+        Vec2 {
+            x: first.x - subtract_by.x,
+            y: first.y - subtract_by.y,
+        }
+    }
 }
 
 pub struct Vec3 {
