@@ -1,0 +1,21 @@
+image: "rust:latest"
+
+linux_build:
+  script:
+    - apt-get update
+    - >
+      apt-get install -y gcc pkg-config openssl libasound2-dev cmake
+      build-essential libfreetype6-dev libexpat1-dev
+      libxcb-composite0-dev libssl-dev
+    - cargo build --release
+    - mkdir -p build/pizzatopia-amethyst
+    - mv target/release/pizzatopia-amethyst build/pizzatopia-amethyst
+    - cp -R assets build/pizzatopia-amethyst
+    - cd build/
+    - tar -czf pizzatopia-amethyst-linux-x86_64.tgz pizzatopia-amethyst
+  artifacts:
+    paths:
+    - pizzatopia-amethyst-linux-x86_64.tgz
+    expire_in: 1 week
+  only:
+    - tags
