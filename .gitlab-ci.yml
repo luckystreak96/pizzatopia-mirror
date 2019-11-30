@@ -1,6 +1,6 @@
 image: "rust:latest"
 
-linux_build:
+.linux_build:
   script:
     - apt-get update
     - >
@@ -19,7 +19,6 @@ linux_build:
     expire_in: 1 week
   only:
     - tags
-
 
 mac_build:
   script:
@@ -62,6 +61,32 @@ mac_build:
   artifacts:
     paths:
       - build/pizzatopia-amethyst-mac-x86_64.tgz
+    expire_in: 1 week
+  only:
+    - tags
+
+
+.windows_build:
+  script:
+    - apt-get update
+    - >
+      apt-get install -y gcc gcc-mingw-w64 pkg-config openssl libasound2-dev
+      cmake build-essential libfreetype6-dev libexpat1-dev
+      libxcb-composite0-dev libssl-dev zip
+    - rustup target install x86_64-pc-windows-gnu
+    - mkdir -p .cargo
+    - |
+      echo '[target.x86_64-pc-windows-gnu]
+      linker = "x86_64-w64-mingw32-gcc"' >> .cargo/config
+    - cargo build --target x86_64-pc-windows-gnu --release
+    - mkdir -p build/pizzatopia-amethyst
+    - mv target/x86_64-pc-windows-gnu/release/pizzatopia-amethyst.exe build/pizzatopia-amethyst
+    - cp -R assets build/pizzatopia-amethyst
+    - cd build/
+    - zip -r pizzatopia-amethyst-windows-x86_64.zip pizzatopia-amethyst
+  artifacts:
+    paths:
+      - build/pizzatopia-amethyst-windows-x86_64.zip
     expire_in: 1 week
   only:
     - tags

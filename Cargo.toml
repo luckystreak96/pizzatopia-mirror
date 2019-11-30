@@ -1,5 +1,6 @@
 [package]
 name = "pizzatopia-amethyst"
+# major-minor-patch
 version = "0.0.1"
 authors = []
 edition = "2018"
