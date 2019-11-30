@@ -37,11 +37,11 @@ mac_build:
       - export PATH="$PATH:/build/osxcross/target/bin"
       - ln -s /build/osxcross/target/SDK/MacOSX10.11.sdk/System/ /System
       # Configure build to use Mac linker and libraries
-      - mkdir -p /pizzatopia/src/.cargo
+      - mkdir -p /pizzatopia/.cargo
       - |
         echo '[target.x86_64-apple-darwin]
-        linker = "x86_64-apple-darwin15-clang"' >> /pizzatopia/src/.cargo/config
-      - cd /pizzatopia/src
+        linker = "x86_64-apple-darwin15-clang"' >> /pizzatopia/.cargo/config
+      - cd /pizzatopia
       - echo "[replace]" >> Cargo.toml # Patch coreaudio-sys so that it can be cross-compiled on Linux
       - >
         echo '"coreaudio-sys:0.2.2" =
