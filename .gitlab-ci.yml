@@ -23,7 +23,7 @@ image: "rust:latest"
 
 test:
   script:
-    - ls .
+    - pwd
 
 .mac_build:
   script:
