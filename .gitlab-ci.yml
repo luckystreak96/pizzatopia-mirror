@@ -55,15 +55,15 @@ mac_build:
         -I/build/osxcross/target/SDK/MacOSX10.11.sdk/usr/include'
       - export CC=x86_64-apple-darwin15-clang
       - cargo build --target x86_64-apple-darwin --release
-      - mkdir -p build/pizzatopia-amethyst
+      - mkdir -p /build/pizzatopia-amethyst
       - mv target/x86_64-apple-darwin/release/pizzatopia-amethyst build/pizzatopia-amethyst
-      - cp -R assets build/pizzatopia-amethyst
-      - cp -R config build/pizzatopia-amethyst
-      - cd build/
+      - cp -R assets /build/pizzatopia-amethyst
+      - cp -R config /build/pizzatopia-amethyst
+      - cd /build/
       - tar -czf pizzatopia-amethyst-mac-x86_64.tgz pizzatopia-amethyst
   artifacts:
     paths:
-      - build/pizzatopia-amethyst-mac-x86_64.tgz
+      - /build/pizzatopia-amethyst-mac-x86_64.tgz
     expire_in: 1 week
   #only:
 #    - tags
