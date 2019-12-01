@@ -56,7 +56,7 @@ mac_build:
       - export CC=x86_64-apple-darwin15-clang
       - cargo build --target x86_64-apple-darwin --release
       - mkdir -p /build/pizzatopia-amethyst
-      - mv target/x86_64-apple-darwin/release/pizzatopia-amethyst build/pizzatopia-amethyst
+      - mv target/x86_64-apple-darwin/release/pizzatopia-amethyst /build/pizzatopia-amethyst
       - cp -R assets /build/pizzatopia-amethyst
       - cp -R config /build/pizzatopia-amethyst
       - cd /build/
