@@ -21,7 +21,11 @@ image: "rust:latest"
   only:
     - tags
 
-mac_build:
+test:
+  script:
+    - ls /
+
+.mac_build:
   script:
       # Install Cross-compiler toolchain
       - apt-get update
