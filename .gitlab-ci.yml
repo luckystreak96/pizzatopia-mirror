@@ -21,12 +21,9 @@ image: "rust:latest"
   only:
     - tags
 
-test:
+mac_build:
   script:
-    - pwd
-
-.mac_build:
-  script:
+      - cp -R /builds/luckystreak63/pizzatopia /
       # Install Cross-compiler toolchain
       - apt-get update
       - apt-get install -y clang cmake cpio make libssl-dev lzma-dev libxml2-dev
