@@ -65,8 +65,8 @@ mac_build:
     paths:
       - build/pizzatopia-amethyst-mac-x86_64.tgz
     expire_in: 1 week
-  only:
-    - tags
+  #only:
+#    - tags
 
 
 .windows_build:
