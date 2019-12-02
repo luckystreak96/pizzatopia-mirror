@@ -27,26 +27,25 @@ testing:
 
 .mac_build:
   script:
-      - cp -R /builds/luckystreak63/pizzatopia /
       # Install Cross-compiler toolchain
       - apt-get update
       - apt-get install -y clang cmake cpio make libssl-dev lzma-dev libxml2-dev
       - rustup target add x86_64-apple-darwin
-      - mkdir -p /build
-      - cd /build
+      - mkdir -p $CI_PROJECT_DIR/build
+      - cd $CI_PROJECT_DIR/build
       - git clone --depth 1 https://github.com/tpoechtrager/osxcross.git
-      - cd /build/osxcross/tarballs
+      - cd $CI_PROJECT_DIR/build/osxcross/tarballs
       - wget https://s3.dockerproject.org/darwin/v2/MacOSX10.11.sdk.tar.xz
-      - cd /build/osxcross
+      - cd $CI_PROJECT_DIR/build/osxcross
       - UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh
-      - export PATH="$PATH:/build/osxcross/target/bin"
-      - ln -s /build/osxcross/target/SDK/MacOSX10.11.sdk/System/ /System
+      - export PATH="$PATH:$CI_PROJECT_DIR/build/osxcross/target/bin"
+      - ln -s $CI_PROJECT_DIR/build/osxcross/target/SDK/MacOSX10.11.sdk/System/ /System
       # Configure build to use Mac linker and libraries
-      - mkdir -p /pizzatopia/.cargo
+      - mkdir -p $CI_PROJECT_DIR/.cargo
       - |
         echo '[target.x86_64-apple-darwin]
-        linker = "x86_64-apple-darwin15-clang"' >> /pizzatopia/.cargo/config
-      - cd /pizzatopia
+        linker = "x86_64-apple-darwin15-clang"' >> $CI_PROJECT_DIR/.cargo/config
+      - cd $CI_PROJECT_DIR
       - echo "[replace]" >> Cargo.toml # Patch coreaudio-sys so that it can be cross-compiled on Linux
       - >
         echo '"coreaudio-sys:0.2.2" =
@@ -59,17 +58,21 @@ testing:
         -I/build/osxcross/target/SDK/MacOSX10.11.sdk/usr/include'
       - export CC=x86_64-apple-darwin15-clang
       - cargo build --target x86_64-apple-darwin --release
-      - mkdir -p /build/pizzatopia-amethyst
-      - mv target/x86_64-apple-darwin/release/pizzatopia-amethyst /build/pizzatopia-amethyst
-      - cp -R assets /build/pizzatopia-amethyst
-      - cp -R config /build/pizzatopia-amethyst
-      - cd /build/
+      - mkdir -p $CI_PROJECT_DIR/build/pizzatopia-amethyst
+      - cp -R target/x86_64-apple-darwin/release/pizzatopia-amethyst $CI_PROJECT_DIR/build/pizzatopia-amethyst
+      - cp -R assets $CI_PROJECT_DIR/build/pizzatopia-amethyst
+      - cp -R config $CI_PROJECT_DIR/build/pizzatopia-amethyst
+      - cd $CI_PROJECT_DIR/build
       - tar -czf pizzatopia-amethyst-mac-x86_64.tgz pizzatopia-amethyst
   artifacts:
     paths:
-      - /build/pizzatopia-amethyst-mac-x86_64.tgz
+      - $CI_PROJECT_DIR/build/pizzatopia-amethyst-mac-x86_64.tgz
     expire_in: 1 week
-  #only:
+  cache:
+    paths:
+      - target/
+
+#  only:
 #    - tags
 
 
