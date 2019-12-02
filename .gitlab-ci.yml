@@ -20,8 +20,12 @@ image: "rust:latest"
     expire_in: 1 week
   only:
     - tags
+    
+testing:
+  script:
+    - echo $CI_PROJECT_DIR
 
-mac_build:
+.mac_build:
   script:
       - cp -R /builds/luckystreak63/pizzatopia /
       # Install Cross-compiler toolchain
