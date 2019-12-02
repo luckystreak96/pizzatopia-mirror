@@ -67,6 +67,7 @@ mac_build:
   cache:
     paths:
       - target/
+      - .cargo/
 
 #  only:
 #    - tags
