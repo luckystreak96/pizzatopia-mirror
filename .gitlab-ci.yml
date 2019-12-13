@@ -1,4 +1,4 @@
-image: "rust:latest"
+image: "registry.gitlab.com/luckystreak63/pizzatopia:latest"
 
 .linux_build:
   script:
@@ -23,21 +23,7 @@ image: "rust:latest"
 
 mac_build:
   script:
-      # Install Cross-compiler toolchain
-      - apt-get update
-      - apt-get install -y clang cmake cpio make libssl-dev lzma-dev libxml2-dev
-      - rustup target add x86_64-apple-darwin
-      - mkdir -p $CI_PROJECT_DIR/build
-      - cd $CI_PROJECT_DIR/build
-      - git clone --depth 1 https://github.com/tpoechtrager/osxcross.git
-      - cd $CI_PROJECT_DIR/build/osxcross/tarballs
-      - wget https://s3.dockerproject.org/darwin/v2/MacOSX10.11.sdk.tar.xz
-      - cd $CI_PROJECT_DIR/build/osxcross
-      - UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh
-      - export PATH="$PATH:$CI_PROJECT_DIR/build/osxcross/target/bin"
-      - ln -s $CI_PROJECT_DIR/build/osxcross/target/SDK/MacOSX10.11.sdk/System/ /System
       # Configure build to use Mac linker and libraries
-      - ls -a $CI_PROJECT_DIR
       - mkdir -p $CI_PROJECT_DIR/.cargo
       - |
         echo '[target.x86_64-apple-darwin]
@@ -48,6 +34,7 @@ mac_build:
         echo '"coreaudio-sys:0.2.2" =
         { git = "https://github.com/RustAudio/coreaudio-sys.git",
         rev = "13a32d7" }' >> Cargo.toml
+      - sed -i -e 's/vulkan/metal/g' Cargo.toml
       - cargo update
       - export COREAUDIO_FRAMEWORKS_PATH='/System/Library/Frameworks'
       - >
@@ -63,8 +50,8 @@ mac_build:
       - tar -czf pizzatopia-amethyst-mac-x86_64.tgz pizzatopia-amethyst
   artifacts:
     paths:
-      - $CI_PROJECT_DIR/build/pizzatopia-amethyst-mac-x86_64.tgz
-    expire_in: 1 week
+      - $CI_PROJECT_DIR/build/pizzatopia-amethyst/*
+    expire_in: 2 week
   cache:
     paths:
       - target/
