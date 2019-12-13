@@ -37,10 +37,11 @@ mac_build:
       - export PATH="$PATH:$CI_PROJECT_DIR/build/osxcross/target/bin"
       - ln -s $CI_PROJECT_DIR/build/osxcross/target/SDK/MacOSX10.11.sdk/System/ /System
       # Configure build to use Mac linker and libraries
+      - ls -a $CI_PROJECT_DIR
       - mkdir -p $CI_PROJECT_DIR/.cargo
       - |
         echo '[target.x86_64-apple-darwin]
-        linker = "x86_64-apple-darwin15-clang"' >> $CI_PROJECT_DIR/.cargo/config
+        linker = "x86_64-apple-darwin15-clang"' > $CI_PROJECT_DIR/.cargo/config
       - cd $CI_PROJECT_DIR
       - echo "[replace]" >> Cargo.toml # Patch coreaudio-sys so that it can be cross-compiled on Linux
       - >
