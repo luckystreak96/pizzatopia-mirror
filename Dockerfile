@@ -10,5 +10,4 @@ RUN cd /mac_build && git clone --depth 1 https://github.com/tpoechtrager/osxcros
 RUN cd /mac_build/osxcross/tarballs && wget https://s3.dockerproject.org/darwin/v2/MacOSX10.11.sdk.tar.xz
 RUN cd /mac_build/osxcross && \
     UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh && \
-    export PATH="$PATH:/mac_build/osxcross/target/bin" && \
     ln -s /mac_build/osxcross/target/SDK/MacOSX10.11.sdk/System/ /System

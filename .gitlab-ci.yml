@@ -41,6 +41,7 @@ mac_build:
         export COREAUDIO_CFLAGS='-I/System/Library/Frameworks/Kernel.framework/Headers
         -I/build/osxcross/target/SDK/MacOSX10.11.sdk/usr/include'
       - export CC=x86_64-apple-darwin15-clang
+      - export PATH="$PATH:/mac_build/osxcross/target/bin"
       - cargo build --target x86_64-apple-darwin --release
       - mkdir -p $CI_PROJECT_DIR/build/pizzatopia-amethyst
       - cp -R target/x86_64-apple-darwin/release/pizzatopia-amethyst $CI_PROJECT_DIR/build/pizzatopia-amethyst
