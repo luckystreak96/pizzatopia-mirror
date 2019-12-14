@@ -1,6 +1,4 @@
-use crate::components::physics::{
-    Collidee, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
-};
+use crate::components::physics::{Collidee, PlatformCollisionPoints, PlatformCuboid, Position, Velocity, Grounded};
 use crate::components::player::Player;
 use crate::utils::Vec2;
 use amethyst::input::{InputHandler, StringBindings};
@@ -126,6 +124,7 @@ fn initialise_player(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
         .with(transform)
         .with(sprite_render.clone())
         .with(Player)
+        .with(Grounded(false))
         .with(Position(Vec2::new(pos.x, pos.y)))
         .with(Velocity(Vec2::new(0.0, 0.0)))
         //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))

@@ -12,3 +12,4 @@ log = "0.4.8"
 [features]
 default = ["vulkan"]
 vulkan = ["amethyst/vulkan"]
+metal = ["amethyst/metal"]

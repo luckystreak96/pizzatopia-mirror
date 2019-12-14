@@ -81,6 +81,12 @@ impl Component for Collidee {
     type Storage = DenseVecStorage<Self>;
 }
 
+pub struct Grounded(pub bool);
+
+impl Component for Grounded {
+    type Storage = DenseVecStorage<Self>;
+}
+
 pub struct Velocity(pub Vec2);
 
 impl Component for Velocity {
