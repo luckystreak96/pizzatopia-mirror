@@ -43,11 +43,14 @@ impl<'s> System<'s> for PlayerInputSystem {
                 }
                 // letting go of `up` will stop your jump
                 else if velocity.0.y > 0.0 {
-                    velocity.0.y /= 2.0;
+                    velocity.0.y *= 0.85;
                 }
             }
             if let Some(mv_amount) = h_move {
-                let scaled_amount = 0.1 * mv_amount as f32;
+                let mut scaled_amount = 0.15 * mv_amount as f32;
+                if on_ground {
+                    scaled_amount += (velocity.0.x * 0.025).abs() * mv_amount;
+                }
                 velocity.0.x += scaled_amount;
             }
         }

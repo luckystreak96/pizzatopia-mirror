@@ -1,4 +1,6 @@
-use crate::components::physics::{Collidee, PlatformCollisionPoints, PlatformCuboid, Position, Velocity, Grounded};
+use crate::components::physics::{
+    Collidee, Grounded, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
+};
 use crate::components::player::Player;
 use crate::utils::Vec2;
 use amethyst::input::{InputHandler, StringBindings};
@@ -17,6 +19,7 @@ pub const TILE_WIDTH: f32 = 32.0;
 pub const TILE_HEIGHT: f32 = 32.0;
 
 pub const MAX_FALL_SPEED: f32 = 5.0;
+pub const MAX_RUN_SPEED: f32 = 5.0;
 
 pub(crate) struct Pizzatopia;
 

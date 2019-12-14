@@ -2,12 +2,13 @@ use crate::components::physics::{
     Collidee, CollideeDetails, CollisionSideOfBlock, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Velocity,
 };
-use crate::pizzatopia::MAX_FALL_SPEED;
+use crate::pizzatopia::{MAX_FALL_SPEED, MAX_RUN_SPEED};
 use crate::systems::physics::CollisionDirection::FromTop;
 use crate::utils::Vec2;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
+use amethyst::input::{InputHandler, StringBindings};
 use log::{debug, error, info, warn};
 
 pub(crate) enum CollisionDirection {
@@ -35,14 +36,37 @@ impl<'s> System<'s> for ApplyVelocitySystem {
 pub struct ApplyGravitySystem;
 
 impl<'s> System<'s> for ApplyGravitySystem {
-    type SystemData = (WriteStorage<'s, Velocity>);
+    type SystemData = (
+        WriteStorage<'s, Velocity>,
+        ReadStorage<'s, Grounded>,
+        Read<'s, InputHandler<StringBindings>>,
+    );
 
-    fn run(&mut self, (mut velocities): Self::SystemData) {
-        for (velocity) in (&mut velocities).join() {
+    fn run(&mut self, (mut velocities, grounded, input): Self::SystemData) {
+        for (velocity, grounded) in (&mut velocities, (&grounded).maybe()).join() {
             velocity.0.y -= 0.16;
-            if velocity.0.y < -MAX_FALL_SPEED {
-                velocity.0.y = -MAX_FALL_SPEED;
+
+            if let Some(ground) = grounded {
+                if ground.0 {
+                    if let Some(horizontal_movement) = input.axis_value("horizontal_move") {
+                        if horizontal_movement == 0.0 {
+                            let friction = 0.90;
+                            if velocity.0.x.abs() <= 0.1 {
+                                velocity.0.x = 0.0;
+                            } else {
+                                // Slow in opposite direction
+                                velocity.0.x *= friction;
+                            }
+                        }
+                    }
+                }
             }
+
+            // Limit speed
+            velocity.0.x = f32::min(velocity.0.x, MAX_RUN_SPEED);
+            velocity.0.x = f32::max(velocity.0.x, -MAX_RUN_SPEED);
+
+            velocity.0.y = f32::max(velocity.0.y, -MAX_FALL_SPEED);
         }
     }
 }
@@ -375,7 +399,7 @@ impl<'s> System<'s> for ApplyCollisionSystem {
             &mut velocities,
             &mut positions,
             &mut collidees,
-        (&mut grounded).maybe(),
+            (&mut grounded).maybe(),
         )
             .join()
         {
