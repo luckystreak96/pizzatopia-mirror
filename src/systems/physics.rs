@@ -1,6 +1,6 @@
 use crate::components::physics::{
-    Collidee, CollideeDetails, CollisionSideOfBlock, PlatformCollisionPoints, PlatformCuboid,
-    Position, Velocity,
+    Collidee, CollideeDetails, CollisionSideOfBlock, Grounded, PlatformCollisionPoints,
+    PlatformCuboid, Position, Velocity,
 };
 use crate::pizzatopia::MAX_FALL_SPEED;
 use crate::systems::physics::CollisionDirection::FromTop;
@@ -364,32 +364,56 @@ impl<'s> System<'s> for ApplyCollisionSystem {
         WriteStorage<'s, Velocity>,
         WriteStorage<'s, Position>,
         WriteStorage<'s, Collidee>,
+        WriteStorage<'s, Grounded>,
     );
 
-    fn run(&mut self, (mut velocities, mut positions, mut collidees): Self::SystemData) {
-        for (velocity, position, collidee) in
-            (&mut velocities, &mut positions, &mut collidees).join()
+    fn run(
+        &mut self,
+        (mut velocities, mut positions, mut collidees, mut grounded): Self::SystemData,
+    ) {
+        for (velocity, position, collidee, mut grounded) in (
+            &mut velocities,
+            &mut positions,
+            &mut collidees,
+        (&mut grounded).maybe(),
+        )
+            .join()
         {
             if let Some(cdee) = &collidee.vertical {
                 match cdee.side {
                     CollisionSideOfBlock::Bottom => {
                         position.0.y += cdee.correction;
+                        if let Some(ground) = &mut grounded {
+                            ground.0 = false;
+                        };
                     }
                     CollisionSideOfBlock::Top => {
                         position.0.y += cdee.correction;
-                        // on_ground logic
+                        if let Some(ground) = &mut grounded {
+                            ground.0 = true;
+                        };
                     }
-                    _ => {}
-                };
+                    _ => {
+                        if let Some(ground) = &mut grounded {
+                            ground.0 = false;
+                        };
+                    }
+                }
                 velocity.0.y = 0.0;
-            }
+            } else {
+                if let Some(ground) = &mut grounded {
+                    ground.0 = false;
+                };
+            };
 
             if let Some(cdee) = &collidee.horizontal {
                 position.0.x += cdee.correction;
                 velocity.0.x = 0.0;
             }
 
-            //info!("Position: {:?}", position.0);
+            if let Some(ground) = &mut grounded {
+                info!("Grounded: {:?}", ground.0);
+            };
 
             collidee.horizontal = None;
             collidee.vertical = None;
