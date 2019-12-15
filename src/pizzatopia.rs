@@ -32,7 +32,8 @@ impl SimpleState for Pizzatopia {
 
         let sprite_sheet_handle = load_sprite_sheet(world);
 
-        initialise_player(world, sprite_sheet_handle.clone());
+        initialise_actor(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world, sprite_sheet_handle.clone());
+        initialise_actor(Vec2::new(CAM_WIDTH / 2.0 - 64.0, CAM_HEIGHT / 2.0), false, world, sprite_sheet_handle.clone());
         initialise_playground(world, sprite_sheet_handle.clone());
         initialise_camera(world);
     }
@@ -74,7 +75,7 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
 
 /// Initialises the ground.
 fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, pos: Vec2) {
-    let mut transform = Transform::default();
+    let transform = Transform::default();
 
     // Correctly position the tile.
     let pos = Position(pos);
@@ -85,7 +86,6 @@ fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, pos: 
         sprite_number: 0, // grass is the first sprite in the sprite_sheet
     };
 
-    // Create a left plank entity.
     world
         .create_entity()
         .with(PlatformCuboid::new())
@@ -108,11 +108,10 @@ fn initialise_playground(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
 }
 
 /// Initialises one tile.
-fn initialise_player(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
+fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
     let mut transform = Transform::default();
 
     // Correctly position the paddles.
-    let pos = Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0);
     transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
     // Assign the sprite
@@ -121,7 +120,7 @@ fn initialise_player(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
         sprite_number: 1, // grass is the first sprite in the sprite_sheet
     };
 
-    // Create a left plank entity.
+    if player {
     world
         .create_entity()
         .with(transform)
@@ -134,6 +133,19 @@ fn initialise_player(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
         .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
         .with(Collidee::new())
         .build();
+    } else {
+        world
+            .create_entity()
+            .with(transform)
+            .with(sprite_render.clone())
+            .with(Grounded(false))
+            .with(Position(Vec2::new(pos.x, pos.y)))
+            .with(Velocity(Vec2::new(0.0, 0.0)))
+            //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
+            .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
+            .with(Collidee::new())
+            .build();
+    }
 }
 
 fn initialise_camera(world: &mut World) {

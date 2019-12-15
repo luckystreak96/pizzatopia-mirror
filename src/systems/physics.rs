@@ -7,7 +7,7 @@ use crate::systems::physics::CollisionDirection::FromTop;
 use crate::utils::Vec2;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
-use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
+use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage, Entity, Entities};
 use amethyst::input::{InputHandler, StringBindings};
 use log::{debug, error, info, warn};
 
@@ -72,17 +72,92 @@ impl<'s> System<'s> for ApplyGravitySystem {
 }
 
 #[derive(SystemDesc)]
+pub struct ActorCollisionSystem;
+
+impl ActorCollisionSystem {
+    fn create_corners_with_coll_points_tl_br(pos: &Vec2, points: &PlatformCollisionPoints) -> (Vec2, Vec2) {
+        let mut leftmost: f32 = 999999.0;
+        let mut rightmost: f32 = -999999.0;
+        let mut topmost: f32 = -999999.0;
+        let mut bottommost: f32 = 999999.0;
+        // Go through every collision point to create cuboid shape
+        for collider_offset in &points.0 {
+            let point_pos = Vec2::new(
+                collider_offset.x + pos.x,
+                collider_offset.y + pos.y,
+            );
+
+            leftmost = leftmost.min(point_pos.x);
+            bottommost = bottommost.min(point_pos.y);
+            rightmost = rightmost.max(point_pos.x);
+            topmost = topmost.max(point_pos.y);
+        }
+        //info!("TopLeft: {:?}, BottomRight: {:?}", Vec2::new(leftmost, topmost), Vec2::new(rightmost, bottommost));
+        (Vec2::new(leftmost, topmost), Vec2::new(rightmost, bottommost))
+    }
+
+    fn cuboid_intersection(top_left1: &Vec2, bottom_right1: &Vec2, top_left2: &Vec2, bottom_right2: &Vec2) -> bool {
+        // Check if the x axis of both squares ever intersect
+        let halfway_point = bottom_right2.x + (top_left1.x - bottom_right2.x) / 2.0;
+        //info!("Halfway point X: {:?}", halfway_point);
+        if !(halfway_point > top_left1.x && halfway_point < bottom_right1.x &&
+            halfway_point > top_left2.x && halfway_point < bottom_right2.x) {
+            // no intersects
+            return false;
+        }
+
+        // Check if the y axis of both squares ever intersect
+        let halfway_point = top_left2.y + (bottom_right1.y - top_left2.y) / 2.0;
+        //info!("Halfway point Y: {:?}", halfway_point);
+        if !(halfway_point < top_left1.y && halfway_point > bottom_right1.y &&
+            halfway_point < top_left2.y && halfway_point > bottom_right2.y) {
+            // no intersects
+            return false;
+        }
+
+        true
+    }
+}
+
+impl<'s> System<'s> for ActorCollisionSystem {
+    type SystemData = (
+        ReadStorage<'s, Position>,
+        ReadStorage<'s, PlatformCollisionPoints>,
+        Entities<'s>,
+    );
+
+    fn run(&mut self, (positions, coll_points, entities): Self::SystemData) {
+        for (ent_pos1, coll_point1, entity1) in (&positions, &coll_points, &entities).join() {
+            let pos1 = Vec2::new(ent_pos1.0.x, ent_pos1.0.y);
+            let (top_left1, bottom_right1) = Self::create_corners_with_coll_points_tl_br(&pos1, coll_point1);
+
+            for (ent_pos2, coll_point2, entity2) in (&positions, &coll_points, &entities).join() {
+                if entity1 == entity2 {
+                    continue;
+                }
+
+                let pos2 = Vec2::new(ent_pos2.0.x, ent_pos2.0.y);
+                let (top_left2, bottom_right2) = Self::create_corners_with_coll_points_tl_br(&pos2, coll_point2);
+                if Self::cuboid_intersection(&top_left1, &bottom_right1, &top_left2, &bottom_right2) {
+                    warn!("Wow! A collision! {}", pos1.x);
+                }
+            }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
 pub struct PlatformCollisionSystem;
 
 impl PlatformCollisionSystem {
     fn raycast(
         point: &Vec2,
         vel: &Vec2,
-        pos: &Vec2,
+        cuboid_pos: &Vec2,
         cuboid: &PlatformCuboid,
     ) -> Option<(Vec2, CollisionSideOfBlock)> {
-        let x_intersects = Self::intersect_x(point, pos, cuboid);
-        let y_intersects = Self::intersect_y(point, pos, cuboid);
+        let x_intersects = Self::intersect_x(point, cuboid_pos, cuboid);
+        let y_intersects = Self::intersect_y(point, cuboid_pos, cuboid);
 
         // The point must be outside the tile
         if x_intersects && y_intersects {
@@ -92,12 +167,12 @@ impl PlatformCollisionSystem {
 
         // Find out which sides of the block we want to use
         let hor_side = match vel.x > 0.0 {
-            true => pos.x - cuboid.half_width,
-            false => pos.x + cuboid.half_width,
+            true => cuboid_pos.x - cuboid.half_width,
+            false => cuboid_pos.x + cuboid.half_width,
         };
         let ver_side = match vel.y > 0.0 {
-            true => pos.y - cuboid.half_height,
-            false => pos.y + cuboid.half_height,
+            true => cuboid_pos.y - cuboid.half_height,
+            false => cuboid_pos.y + cuboid.half_height,
         };
 
         let hor_dist = hor_side - point.x;
@@ -112,13 +187,13 @@ impl PlatformCollisionSystem {
                 false => {
                     debug!(
                         "Division by 0 and no y-collision! Point: {:?}, Block: {:?}",
-                        point, pos
+                        point, cuboid_pos
                     );
                     return None;
                 }
             },
         };
-        debug!("Point: {:?}, Block: {:?}", point, pos);
+        debug!("Point: {:?}, Block: {:?}", point, cuboid_pos);
         debug!(
             "Percentage calc vertical: distance({}) / vel({})",
             ver_dist, vel.y
@@ -131,7 +206,7 @@ impl PlatformCollisionSystem {
                 false => {
                     debug!(
                         "Division by 0 and no x-collision! Point: {:?}, Block: {:?}",
-                        point, pos
+                        point, cuboid_pos
                     );
                     return None;
                 }
@@ -199,7 +274,9 @@ impl PlatformCollisionSystem {
         );
         debug!("Values = {:?}", result);
 
-        match Self::intersect_x(&result, &pos, cuboid) && Self::intersect_y(&result, &pos, cuboid) {
+        match Self::intersect_x(&result, &cuboid_pos, cuboid)
+            && Self::intersect_y(&result, &cuboid_pos, cuboid)
+        {
             true => Some((result, side)),
             false => None,
         }
@@ -434,10 +511,6 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                 position.0.x += cdee.correction;
                 velocity.0.x = 0.0;
             }
-
-            if let Some(ground) = &mut grounded {
-                info!("Grounded: {:?}", ground.0);
-            };
 
             collidee.horizontal = None;
             collidee.vertical = None;

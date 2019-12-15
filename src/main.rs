@@ -33,7 +33,7 @@ fn main() -> amethyst::Result<()> {
     let input_bundle =
         InputBundle::<StringBindings>::new().with_bindings_from_file(binding_path)?;
 
-    let mut world = World::new();
+    let world = World::new();
 
     let game_data = GameDataBuilder::default()
         .with_bundle(
@@ -53,6 +53,11 @@ fn main() -> amethyst::Result<()> {
             &["input_system"],
         )
         .with(
+            systems::physics::ActorCollisionSystem,
+            "actor_collision_system",
+            &[],
+        )
+        .with(
             systems::physics::ApplyGravitySystem,
             "apply_gravity_system",
             &[],
@@ -60,7 +65,7 @@ fn main() -> amethyst::Result<()> {
         .with(
             systems::physics::PlatformCollisionSystem,
             "platform_collision_system",
-            &["player_input_system", "apply_gravity_system"],
+            &["player_input_system", "apply_gravity_system", "actor_collision_system"],
         )
         .with(
             systems::physics::ApplyCollisionSystem,
@@ -70,7 +75,7 @@ fn main() -> amethyst::Result<()> {
         .with(
             systems::physics::ApplyVelocitySystem,
             "apply_velocity_system",
-            &["platform_collision_system"],
+            &["apply_collision_system"],
         )
         .with(
             systems::graphics::PositionDrawUpdateSystem,
