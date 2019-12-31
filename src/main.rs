@@ -3,8 +3,10 @@
 #![allow(unused_imports)]
 use amethyst::input::{InputBundle, StringBindings};
 use amethyst::{
-    assets::PrefabLoaderSystemDesc,
-    assets::Processor,
+    assets::{
+        Asset, AssetStorage, Format, Handle, Loader, PrefabLoaderSystemDesc, ProcessingState,
+        Processor, ProgressCounter, RonFormat, Source,
+    },
     core::transform::TransformBundle,
     ecs::prelude::{ReadExpect, SystemData},
     prelude::*,
@@ -16,15 +18,16 @@ use amethyst::{
     utils::application_root_dir,
     Logger,
 };
+use log::info;
 
 mod components;
-mod pizzatopia;
 mod level;
+mod pizzatopia;
 mod systems;
 mod utils;
 use crate::components::physics::PlatformCuboid;
-use crate::pizzatopia::Pizzatopia;
 use crate::level::Level;
+use crate::pizzatopia::Pizzatopia;
 
 fn main() -> amethyst::Result<()> {
     // Logging for GL stuff
@@ -96,8 +99,46 @@ fn main() -> amethyst::Result<()> {
 
     let assets_dir = app_root.join("assets");
 
-    let mut game = Application::new(assets_dir, Pizzatopia, game_data)?;
+    let mut game = Application::new(
+        assets_dir,
+        LoadingState {
+            progress_counter: ProgressCounter::new(),
+            level_handle: None,
+        },
+        game_data,
+    )?;
     game.run();
 
     Ok(())
+}
+
+pub struct LoadingState {
+    /// Tracks loaded assets.
+    progress_counter: ProgressCounter,
+    /// Handle to the energy blast.
+    level_handle: Option<Handle<Level>>,
+}
+
+impl SimpleState for LoadingState {
+    fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
+        let level_resource = &data.world.read_resource::<AssetStorage<Level>>();
+        let level_handle = data.world.read_resource::<Loader>().load(
+            "levels/level0.ron", // Here we load the associated ron file
+            RonFormat,
+            &mut self.progress_counter,
+            &level_resource,
+        );
+
+        self.level_handle = Some(level_handle);
+    }
+
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        if self.progress_counter.is_complete() {
+            Trans::Switch(Box::new(Pizzatopia {
+                level_handle: self.level_handle.clone().unwrap(),
+            }))
+        } else {
+            Trans::None
+        }
+    }
 }

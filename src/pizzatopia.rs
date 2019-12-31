@@ -7,14 +7,15 @@ use crate::utils::Vec2;
 use amethyst::input::{InputHandler, StringBindings};
 use amethyst::{
     assets::{
-        AssetStorage, Handle, Loader, Prefab, PrefabData, PrefabLoader, PrefabLoaderSystemDesc,
-        ProgressCounter, RonFormat,
+        Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
+        PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
     },
     core::transform::Transform,
     ecs::prelude::{Component, DenseVecStorage},
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
+use log::info;
 
 pub const CAM_HEIGHT: f32 = 768.0 / 2.0;
 pub const CAM_WIDTH: f32 = 512.0;
@@ -25,7 +26,9 @@ pub const TILE_HEIGHT: f32 = 32.0;
 pub const MAX_FALL_SPEED: f32 = 5.0;
 pub const MAX_RUN_SPEED: f32 = 5.0;
 
-pub(crate) struct Pizzatopia;
+pub(crate) struct Pizzatopia {
+    pub level_handle: Handle<Level>,
+}
 
 impl SimpleState for Pizzatopia {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
@@ -39,17 +42,6 @@ impl SimpleState for Pizzatopia {
             loader.load("prefab/tile_size.ron", RonFormat, ())
         });
 
-        {
-            let loader = world.read_resource::<Loader>();
-            let level_ron_store = world.read_resource::<AssetStorage<Level>>();
-            let positions = loader.load(
-                "levels/level0.ron", // Here we load the associated ron file
-                RonFormat,
-                (),
-                &level_ron_store,
-            );
-        }
-
         initialise_actor(
             Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0),
             true,
@@ -62,7 +54,12 @@ impl SimpleState for Pizzatopia {
             world,
             sprite_sheet_handle.clone(),
         );
-        initialise_playground(world, sprite_sheet_handle.clone(), prefab_handle);
+        initialise_playground(
+            world,
+            sprite_sheet_handle.clone(),
+            prefab_handle,
+            self.level_handle.clone(),
+        );
         initialise_camera(world);
     }
 
@@ -133,46 +130,25 @@ fn initialise_playground(
     world: &mut World,
     sprite_sheet: Handle<SpriteSheet>,
     tile_size: Handle<Prefab<PlatformCuboid>>,
+    level_handle: Handle<Level>,
 ) {
-    // Correctly position the tile.
-    for i in 0..(((CAM_WIDTH / 32.0) + 1.0) as i32) {
+    let tiles;
+    {
+        let asset = &world.read_resource::<AssetStorage<Level>>();
+        let level = asset
+            .get(&level_handle)
+            .expect("Expected level to be loaded.");
+        tiles = level.tiles.clone();
+    }
+
+    for tile in tiles {
         initialise_ground(
             world,
             sprite_sheet.clone(),
-            Vec2::new(32.0 * i as f32, 0.0),
+            tile,
             tile_size.clone(),
         );
     }
-    initialise_ground(
-        world,
-        sprite_sheet.clone(),
-        Vec2::new(0.0, 32.0),
-        tile_size.clone(),
-    );
-    initialise_ground(
-        world,
-        sprite_sheet.clone(),
-        Vec2::new(128.0, 32.0),
-        tile_size.clone(),
-    );
-    initialise_ground(
-        world,
-        sprite_sheet.clone(),
-        Vec2::new(128.0, 64.0),
-        tile_size.clone(),
-    );
-    initialise_ground(
-        world,
-        sprite_sheet.clone(),
-        Vec2::new(128.0, 96.0),
-        tile_size.clone(),
-    );
-    initialise_ground(
-        world,
-        sprite_sheet.clone(),
-        Vec2::new(CAM_WIDTH, 32.0),
-        tile_size.clone(),
-    );
 }
 
 /// Initialises one tile.
@@ -227,3 +203,4 @@ fn initialise_camera(world: &mut World) {
         .with(transform)
         .build();
 }
+
