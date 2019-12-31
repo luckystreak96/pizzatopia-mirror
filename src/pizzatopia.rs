@@ -2,11 +2,14 @@ use crate::components::physics::{
     Collidee, Grounded, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
 };
 use crate::components::player::Player;
+use crate::level::Level;
 use crate::utils::Vec2;
 use amethyst::input::{InputHandler, StringBindings};
 use amethyst::{
-    assets::{AssetStorage, Handle, Loader, Prefab, PrefabData, PrefabLoader, PrefabLoaderSystemDesc,
-        ProgressCounter, RonFormat},
+    assets::{
+        AssetStorage, Handle, Loader, Prefab, PrefabData, PrefabLoader, PrefabLoaderSystemDesc,
+        ProgressCounter, RonFormat,
+    },
     core::transform::Transform,
     ecs::prelude::{Component, DenseVecStorage},
     prelude::*,
@@ -33,16 +36,32 @@ impl SimpleState for Pizzatopia {
 
         let sprite_sheet_handle = load_sprite_sheet(world);
         let prefab_handle = world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
-            loader.load(
-                "prefab/tile_size.ron",
-                RonFormat,
-                (),
-            )
+            loader.load("prefab/tile_size.ron", RonFormat, ())
         });
 
+        {
+            let loader = world.read_resource::<Loader>();
+            let level_ron_store = world.read_resource::<AssetStorage<Level>>();
+            let positions = loader.load(
+                "levels/level0.ron", // Here we load the associated ron file
+                RonFormat,
+                (),
+                &level_ron_store,
+            );
+        }
 
-        initialise_actor(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world, sprite_sheet_handle.clone());
-        initialise_actor(Vec2::new(CAM_WIDTH / 2.0 - 64.0, CAM_HEIGHT / 2.0), false, world, sprite_sheet_handle.clone());
+        initialise_actor(
+            Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0),
+            true,
+            world,
+            sprite_sheet_handle.clone(),
+        );
+        initialise_actor(
+            Vec2::new(CAM_WIDTH / 2.0 - 64.0, CAM_HEIGHT / 2.0),
+            false,
+            world,
+            sprite_sheet_handle.clone(),
+        );
         initialise_playground(world, sprite_sheet_handle.clone(), prefab_handle);
         initialise_camera(world);
     }
@@ -83,7 +102,12 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
 }
 
 /// Initialises the ground.
-fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, pos: Vec2, tile_size: Handle<Prefab<PlatformCuboid>>) {
+fn initialise_ground(
+    world: &mut World,
+    sprite_sheet: Handle<SpriteSheet>,
+    pos: Vec2,
+    tile_size: Handle<Prefab<PlatformCuboid>>,
+) {
     let transform = Transform::default();
 
     // Correctly position the tile.
@@ -105,16 +129,50 @@ fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, pos: 
         .build();
 }
 
-fn initialise_playground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, tile_size: Handle<Prefab<PlatformCuboid>>) {
+fn initialise_playground(
+    world: &mut World,
+    sprite_sheet: Handle<SpriteSheet>,
+    tile_size: Handle<Prefab<PlatformCuboid>>,
+) {
     // Correctly position the tile.
     for i in 0..(((CAM_WIDTH / 32.0) + 1.0) as i32) {
-        initialise_ground(world, sprite_sheet.clone(), Vec2::new(32.0 * i as f32, 0.0), tile_size.clone());
+        initialise_ground(
+            world,
+            sprite_sheet.clone(),
+            Vec2::new(32.0 * i as f32, 0.0),
+            tile_size.clone(),
+        );
     }
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(0.0, 32.0), tile_size.clone());
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 32.0), tile_size.clone());
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 64.0), tile_size.clone());
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 96.0), tile_size.clone());
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(CAM_WIDTH, 32.0), tile_size.clone());
+    initialise_ground(
+        world,
+        sprite_sheet.clone(),
+        Vec2::new(0.0, 32.0),
+        tile_size.clone(),
+    );
+    initialise_ground(
+        world,
+        sprite_sheet.clone(),
+        Vec2::new(128.0, 32.0),
+        tile_size.clone(),
+    );
+    initialise_ground(
+        world,
+        sprite_sheet.clone(),
+        Vec2::new(128.0, 64.0),
+        tile_size.clone(),
+    );
+    initialise_ground(
+        world,
+        sprite_sheet.clone(),
+        Vec2::new(128.0, 96.0),
+        tile_size.clone(),
+    );
+    initialise_ground(
+        world,
+        sprite_sheet.clone(),
+        Vec2::new(CAM_WIDTH, 32.0),
+        tile_size.clone(),
+    );
 }
 
 /// Initialises one tile.
@@ -131,18 +189,18 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
     };
 
     if player {
-    world
-        .create_entity()
-        .with(transform)
-        .with(sprite_render.clone())
-        .with(Player)
-        .with(Grounded(false))
-        .with(Position(Vec2::new(pos.x, pos.y)))
-        .with(Velocity(Vec2::new(0.0, 0.0)))
-        //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
-        .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
-        .with(Collidee::new())
-        .build();
+        world
+            .create_entity()
+            .with(transform)
+            .with(sprite_render.clone())
+            .with(Player)
+            .with(Grounded(false))
+            .with(Position(Vec2::new(pos.x, pos.y)))
+            .with(Velocity(Vec2::new(0.0, 0.0)))
+            //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
+            .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
+            .with(Collidee::new())
+            .build();
     } else {
         world
             .create_entity()

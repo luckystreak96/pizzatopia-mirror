@@ -4,6 +4,7 @@
 use amethyst::input::{InputBundle, StringBindings};
 use amethyst::{
     assets::PrefabLoaderSystemDesc,
+    assets::Processor,
     core::transform::TransformBundle,
     ecs::prelude::{ReadExpect, SystemData},
     prelude::*,
@@ -18,10 +19,12 @@ use amethyst::{
 
 mod components;
 mod pizzatopia;
+mod level;
 mod systems;
 mod utils;
 use crate::components::physics::PlatformCuboid;
 use crate::pizzatopia::Pizzatopia;
+use crate::level::Level;
 
 fn main() -> amethyst::Result<()> {
     // Logging for GL stuff
@@ -50,6 +53,7 @@ fn main() -> amethyst::Result<()> {
         )?
         .with_bundle(input_bundle)?
         .with_bundle(TransformBundle::new())?
+        .with(Processor::<Level>::new(), "", &[])
         .with(
             systems::PlayerInputSystem,
             "player_input_system",

@@ -1,0 +1,9 @@
+#![enable(implicit_some)]
+Level(
+    tiles: [
+        Vec2(
+            x: 0.0,
+            y: 0.0,
+        ),
+    ],
+)
