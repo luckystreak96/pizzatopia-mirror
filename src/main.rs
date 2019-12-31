@@ -3,6 +3,7 @@
 #![allow(unused_imports)]
 use amethyst::input::{InputBundle, StringBindings};
 use amethyst::{
+    assets::PrefabLoaderSystemDesc,
     core::transform::TransformBundle,
     ecs::prelude::{ReadExpect, SystemData},
     prelude::*,
@@ -19,6 +20,7 @@ mod components;
 mod pizzatopia;
 mod systems;
 mod utils;
+use crate::components::physics::PlatformCuboid;
 use crate::pizzatopia::Pizzatopia;
 
 fn main() -> amethyst::Result<()> {
@@ -36,6 +38,7 @@ fn main() -> amethyst::Result<()> {
     let world = World::new();
 
     let game_data = GameDataBuilder::default()
+        .with_system_desc(PrefabLoaderSystemDesc::<PlatformCuboid>::default(), "", &[])
         .with_bundle(
             RenderingBundle::<DefaultBackend>::new()
                 // The RenderToWindow plugin provides all the scaffolding for opening a window and drawing on it
@@ -65,7 +68,11 @@ fn main() -> amethyst::Result<()> {
         .with(
             systems::physics::PlatformCollisionSystem,
             "platform_collision_system",
-            &["player_input_system", "apply_gravity_system", "actor_collision_system"],
+            &[
+                "player_input_system",
+                "apply_gravity_system",
+                "actor_collision_system",
+            ],
         )
         .with(
             systems::physics::ApplyCollisionSystem,

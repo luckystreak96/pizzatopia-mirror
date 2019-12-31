@@ -5,7 +5,8 @@ use crate::components::player::Player;
 use crate::utils::Vec2;
 use amethyst::input::{InputHandler, StringBindings};
 use amethyst::{
-    assets::{AssetStorage, Handle, Loader},
+    assets::{AssetStorage, Handle, Loader, Prefab, PrefabData, PrefabLoader, PrefabLoaderSystemDesc,
+        ProgressCounter, RonFormat},
     core::transform::Transform,
     ecs::prelude::{Component, DenseVecStorage},
     prelude::*,
@@ -31,10 +32,18 @@ impl SimpleState for Pizzatopia {
         world.register::<PlatformCollisionPoints>();
 
         let sprite_sheet_handle = load_sprite_sheet(world);
+        let prefab_handle = world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
+            loader.load(
+                "prefab/tile_size.ron",
+                RonFormat,
+                (),
+            )
+        });
+
 
         initialise_actor(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world, sprite_sheet_handle.clone());
         initialise_actor(Vec2::new(CAM_WIDTH / 2.0 - 64.0, CAM_HEIGHT / 2.0), false, world, sprite_sheet_handle.clone());
-        initialise_playground(world, sprite_sheet_handle.clone());
+        initialise_playground(world, sprite_sheet_handle.clone(), prefab_handle);
         initialise_camera(world);
     }
 
@@ -74,7 +83,7 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
 }
 
 /// Initialises the ground.
-fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, pos: Vec2) {
+fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, pos: Vec2, tile_size: Handle<Prefab<PlatformCuboid>>) {
     let transform = Transform::default();
 
     // Correctly position the tile.
@@ -88,23 +97,24 @@ fn initialise_ground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, pos: 
 
     world
         .create_entity()
-        .with(PlatformCuboid::new())
+        .with(tile_size)
+        //.with(PlatformCuboid::new())
         .with(pos)
         .with(transform)
         .with(sprite_render.clone())
         .build();
 }
 
-fn initialise_playground(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
+fn initialise_playground(world: &mut World, sprite_sheet: Handle<SpriteSheet>, tile_size: Handle<Prefab<PlatformCuboid>>) {
     // Correctly position the tile.
     for i in 0..(((CAM_WIDTH / 32.0) + 1.0) as i32) {
-        initialise_ground(world, sprite_sheet.clone(), Vec2::new(32.0 * i as f32, 0.0));
+        initialise_ground(world, sprite_sheet.clone(), Vec2::new(32.0 * i as f32, 0.0), tile_size.clone());
     }
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(0.0, 32.0));
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 32.0));
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 64.0));
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 96.0));
-    initialise_ground(world, sprite_sheet.clone(), Vec2::new(CAM_WIDTH, 32.0));
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(0.0, 32.0), tile_size.clone());
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 32.0), tile_size.clone());
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 64.0), tile_size.clone());
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(128.0, 96.0), tile_size.clone());
+    initialise_ground(world, sprite_sheet.clone(), Vec2::new(CAM_WIDTH, 32.0), tile_size.clone());
 }
 
 /// Initialises one tile.

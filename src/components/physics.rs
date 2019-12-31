@@ -1,12 +1,19 @@
-use crate::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
-use crate::utils::Vec2;
 use amethyst::{
-    assets::{AssetStorage, Handle, Loader},
+    assets::{AssetStorage, Handle, Loader, PrefabData},
+    assets::ProgressCounter,
     core::transform::Transform,
+    derive::PrefabData,
+    ecs::Entity,
     ecs::prelude::{Component, DenseVecStorage},
+    ecs::WriteStorage,
+    Error,
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
+use serde::{Deserialize, Serialize};
+
+use crate::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
+use crate::utils::Vec2;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CollisionSideOfBlock {
@@ -124,6 +131,9 @@ impl PlatformCollisionPoints {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PrefabData)]
+#[prefab(Component)]
+#[serde(deny_unknown_fields)]
 pub struct PlatformCuboid {
     pub half_width: f32,
     pub half_height: f32,
