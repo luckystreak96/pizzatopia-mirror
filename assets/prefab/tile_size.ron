@@ -3,8 +3,8 @@ Prefab(
     entities: [
         PrefabEntity(
             data: PlatformCuboid(
-                half_width: 16.0,
-                half_height: 16.0,
+                half_width: 64.0,
+                half_height: 64.0,
             ),
         ),
     ],

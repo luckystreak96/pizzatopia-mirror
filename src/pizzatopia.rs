@@ -15,13 +15,15 @@ use amethyst::{
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
+use amethyst::renderer::rendy::hal::image::{Filter, SamplerInfo, WrapMode};
+use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, TextureKind};
 use log::info;
 
-pub const CAM_HEIGHT: f32 = 768.0 / 2.0;
-pub const CAM_WIDTH: f32 = 512.0;
+pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
+pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
 
-pub const TILE_WIDTH: f32 = 32.0;
-pub const TILE_HEIGHT: f32 = 32.0;
+pub const TILE_WIDTH: f32 = 128.0;
+pub const TILE_HEIGHT: f32 = 128.0;
 
 pub const MAX_FALL_SPEED: f32 = 5.0;
 pub const MAX_RUN_SPEED: f32 = 5.0;
@@ -49,7 +51,7 @@ impl SimpleState for Pizzatopia {
             sprite_sheet_handle.clone(),
         );
         initialise_actor(
-            Vec2::new(CAM_WIDTH / 2.0 - 64.0, CAM_HEIGHT / 2.0),
+            Vec2::new(CAM_WIDTH / 2.0 - (TILE_HEIGHT * 2.0), CAM_HEIGHT / 2.0),
             false,
             world,
             sprite_sheet_handle.clone(),
@@ -82,7 +84,7 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
         let texture_storage = world.read_resource::<AssetStorage<Texture>>();
         loader.load(
             "texture/spritesheet.png",
-            ImageFormat::default(),
+            ImageFormat(get_image_texure_config()),
             (),
             &texture_storage,
         )
@@ -113,7 +115,7 @@ fn initialise_ground(
     // Assign the sprite
     let sprite_render = SpriteRender {
         sprite_sheet: sprite_sheet.clone(),
-        sprite_number: 0, // grass is the first sprite in the sprite_sheet
+        sprite_number: 2, // grass is the first sprite in the sprite_sheet
     };
 
     world
@@ -189,6 +191,21 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
             .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
             .with(Collidee::new())
             .build();
+    }
+}
+
+fn get_image_texure_config() -> ImageTextureConfig {
+    ImageTextureConfig {
+        // Determine format automatically
+        format: None,
+        // Color channel
+        repr: Repr::Srgb,
+        // Two-dimensional texture
+        kind: TextureKind::D2,
+        sampler_info: SamplerInfo::new(Filter::Linear, WrapMode::Clamp),
+        // Don't generate mipmaps for this image
+        generate_mips: false,
+        premultiply_alpha: true,
     }
 }
 
