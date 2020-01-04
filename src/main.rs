@@ -92,6 +92,11 @@ fn main() -> amethyst::Result<()> {
             &["apply_collision_system"],
         )
         .with(
+            systems::graphics::SpriteUpdateSystem,
+            "sprite_update_system",
+            &["apply_velocity_system"],
+        )
+        .with(
             systems::graphics::PositionDrawUpdateSystem,
             "position_draw_update_system",
             &["apply_velocity_system"],
@@ -136,6 +141,7 @@ impl SimpleState for LoadingState {
         if self.progress_counter.is_complete() {
             Trans::Switch(Box::new(Pizzatopia {
                 level_handle: self.level_handle.clone().unwrap(),
+                spritesheets: Vec::new(),
             }))
         } else {
             Trans::None

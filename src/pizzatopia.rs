@@ -18,6 +18,7 @@ use amethyst::{
 use amethyst::renderer::rendy::hal::image::{Filter, SamplerInfo, WrapMode};
 use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, TextureKind};
 use log::info;
+use crate::pizzatopia::SpriteSheetType::{Tiles, Character};
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -28,8 +29,23 @@ pub const TILE_HEIGHT: f32 = 128.0;
 pub const MAX_FALL_SPEED: f32 = 5.0;
 pub const MAX_RUN_SPEED: f32 = 5.0;
 
+#[repr(u8)]
+#[derive(Clone)]
+enum SpriteSheetType {
+    Tiles = 0,
+    Character,
+}
+
 pub(crate) struct Pizzatopia {
     pub level_handle: Handle<Level>,
+    pub spritesheets: Vec<Handle<SpriteSheet>>,
+}
+
+impl Pizzatopia {
+    fn load_sprite_sheets(&mut self, world: &mut World) {
+        self.spritesheets.push(load_spritesheet(String::from("texture/tiles"), world));
+        self.spritesheets.push(load_spritesheet(String::from("texture/spritesheet"), world));
+    }
 }
 
 impl SimpleState for Pizzatopia {
@@ -39,7 +55,9 @@ impl SimpleState for Pizzatopia {
         world.register::<PlatformCuboid>();
         world.register::<PlatformCollisionPoints>();
 
-        let sprite_sheet_handle = load_sprite_sheet(world);
+        self.load_sprite_sheets(world);
+        let tiles_sprite_sheet_handle = self.spritesheets[Tiles as usize].clone();
+        let actor_sprite_sheet_handle = self.spritesheets[Character as usize].clone();
         let prefab_handle = world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
             loader.load("prefab/tile_size.ron", RonFormat, ())
         });
@@ -48,17 +66,17 @@ impl SimpleState for Pizzatopia {
             Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0),
             true,
             world,
-            sprite_sheet_handle.clone(),
+            actor_sprite_sheet_handle.clone(),
         );
         initialise_actor(
             Vec2::new(CAM_WIDTH / 2.0 - (TILE_HEIGHT * 2.0), CAM_HEIGHT / 2.0),
             false,
             world,
-            sprite_sheet_handle.clone(),
+            actor_sprite_sheet_handle.clone(),
         );
         initialise_playground(
             world,
-            sprite_sheet_handle.clone(),
+            tiles_sprite_sheet_handle.clone(),
             prefab_handle,
             self.level_handle.clone(),
         );
@@ -75,7 +93,7 @@ impl SimpleState for Pizzatopia {
     }
 }
 
-fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
+fn load_spritesheet(filename_without_extension: String, world: &mut World) -> Handle<SpriteSheet> {
     // Load the sprite sheet necessary to render the graphics.
     // The texture is the pixel data
     // `texture_handle` is a cloneable reference to the texture
@@ -83,7 +101,7 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
         let loader = world.read_resource::<Loader>();
         let texture_storage = world.read_resource::<AssetStorage<Texture>>();
         loader.load(
-            "texture/spritesheet.png",
+            filename_without_extension.clone() + ".png",
             ImageFormat(get_image_texure_config()),
             (),
             &texture_storage,
@@ -93,7 +111,7 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
     let loader = world.read_resource::<Loader>();
     let sprite_sheet_store = world.read_resource::<AssetStorage<SpriteSheet>>();
     loader.load(
-        "texture/spritesheet.ron", // Here we load the associated ron file
+        filename_without_extension.clone() + ".ron", // Here we load the associated ron file
         SpriteSheetFormat(texture_handle),
         (),
         &sprite_sheet_store,
@@ -115,7 +133,7 @@ fn initialise_ground(
     // Assign the sprite
     let sprite_render = SpriteRender {
         sprite_sheet: sprite_sheet.clone(),
-        sprite_number: 2, // grass is the first sprite in the sprite_sheet
+        sprite_number: 0, // grass is the first sprite in the sprite_sheet
     };
 
     world
