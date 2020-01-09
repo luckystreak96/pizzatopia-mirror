@@ -4,6 +4,8 @@ use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
 use amethyst::renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture};
+use amethyst::core::math::Vector3;
+use crate::components::graphics::AnimationCounter;
 
 #[derive(SystemDesc)]
 pub struct PositionDrawUpdateSystem;
@@ -22,15 +24,24 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
 pub struct SpriteUpdateSystem;
 
 impl<'s> System<'s> for SpriteUpdateSystem {
-    type SystemData = (WriteStorage<'s, SpriteRender>, ReadStorage<'s, Velocity>);
+    type SystemData = (WriteStorage<'s, Transform>, WriteStorage<'s, SpriteRender>, WriteStorage<'s, AnimationCounter>, ReadStorage<'s, Velocity>);
 
-    fn run(&mut self, (mut sprites, velocities): Self::SystemData) {
-        for (sprite, velocity) in (&mut sprites, &velocities).join() {
-            let mut sprite_number;
-            match velocity.0.x > 0.0 {
-                true => {sprite_number = 1;},
-                false => {sprite_number = 0;}
-            };
+    fn run(&mut self, (mut transforms, mut sprites, mut counters, velocities): Self::SystemData) {
+        for (transform, sprite, counter, velocity) in (&mut transforms, &mut sprites, &mut counters, &velocities).join() {
+            let mut sprite_number = sprite.sprite_number % 2;
+            if velocity.0.x != 0.0 {
+                counter.0 = counter.0 + velocity.0.x.abs() as u32;
+                if counter.0 >= 100 {
+                    sprite_number = (sprite_number + 1) % 2;
+                    counter.0 = 0;
+                }
+                match velocity.0.x < 0.0 {
+                    true => {transform.set_scale(Vector3::new(-1.0, 1.0, 1.0));},
+                    false => {transform.set_scale(Vector3::new(1.0, 1.0, 1.0));}
+                };
+            } else {
+                sprite_number = 0;
+            }
             match velocity.0.y != 0.0 {
                 true => {sprite_number += 2;},
                 false => {}

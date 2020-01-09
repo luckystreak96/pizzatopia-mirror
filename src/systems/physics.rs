@@ -2,7 +2,7 @@ use crate::components::physics::{
     Collidee, CollideeDetails, CollisionSideOfBlock, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Velocity,
 };
-use crate::pizzatopia::{MAX_FALL_SPEED, MAX_RUN_SPEED};
+use crate::pizzatopia::{MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH, FRICTION};
 use crate::systems::physics::CollisionDirection::FromTop;
 use crate::utils::Vec2;
 use amethyst::core::{SystemDesc, Transform};
@@ -44,18 +44,18 @@ impl<'s> System<'s> for ApplyGravitySystem {
 
     fn run(&mut self, (mut velocities, grounded, input): Self::SystemData) {
         for (velocity, grounded) in (&mut velocities, (&grounded).maybe()).join() {
-            velocity.0.y -= 0.16;
+            velocity.0.y -= 0.28;
 
             if let Some(ground) = grounded {
                 if ground.0 {
                     if let Some(horizontal_movement) = input.axis_value("horizontal_move") {
-                        if horizontal_movement == 0.0 {
-                            let friction = 0.90;
+                        // Not moving or trying to move in opposite direction
+                        if horizontal_movement == 0.0 || horizontal_movement * velocity.0.x < 0.0 {
                             if velocity.0.x.abs() <= 0.1 {
                                 velocity.0.x = 0.0;
                             } else {
                                 // Slow in opposite direction
-                                velocity.0.x *= friction;
+                                velocity.0.x *= FRICTION;
                             }
                         }
                     }
@@ -349,7 +349,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                     for (plat_pos, cuboid) in (&positions, &cuboids).join() {
                         // delta so if we go through the corner of a block we still check
                         // Must stay gt or eq to the max speed that will be reached
-                        let delta = 10.0;
+                        let delta = TILE_WIDTH;
                         let platform_position = plat_pos.0.clone();
                         let point_vel_pos = Vec2::new(
                             collider_offset.x + ent_pos.0.x + current_vel.x,

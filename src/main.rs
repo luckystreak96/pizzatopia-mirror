@@ -99,7 +99,7 @@ fn main() -> amethyst::Result<()> {
         .with(
             systems::graphics::PositionDrawUpdateSystem,
             "position_draw_update_system",
-            &["apply_velocity_system"],
+            &["sprite_update_system"],
         );
 
     let assets_dir = app_root.join("assets");

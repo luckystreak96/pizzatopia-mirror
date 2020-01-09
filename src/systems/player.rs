@@ -37,7 +37,7 @@ impl<'s> System<'s> for PlayerInputSystem {
             if let Some(mv_amount) = v_move {
                 if mv_amount > 0.0 {
                     if on_ground {
-                        let jump_velocity = 6.0;
+                        let jump_velocity = 12.0;
                         velocity.0.y += jump_velocity;
                     }
                 }
@@ -47,7 +47,7 @@ impl<'s> System<'s> for PlayerInputSystem {
                 }
             }
             if let Some(mv_amount) = h_move {
-                let mut scaled_amount = 0.15 * mv_amount as f32;
+                let mut scaled_amount = 0.30 * mv_amount as f32;
                 if on_ground {
                     scaled_amount += (velocity.0.x * 0.025).abs() * mv_amount;
                 }

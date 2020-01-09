@@ -19,6 +19,7 @@ use amethyst::renderer::rendy::hal::image::{Filter, SamplerInfo, WrapMode};
 use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, TextureKind};
 use log::info;
 use crate::pizzatopia::SpriteSheetType::{Tiles, Character};
+use crate::components::graphics::AnimationCounter;
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -26,8 +27,10 @@ pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
 pub const TILE_WIDTH: f32 = 128.0;
 pub const TILE_HEIGHT: f32 = 128.0;
 
-pub const MAX_FALL_SPEED: f32 = 5.0;
-pub const MAX_RUN_SPEED: f32 = 5.0;
+pub const MAX_FALL_SPEED: f32 = 20.0;
+pub const MAX_RUN_SPEED: f32 = 20.0;
+
+pub const FRICTION: f32 = 0.90;
 
 #[repr(u8)]
 #[derive(Clone)]
@@ -189,6 +192,7 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
             .create_entity()
             .with(transform)
             .with(sprite_render.clone())
+            .with(AnimationCounter(0))
             .with(Player)
             .with(Grounded(false))
             .with(Position(Vec2::new(pos.x, pos.y)))
@@ -202,6 +206,7 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
             .create_entity()
             .with(transform)
             .with(sprite_render.clone())
+            .with(AnimationCounter(0))
             .with(Grounded(false))
             .with(Position(Vec2::new(pos.x, pos.y)))
             .with(Velocity(Vec2::new(0.0, 0.0)))
