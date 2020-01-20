@@ -1,28 +1,126 @@
-use crate::components::physics::{
-    Collidee, CollideeDetails, CollisionSideOfBlock, Grounded, PlatformCollisionPoints,
-    PlatformCuboid, Position, Velocity,
-};
+use crate::components::physics::{Collidee, CollideeDetails, CollisionSideOfBlock, Grounded, PlatformCollisionPoints, PlatformCuboid, Position, Velocity, Sticky, GravityDirection};
 use crate::pizzatopia::{MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH, FRICTION};
 use crate::systems::physics::CollisionDirection::FromTop;
-use crate::utils::Vec2;
+use crate::utils::{Vec2, Vec3};
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage, Entity, Entities};
 use amethyst::input::{InputHandler, StringBindings};
 use log::{debug, error, info, warn};
 
-pub(crate) enum CollisionDirection {
+#[derive(Debug, Copy, Clone)]
+pub enum CollisionDirection {
     FromTop,
     FromLeft,
     FromBottom,
     FromRight,
 }
 
+impl CollisionDirection {
+    fn is_horizontal(&self) -> bool {
+        match self {
+            CollisionDirection::FromLeft => true,
+            CollisionDirection::FromRight => true,
+            _ => false
+        }
+    }
+}
+
 #[derive(SystemDesc)]
-pub struct ApplyVelocitySystem;
+pub struct ApplyStickySystem;
+
+impl<'s> System<'s> for ApplyStickySystem {
+    type SystemData = (WriteStorage<'s, Velocity>, ReadStorage<'s, Sticky>, ReadStorage<'s, Collidee>, WriteStorage<'s, GravityDirection>);
+
+    fn run(&mut self, (mut velocities, stickies, collidees, mut gravities): Self::SystemData) {
+        for (velocity, sticky, collidee, gravity) in (&mut velocities, &stickies, &collidees, &mut gravities).join() {
+            if sticky.0 {
+                gravity.0 = match CollisionDirection::is_horizontal(&gravity.0) {
+                    true => {match &collidee.vertical {
+                        Some(x) => match x.side {
+                            CollisionSideOfBlock::Top => CollisionDirection::FromTop,
+                            CollisionSideOfBlock::Bottom=> CollisionDirection::FromBottom,
+                            _ => gravity.0
+                        },
+                    None => gravity.0}},
+                    false => {match &collidee.horizontal {
+                        Some(x) => match x.side {
+                            CollisionSideOfBlock::Right => CollisionDirection::FromRight,
+                            CollisionSideOfBlock::Left=> CollisionDirection::FromLeft,
+                            _ => gravity.0
+                        },
+                        None => gravity.0}},
+                };
+                println!("New gravity: {:?}", gravity);
+            }
+        }
+    }
+}
+
+pub fn gravitationally_adapted_velocity(vel: &Vec2, gravity: &GravityDirection) -> Vec2 {
+    match gravity.0 {
+        CollisionDirection::FromLeft => {
+            Vec2{
+                x: -vel.y,
+                y: vel.x,
+            }
+        },
+        CollisionDirection::FromRight => {
+            Vec2{
+                x: vel.y,
+                y: -vel.x,
+            }
+        },
+        CollisionDirection::FromTop => {
+            Vec2{
+                x: vel.x,
+                y: vel.y,
+            }
+        },
+        CollisionDirection::FromBottom => {
+            Vec2{
+                x: -vel.x,
+                y: -vel.y,
+            }
+        },
+    }
+}
+
+pub fn gravitationally_de_adapted_velocity(vel: &Vec2, gravity: &GravityDirection) -> Vec2 {
+    match gravity.0 {
+        CollisionDirection::FromLeft => {
+            Vec2{
+                x: vel.y,
+                y: -vel.x,
+            }
+        },
+        CollisionDirection::FromRight => {
+            Vec2{
+                x: -vel.y,
+                y: vel.x,
+            }
+        },
+        CollisionDirection::FromTop => {
+            Vec2{
+                x: vel.x,
+                y: vel.y,
+            }
+        },
+        CollisionDirection::FromBottom => {
+            Vec2{
+                x: -vel.x,
+                y: -vel.y,
+            }
+        },
+    }
+}
+
+    #[derive(SystemDesc)]
+    pub struct ApplyVelocitySystem;
 
 impl<'s> System<'s> for ApplyVelocitySystem {
-    type SystemData = (WriteStorage<'s, Velocity>, WriteStorage<'s, Position>);
+    type SystemData = (WriteStorage<'s, Velocity>, WriteStorage<'s, Position>,
+    );
 
     fn run(&mut self, (mut velocities, mut positions): Self::SystemData) {
         for (velocity, position) in (&mut velocities, &mut positions).join() {
@@ -39,13 +137,14 @@ impl<'s> System<'s> for ApplyGravitySystem {
     type SystemData = (
         WriteStorage<'s, Velocity>,
         ReadStorage<'s, Grounded>,
+        ReadStorage<'s, GravityDirection>,
         Read<'s, InputHandler<StringBindings>>,
     );
 
-    fn run(&mut self, (mut velocities, grounded, input): Self::SystemData) {
-        for (velocity, grounded) in (&mut velocities, (&grounded).maybe()).join() {
-            velocity.0.y -= 0.28;
+    fn run(&mut self, (mut velocities, grounded, gravities, input): Self::SystemData) {
+        for (velocity, grounded, gravity) in (&mut velocities, (&grounded).maybe(), (&gravities).maybe()).join() {
 
+            // Apply friction and slow down
             if let Some(ground) = grounded {
                 if ground.0 {
                     if let Some(horizontal_movement) = input.axis_value("horizontal_move") {
@@ -61,6 +160,16 @@ impl<'s> System<'s> for ApplyGravitySystem {
                     }
                 }
             }
+
+            let mut gravity_vec = Vec2::new(0.0, -0.28);
+            let mut grav_dir = CollisionDirection::FromTop;
+            if let Some(grav) = gravity {
+                grav_dir = grav.0;
+            }
+            gravity_vec = gravitationally_adapted_velocity(&gravity_vec, &GravityDirection(grav_dir));
+
+            velocity.0.x += gravity_vec.x;
+            velocity.0.y += gravity_vec.y;
 
             // Limit speed
             velocity.0.x = f32::min(velocity.0.x, MAX_RUN_SPEED);
@@ -316,15 +425,19 @@ impl<'s> System<'s> for PlatformCollisionSystem {
         ReadStorage<'s, Position>,
         ReadStorage<'s, PlatformCuboid>,
         ReadStorage<'s, PlatformCollisionPoints>,
+        ReadStorage<'s, GravityDirection>,
     );
 
     fn run(
         &mut self,
-        (mut velocities, mut collidees, positions, cuboids, coll_points): Self::SystemData,
+        (mut velocities, mut collidees, positions, cuboids, coll_points, gravities): Self::SystemData,
     ) {
-        for (velocity, collidee, ent_pos, coll_point) in
-            (&mut velocities, &mut collidees, &positions, &coll_points).join()
+        for (velocity, collidee, ent_pos, coll_point, gravity) in
+            (&mut velocities, &mut collidees, &positions, &coll_points, (&gravities).maybe()).join()
         {
+            // Reset collidees here they can be used for the rest of the frame
+            collidee.horizontal = None;
+            collidee.vertical = None;
             // We want to loop up to twice here
             // First loop finds the closest collision of all the points
             // Second loop tries to find a collision in the other axis
@@ -512,8 +625,8 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                 velocity.0.x = 0.0;
             }
 
-            collidee.horizontal = None;
-            collidee.vertical = None;
+            //collidee.horizontal = None;
+            //collidee.vertical = None;
         }
     }
 }

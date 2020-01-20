@@ -92,6 +92,11 @@ fn main() -> amethyst::Result<()> {
             &["apply_collision_system"],
         )
         .with(
+            systems::physics::ApplyStickySystem,
+            "apply_sticky_system",
+            &["apply_velocity_system"],
+        )
+        .with(
             systems::graphics::SpriteUpdateSystem,
             "sprite_update_system",
             &["apply_velocity_system"],

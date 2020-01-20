@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
 use crate::utils::Vec2;
+use crate::systems::physics::CollisionDirection;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CollisionSideOfBlock {
@@ -100,6 +101,19 @@ impl Component for Velocity {
     type Storage = DenseVecStorage<Self>;
 }
 
+pub struct Sticky(pub bool);
+
+impl Component for Sticky{
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct GravityDirection(pub CollisionDirection);
+
+impl Component for GravityDirection{
+    type Storage = DenseVecStorage<Self>;
+}
+
 #[derive(Debug)]
 pub struct Position(pub Vec2);
 
@@ -127,6 +141,15 @@ impl PlatformCollisionPoints {
         vec.push(Vec2::new(-half_height, -half_height));
         vec.push(Vec2::new(0.0, half_height));
         vec.push(Vec2::new(half_height, -half_height));
+        PlatformCollisionPoints(vec)
+    }
+
+    pub fn square(half_height: f32) -> PlatformCollisionPoints {
+        let mut vec = Vec::new();
+        vec.push(Vec2::new(-half_height, -half_height));
+        vec.push(Vec2::new(-half_height, half_height));
+        vec.push(Vec2::new(half_height, -half_height));
+        vec.push(Vec2::new(half_height, half_height));
         PlatformCollisionPoints(vec)
     }
 }

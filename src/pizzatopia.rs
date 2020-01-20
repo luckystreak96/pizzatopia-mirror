@@ -1,6 +1,4 @@
-use crate::components::physics::{
-    Collidee, Grounded, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
-};
+use crate::components::physics::{Collidee, Grounded, PlatformCollisionPoints, PlatformCuboid, Position, Velocity, Sticky, GravityDirection, CollisionSideOfBlock};
 use crate::components::player::Player;
 use crate::level::Level;
 use crate::utils::Vec2;
@@ -20,6 +18,7 @@ use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, Textur
 use log::info;
 use crate::pizzatopia::SpriteSheetType::{Tiles, Character};
 use crate::components::graphics::AnimationCounter;
+use crate::systems::physics::CollisionDirection;
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -198,7 +197,9 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
             .with(Position(Vec2::new(pos.x, pos.y)))
             .with(Velocity(Vec2::new(0.0, 0.0)))
             //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
-            .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
+            .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.0))
+            .with(Sticky(true))
+            .with(GravityDirection(CollisionDirection::FromTop))
             .with(Collidee::new())
             .build();
     } else {
