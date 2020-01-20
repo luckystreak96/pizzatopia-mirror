@@ -1,4 +1,4 @@
-use crate::components::physics::{PlatformCuboid, Position, Velocity};
+use crate::components::physics::{PlatformCuboid, Position, Velocity, GravityDirection};
 use crate::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
@@ -6,6 +6,7 @@ use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteSto
 use amethyst::renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture};
 use amethyst::core::math::Vector3;
 use crate::components::graphics::AnimationCounter;
+use crate::systems::physics::{CollisionDirection, gravitationally_de_adapted_velocity};
 
 #[derive(SystemDesc)]
 pub struct PositionDrawUpdateSystem;
@@ -24,29 +25,43 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
 pub struct SpriteUpdateSystem;
 
 impl<'s> System<'s> for SpriteUpdateSystem {
-    type SystemData = (WriteStorage<'s, Transform>, WriteStorage<'s, SpriteRender>, WriteStorage<'s, AnimationCounter>, ReadStorage<'s, Velocity>);
+    type SystemData = (WriteStorage<'s, Transform>, WriteStorage<'s, SpriteRender>, WriteStorage<'s, AnimationCounter>, ReadStorage<'s, Velocity>, ReadStorage<'s, GravityDirection>);
 
-    fn run(&mut self, (mut transforms, mut sprites, mut counters, velocities): Self::SystemData) {
-        for (transform, sprite, counter, velocity) in (&mut transforms, &mut sprites, &mut counters, &velocities).join() {
+    fn run(&mut self, (mut transforms, mut sprites, mut counters, velocities, gravities): Self::SystemData) {
+        for (transform, sprite, counter, velocity, gravity) in (&mut transforms, &mut sprites, &mut counters, &velocities, (&gravities).maybe()).join() {
+            let mut grav_dir = CollisionDirection::FromTop;
+            if let Some(grav) = gravity {
+                grav_dir = grav.0;
+            }
+
+            let grav_vel = gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
+
             let mut sprite_number = sprite.sprite_number % 2;
-            if velocity.0.x != 0.0 {
-                counter.0 = counter.0 + velocity.0.x.abs() as u32;
+            if grav_vel.x != 0.0 {
+                counter.0 = counter.0 + grav_vel.x.abs() as u32;
                 if counter.0 >= 100 {
                     sprite_number = (sprite_number + 1) % 2;
                     counter.0 = 0;
                 }
-                match velocity.0.x < 0.0 {
+                match grav_vel.x < 0.0 {
                     true => {transform.set_scale(Vector3::new(-1.0, 1.0, 1.0));},
                     false => {transform.set_scale(Vector3::new(1.0, 1.0, 1.0));}
                 };
             } else {
                 sprite_number = 0;
             }
-            match velocity.0.y != 0.0 {
+            match grav_vel.y != 0.0 {
                 true => {sprite_number += 2;},
                 false => {}
             };
             sprite.sprite_number = sprite_number;
+
+            match grav_dir {
+                CollisionDirection::FromTop => {transform.set_rotation_z_axis(0.0);},
+                CollisionDirection::FromBottom => {transform.set_rotation_z_axis(std::f32::consts::PI);},
+                CollisionDirection::FromLeft => {transform.set_rotation_z_axis(std::f32::consts::FRAC_PI_2);},
+                CollisionDirection::FromRight => {transform.set_rotation_z_axis(std::f32::consts::PI + std::f32::consts::FRAC_PI_2);},
+            }
         }
     }
 }

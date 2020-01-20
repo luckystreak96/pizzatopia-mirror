@@ -37,7 +37,7 @@ impl<'s> System<'s> for PlayerInputSystem {
 
             let mut grav_vel = velocity.0.clone();
             if let Some(grav) = gravity {
-                grav_vel = gravitationally_adapted_velocity(&grav_vel, &grav);
+                grav_vel = gravitationally_de_adapted_velocity(&grav_vel, &grav);
             }
 
             // Do the move logic
@@ -62,7 +62,7 @@ impl<'s> System<'s> for PlayerInputSystem {
             }
 
             if let Some(grav) = gravity {
-                velocity.0 = gravitationally_de_adapted_velocity(&grav_vel, &grav);
+                velocity.0 = gravitationally_adapted_velocity(&grav_vel, &grav);
             }
         }
     }

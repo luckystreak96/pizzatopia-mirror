@@ -8,7 +8,7 @@ use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteSto
 use amethyst::input::{InputHandler, StringBindings};
 use log::{debug, error, info, warn};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CollisionDirection {
     FromTop,
     FromLeft,
@@ -51,7 +51,6 @@ impl<'s> System<'s> for ApplyStickySystem {
                         },
                         None => gravity.0}},
                 };
-                println!("New gravity: {:?}", gravity);
             }
         }
     }
@@ -144,28 +143,32 @@ impl<'s> System<'s> for ApplyGravitySystem {
     fn run(&mut self, (mut velocities, grounded, gravities, input): Self::SystemData) {
         for (velocity, grounded, gravity) in (&mut velocities, (&grounded).maybe(), (&gravities).maybe()).join() {
 
+            let mut grav_dir = CollisionDirection::FromTop;
+            if let Some(grav) = gravity {
+                grav_dir = grav.0;
+            }
+
+            let mut grav_vel = gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
+
             // Apply friction and slow down
             if let Some(ground) = grounded {
                 if ground.0 {
                     if let Some(horizontal_movement) = input.axis_value("horizontal_move") {
                         // Not moving or trying to move in opposite direction
-                        if horizontal_movement == 0.0 || horizontal_movement * velocity.0.x < 0.0 {
-                            if velocity.0.x.abs() <= 0.1 {
-                                velocity.0.x = 0.0;
+                        if horizontal_movement == 0.0 || horizontal_movement * grav_vel.x < 0.0 {
+                            if grav_vel.x.abs() <= 0.1 {
+                                grav_vel.x = 0.0;
                             } else {
                                 // Slow in opposite direction
-                                velocity.0.x *= FRICTION;
+                                grav_vel.x *= FRICTION;
                             }
+                            velocity.0 = gravitationally_adapted_velocity(&grav_vel, &GravityDirection(grav_dir));
                         }
                     }
                 }
             }
 
             let mut gravity_vec = Vec2::new(0.0, -0.28);
-            let mut grav_dir = CollisionDirection::FromTop;
-            if let Some(grav) = gravity {
-                grav_dir = grav.0;
-            }
             gravity_vec = gravitationally_adapted_velocity(&gravity_vec, &GravityDirection(grav_dir));
 
             velocity.0.x += gravity_vec.x;
@@ -579,48 +582,66 @@ impl<'s> System<'s> for ApplyCollisionSystem {
         WriteStorage<'s, Position>,
         WriteStorage<'s, Collidee>,
         WriteStorage<'s, Grounded>,
+        ReadStorage<'s, GravityDirection>,
     );
 
     fn run(
         &mut self,
-        (mut velocities, mut positions, mut collidees, mut grounded): Self::SystemData,
+        (mut velocities, mut positions, mut collidees, mut grounded, gravities): Self::SystemData,
     ) {
-        for (velocity, position, collidee, mut grounded) in (
+        for (velocity, position, collidee, mut grounded, gravity) in (
             &mut velocities,
             &mut positions,
             &mut collidees,
             (&mut grounded).maybe(),
+            (&gravities).maybe(),
         )
             .join()
         {
+            // not grounded by default, grounded if found
+            if let Some(ground) = &mut grounded {
+                ground.0 = false;
+            };
+
+            let mut grav_dir = CollisionDirection::FromTop;
+            if let Some(grav) = gravity {
+                grav_dir = grav.0;
+            }
             if let Some(cdee) = &collidee.vertical {
                 match cdee.side {
                     CollisionSideOfBlock::Bottom => {
                         position.0.y += cdee.correction;
                         if let Some(ground) = &mut grounded {
-                            ground.0 = false;
+                            ground.0 = grav_dir == CollisionDirection::FromBottom;
                         };
                     }
                     CollisionSideOfBlock::Top => {
                         position.0.y += cdee.correction;
                         if let Some(ground) = &mut grounded {
-                            ground.0 = true;
+                            ground.0 = grav_dir == CollisionDirection::FromTop;
                         };
                     }
                     _ => {
-                        if let Some(ground) = &mut grounded {
-                            ground.0 = false;
-                        };
                     }
                 }
                 velocity.0.y = 0.0;
-            } else {
-                if let Some(ground) = &mut grounded {
-                    ground.0 = false;
-                };
-            };
+            }
 
             if let Some(cdee) = &collidee.horizontal {
+                match cdee.side {
+                    CollisionSideOfBlock::Left => {
+                        if let Some(ground) = &mut grounded {
+                            ground.0 = grav_dir == CollisionDirection::FromLeft;
+                        };
+                    }
+                    CollisionSideOfBlock::Right => {
+                        if let Some(ground) = &mut grounded {
+                            ground.0 = grav_dir == CollisionDirection::FromRight;
+                        };
+                    }
+                    _ => {
+                    }
+                }
                 position.0.x += cdee.correction;
                 velocity.0.x = 0.0;
             }
