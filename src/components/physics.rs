@@ -47,7 +47,9 @@ pub struct CollideeDetails {
     pub position: Vec2,
     pub half_size: Vec2,
     pub new_collider_pos: Vec2,
+    pub old_collider_vel: Vec2,
     pub new_collider_vel: Vec2,
+    pub num_points_of_collision: i32,
     pub correction: f32,
     pub distance: f32,
     pub side: CollisionSideOfBlock,
@@ -59,7 +61,9 @@ impl CollideeDetails {
             position: Vec2::new(0.0, 0.0),
             half_size: Vec2::new(0.0, 0.0),
             new_collider_pos: Vec2::new(0.0, 0.0),
+            old_collider_vel: Vec2::new(0.0, 0.0),
             new_collider_vel: Vec2::new(0.0, 0.0),
+            num_points_of_collision: 0,
             correction: 0.0,
             distance: 0.0,
             side: CollisionSideOfBlock::Top,
@@ -70,6 +74,8 @@ impl CollideeDetails {
 pub struct Collidee {
     pub horizontal: Option<CollideeDetails>,
     pub vertical: Option<CollideeDetails>,
+    pub prev_horizontal: Option<CollideeDetails>,
+    pub prev_vertical: Option<CollideeDetails>,
 }
 
 impl Collidee {
@@ -77,11 +83,37 @@ impl Collidee {
         Collidee {
             horizontal: None,
             vertical: None,
+            prev_horizontal: None,
+            prev_vertical: None,
         }
     }
 
     pub fn both(&self) -> bool {
         self.horizontal.is_some() && self.vertical.is_some()
+    }
+
+    pub fn prev_collision_points(&self) -> i32 {
+        let mut result = 0;
+        if let Some(x) = &self.prev_horizontal {
+            result += x.num_points_of_collision;
+        }
+
+        if let Some(x) = &self.prev_vertical {
+            result += x.num_points_of_collision;
+        }
+        return result;
+    }
+
+    pub fn current_collision_points(&self) -> i32 {
+        let mut result = 0;
+        if let Some(x) = &self.horizontal {
+            result += x.num_points_of_collision;
+        }
+
+        if let Some(x) = &self.vertical {
+            result += x.num_points_of_collision;
+        }
+        return result;
     }
 }
 

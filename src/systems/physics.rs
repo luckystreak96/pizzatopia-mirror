@@ -35,24 +35,154 @@ impl<'s> System<'s> for ApplyStickySystem {
     fn run(&mut self, (mut velocities, stickies, collidees, mut gravities): Self::SystemData) {
         for (velocity, sticky, collidee, gravity) in (&mut velocities, &stickies, &collidees, &mut gravities).join() {
             if sticky.0 {
+                let prev_gravity = gravity.0;
+                let mut collidee_velocity = velocity.0.clone();
                 gravity.0 = match CollisionDirection::is_horizontal(&gravity.0) {
                     true => {match &collidee.vertical {
-                        Some(x) => match x.side {
-                            CollisionSideOfBlock::Top => CollisionDirection::FromTop,
-                            CollisionSideOfBlock::Bottom=> CollisionDirection::FromBottom,
-                            _ => gravity.0
+                        Some(x) => {
+                            collidee_velocity = x.old_collider_vel.clone();
+                            match x.side {
+                                CollisionSideOfBlock::Top => CollisionDirection::FromTop,
+                                CollisionSideOfBlock::Bottom => CollisionDirection::FromBottom,
+                                _ => gravity.0
+                            }
                         },
-                    None => gravity.0}},
+                        None => gravity.0}},
                     false => {match &collidee.horizontal {
-                        Some(x) => match x.side {
-                            CollisionSideOfBlock::Right => CollisionDirection::FromRight,
-                            CollisionSideOfBlock::Left=> CollisionDirection::FromLeft,
-                            _ => gravity.0
+                        Some(x) => {
+                            collidee_velocity = x.old_collider_vel.clone();
+                            match x.side {
+                                CollisionSideOfBlock::Right => CollisionDirection::FromRight,
+                                CollisionSideOfBlock::Left => CollisionDirection::FromLeft,
+                                _ => gravity.0
+                            }
                         },
                         None => gravity.0}},
                 };
+
+                // Check for walking off platform -> need to change gravity + adapt velocity
+                let lean_off_ledge = collidee.current_collision_points() == 0 && collidee.prev_collision_points() == 1;
+                let is_following_gravity = match gravity.0 {
+                    CollisionDirection::FromTop => {velocity.0.y < 0.0},
+                    CollisionDirection::FromBottom => {velocity.0.y > 0.0},
+                    CollisionDirection::FromLeft => {velocity.0.x > 0.0},
+                    CollisionDirection::FromRight => {velocity.0.x < 0.0},
+                };
+                if lean_off_ledge && is_following_gravity {
+                    // Change gravity
+                    gravity.0 = match gravity.0 {
+                        CollisionDirection::FromTop | CollisionDirection::FromBottom => {
+                            if velocity.0.x > 0.0 {
+                                CollisionDirection::FromRight
+                            }
+                            else {
+                                CollisionDirection::FromLeft
+                            }
+                        },
+                        CollisionDirection::FromLeft | CollisionDirection::FromRight => {
+                            if velocity.0.y > 0.0 {
+                                CollisionDirection::FromTop
+                            }
+                            else {
+                                CollisionDirection::FromBottom
+                            }
+                        },
+                    }
+                }
+
+                if collidee.current_collision_points() == 0 && collidee.prev_collision_points() != 0 {
+                }
+
+                if prev_gravity != gravity.0 {
+                    // Only keep movement momentum if not jumping off platform
+                    if collidee_velocity.x == 0.0 || collidee_velocity.y == 0.0 || lean_off_ledge {
+                        velocity.0 = adapt_sticky_velocity(&collidee_velocity, &prev_gravity, &gravity.0);
+                        if lean_off_ledge {
+                            match gravity.0 {
+                                CollisionDirection::FromBottom => velocity.0.y = TILE_WIDTH / 4.0,
+                                CollisionDirection::FromTop => velocity.0.y = -TILE_WIDTH / 4.0,
+                                CollisionDirection::FromLeft => velocity.0.x = TILE_WIDTH / 4.0,
+                                CollisionDirection::FromRight => velocity.0.x = -TILE_WIDTH / 4.0,
+                            }
+                        }
+                        println!("Changed vel from {:?} to {:?}", collidee_velocity, velocity.0);
+                    }
+                }
             }
         }
+    }
+}
+
+pub fn adapt_sticky_velocity(vel: &Vec2, prev_gravity: &CollisionDirection, cur_gravity: &CollisionDirection) -> Vec2 {
+    match prev_gravity {
+        CollisionDirection::FromRight => {
+            match cur_gravity {
+                CollisionDirection::FromTop => {
+                    Vec2{
+                        x: -vel.y,
+                        y: 0.0,
+                    }
+                },
+                CollisionDirection::FromBottom => {
+                    Vec2{
+                        x: vel.y,
+                        y: 0.0,
+                    }
+                },
+                _ => {vel.clone()},
+            }
+        },
+        CollisionDirection::FromLeft => {
+            match cur_gravity {
+                CollisionDirection::FromTop => {
+                    Vec2{
+                        x: vel.y,
+                        y: 0.0,
+                    }
+                },
+                CollisionDirection::FromBottom => {
+                    Vec2{
+                        x: -vel.y,
+                        y: 0.0,
+                    }
+                },
+                _ => {vel.clone()},
+            }
+        },
+        CollisionDirection::FromTop => {
+            match cur_gravity {
+                CollisionDirection::FromRight => {
+                    Vec2{
+                        x: 0.0,
+                        y: -vel.x,
+                    }
+                },
+                CollisionDirection::FromLeft => {
+                    Vec2{
+                        x: 0.0,
+                        y: vel.x,
+                    }
+                },
+                _ => {vel.clone()},
+            }
+        },
+        CollisionDirection::FromBottom => {
+            match cur_gravity {
+                CollisionDirection::FromRight => {
+                    Vec2{
+                        x: 0.0,
+                        y: vel.x,
+                    }
+                },
+                CollisionDirection::FromLeft => {
+                    Vec2{
+                        x: 0.0,
+                        y: -vel.x,
+                    }
+                },
+                _ => {vel.clone()},
+            }
+        },
     }
 }
 
@@ -251,7 +381,7 @@ impl<'s> System<'s> for ActorCollisionSystem {
                 let pos2 = Vec2::new(ent_pos2.0.x, ent_pos2.0.y);
                 let (top_left2, bottom_right2) = Self::create_corners_with_coll_points_tl_br(&pos2, coll_point2);
                 if Self::cuboid_intersection(&top_left1, &bottom_right1, &top_left2, &bottom_right2) {
-                    warn!("Wow! A collision! {}", pos1.x);
+                    //warn!("Wow! A collision! {}", pos1.x);
                 }
             }
         }
@@ -439,6 +569,8 @@ impl<'s> System<'s> for PlatformCollisionSystem {
             (&mut velocities, &mut collidees, &positions, &coll_points, (&gravities).maybe()).join()
         {
             // Reset collidees here they can be used for the rest of the frame
+            std::mem::swap(&mut collidee.prev_horizontal, &mut collidee.horizontal);
+            std::mem::swap(&mut collidee.prev_vertical, &mut collidee.vertical);
             collidee.horizontal = None;
             collidee.vertical = None;
             // We want to loop up to twice here
@@ -453,6 +585,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                 // We want the shortest distance collision of all points
                 let mut prev_distance_to_collision = 9999.0;
                 let mut details = None;
+                let mut num_coll_points = 0;
 
                 // Go through every collision point
                 for collider_offset in &coll_point.0 {
@@ -500,6 +633,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                                     continue;
                                 }
                                 prev_distance_to_collision = cur_distance_to_collision;
+                                num_coll_points += 1;
 
                                 // Calculate the vertical/horizontal correction to be applied
                                 let mut correction = 0.01;
@@ -541,8 +675,10 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                                         &point_of_collision,
                                         &collider_offset,
                                     ),
+                                    old_collider_vel: current_vel.clone(),
                                     new_collider_vel: new_velocity,
                                     side: side.clone(),
+                                    num_points_of_collision: num_coll_points,
                                 });
                             }
                         }
