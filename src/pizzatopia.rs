@@ -2,23 +2,36 @@ use crate::components::physics::{Collidee, Grounded, PlatformCollisionPoints, Pl
 use crate::components::player::Player;
 use crate::level::Level;
 use crate::utils::Vec2;
-use amethyst::input::{InputHandler, StringBindings};
+use amethyst::input::{InputHandler, StringBindings, is_key_down, VirtualKeyCode};
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
         PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
     },
-    core::transform::Transform,
     ecs::prelude::{Component, DenseVecStorage},
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
+    core::{
+        transform::Transform,
+        bundle::SystemBundle,
+        frame_limiter::FrameRateLimitStrategy,
+        shrev::{EventChannel, ReaderId},
+        SystemDesc,
+        ecs::{Read, SystemData, World},
+        EventReader
+    },
 };
+use amethyst::winit::Event;
+use amethyst::ui::UiEvent;
+use amethyst::derive::EventReader;
 use amethyst::renderer::rendy::hal::image::{Filter, SamplerInfo, WrapMode};
 use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, TextureKind};
 use log::info;
 use crate::pizzatopia::SpriteSheetType::{Tiles, Character};
 use crate::components::graphics::AnimationCounter;
 use crate::systems::physics::CollisionDirection;
+use crate::events::Events;
+use std::io;
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -36,6 +49,14 @@ pub const FRICTION: f32 = 0.90;
 enum SpriteSheetType {
     Tiles = 0,
     Character,
+}
+
+#[derive(Debug, EventReader, Clone)]
+#[reader(MyEventReader)]
+pub enum MyEvents {
+    Window(Event),
+    Ui(UiEvent),
+    App(Events),
 }
 
 pub(crate) struct Pizzatopia {
@@ -56,6 +77,10 @@ impl SimpleState for Pizzatopia {
 
         world.register::<PlatformCuboid>();
         world.register::<PlatformCollisionPoints>();
+
+        world.insert(
+            EventChannel::<Events>::new(),
+        );
 
         self.load_sprite_sheets(world);
         let tiles_sprite_sheet_handle = self.spritesheets[Tiles as usize].clone();
@@ -85,12 +110,16 @@ impl SimpleState for Pizzatopia {
         initialise_camera(world);
     }
 
-    fn fixed_update(&mut self, data: StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
-        let world = data.world;
-        let input = world.read_resource::<InputHandler<StringBindings>>();
-        if input.action_is_down("exit").unwrap_or(false) {
-            return Trans::Quit;
+    fn handle_event(&mut self, data: StateData<'_, GameData<'_, '_>>, event: MyEvents) -> SimpleTrans {
+        if let MyEvents::Window(event) = &event {
+            let world = data.world;
+            let input = world.read_resource::<InputHandler<StringBindings>>();
+            if input.action_is_down("exit").unwrap_or(false) {
+                return Trans::Quit;
+            }
         }
+
+        // Escape isn't pressed, so we stay in this `State`.
         Trans::None
     }
 }

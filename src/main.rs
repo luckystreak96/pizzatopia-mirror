@@ -24,8 +24,10 @@ mod components;
 mod level;
 mod pizzatopia;
 mod systems;
+mod events;
 mod utils;
 use crate::components::physics::PlatformCuboid;
+use crate::systems::console::ConsoleInputSystem;
 use crate::level::Level;
 use crate::pizzatopia::Pizzatopia;
 
@@ -58,9 +60,14 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(TransformBundle::new())?
         .with(Processor::<Level>::new(), "", &[])
         .with(
+            ConsoleInputSystem,
+            "console_input_system",
+            &["input_system"],
+        )
+        .with(
             systems::PlayerInputSystem,
             "player_input_system",
-            &["input_system"],
+            &["input_system", "console_input_system"],
         )
         .with(
             systems::physics::ActorCollisionSystem,

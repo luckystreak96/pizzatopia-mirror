@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp::Ordering;
+use std::io;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vec2 {
@@ -40,3 +41,19 @@ impl Vec3 {
         Vec3 { x, y, z }
     }
 }
+
+pub fn read_line_from_console() -> String {
+    let mut input = String::new();
+    match io::stdin().read_line(&mut input) {
+        Ok(n) => {
+            println!("{} bytes read", n);
+            println!("{}", input);
+        }
+        Err(error) => println!("error: {}", error),
+    };
+    if !input.is_empty() {
+        println!("The text was {}", input);
+    }
+    input
+}
+
