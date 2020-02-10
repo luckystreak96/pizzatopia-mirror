@@ -26,24 +26,29 @@ impl<'s> System<'s> for ConsoleInputSystem {
     );
 
     fn run(&mut self, (grounded, input, mut events_channel): Self::SystemData) {
+        let input_string;
+
         if input.action_is_down("console").unwrap_or(false) {
-            let console_input = read_line_from_console();
-
-            let mut args = Vec::new();
-            for s in console_input.split(" ") {
-                args.push(s);
-            }
-
-            if args.is_empty() {
-                return;
-            }
-
-            match args[0] {
-                "reset" => {
-                    events_channel.single_write(Events::Reset);
-                },
-                _ => {}
-            }
+            input_string = read_line_from_console();
         }
+        else if input.action_is_down("reset").unwrap_or(false) {
+            input_string = String::from("reset");
+        }
+        else {
+            input_string = String::new();
+        }
+
+        let args : Vec<_> = input_string.split_whitespace().collect();
+        if args.is_empty() {
+            return;
+        }
+
+        match args[0] {
+            "reset" => {
+                events_channel.single_write(Events::Reset);
+            },
+            _ => {}
+        }
+
     }
 }

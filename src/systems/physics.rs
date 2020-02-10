@@ -105,7 +105,7 @@ impl<'s> System<'s> for ApplyStickySystem {
                                 CollisionDirection::FromRight => velocity.0.x = -TILE_WIDTH / 4.0,
                             }
                         }
-                        println!("Changed vel from {:?} to {:?}", collidee_velocity, velocity.0);
+//                        println!("Changed vel from {:?} to {:?}", collidee_velocity, velocity.0);
                     }
                 }
             }

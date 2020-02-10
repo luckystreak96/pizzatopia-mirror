@@ -69,25 +69,15 @@ impl Pizzatopia {
         self.spritesheets.push(load_spritesheet(String::from("texture/tiles"), world));
         self.spritesheets.push(load_spritesheet(String::from("texture/spritesheet"), world));
     }
-}
 
-impl SimpleState for Pizzatopia {
-    fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let world = data.world;
-
-        world.register::<PlatformCuboid>();
-        world.register::<PlatformCollisionPoints>();
-
-        world.insert(
-            EventChannel::<Events>::new(),
-        );
-
-        self.load_sprite_sheets(world);
+    fn initialize_level(&mut self, world: &mut World) {
         let tiles_sprite_sheet_handle = self.spritesheets[Tiles as usize].clone();
         let actor_sprite_sheet_handle = self.spritesheets[Character as usize].clone();
         let prefab_handle = world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
             loader.load("prefab/tile_size.ron", RonFormat, ())
         });
+
+        world.delete_all();
 
         initialise_actor(
             Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0),
@@ -110,16 +100,48 @@ impl SimpleState for Pizzatopia {
         initialise_camera(world);
     }
 
-    fn handle_event(&mut self, data: StateData<'_, GameData<'_, '_>>, event: MyEvents) -> SimpleTrans {
+}
+
+impl<'s> State<GameData<'s,'s>, MyEvents> for Pizzatopia {
+    fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
+        let world = data.world;
+
+        world.register::<PlatformCuboid>();
+        world.register::<PlatformCollisionPoints>();
+
+//        world.insert(
+//            EventChannel::<Events>::new(),
+//        );
+
+        self.load_sprite_sheets(world);
+        self.initialize_level(world);
+    }
+
+    fn handle_event(&mut self, mut data: StateData<'_, GameData<'s, 's>>, event: MyEvents) -> Trans<GameData<'s,'s>, MyEvents> {
+        let world = &mut data.world;
         if let MyEvents::Window(event) = &event {
-            let world = data.world;
             let input = world.read_resource::<InputHandler<StringBindings>>();
             if input.action_is_down("exit").unwrap_or(false) {
                 return Trans::Quit;
             }
         }
 
+        if let MyEvents::App(event) = &event {
+            match event {
+                Events::Reset => {
+                    println!("Resetting map...");
+                    self.initialize_level(world);
+                },
+                _ => {}
+            }
+        }
+
         // Escape isn't pressed, so we stay in this `State`.
+        Trans::None
+    }
+
+    fn update(&mut self, mut data: StateData<'_, GameData<'s, 's>>) -> Trans<GameData<'s,'s>, MyEvents> {
+        data.data.update(&mut data.world);
         Trans::None
     }
 }

@@ -6,5 +6,6 @@
   actions: {
     "exit": [[Key(Escape)]],
     "console": [[Key(Backslash)]],
+    "reset": [[Key(Home)]],
   },
 )

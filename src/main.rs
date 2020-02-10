@@ -29,7 +29,8 @@ mod utils;
 use crate::components::physics::PlatformCuboid;
 use crate::systems::console::ConsoleInputSystem;
 use crate::level::Level;
-use crate::pizzatopia::Pizzatopia;
+use crate::pizzatopia::{Pizzatopia, MyEvents};
+use crate::pizzatopia::MyEventReader;
 
 fn main() -> amethyst::Result<()> {
     // Logging for GL stuff
@@ -116,7 +117,7 @@ fn main() -> amethyst::Result<()> {
 
     let assets_dir = app_root.join("assets");
 
-    let mut game = Application::new(
+    let mut game = CoreApplication::<_, MyEvents, MyEventReader>::new(
         assets_dir,
         LoadingState {
             progress_counter: ProgressCounter::new(),
@@ -136,8 +137,8 @@ pub struct LoadingState {
     level_handle: Option<Handle<Level>>,
 }
 
-impl SimpleState for LoadingState {
-    fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
+impl<'s> State<GameData<'s,'s>, MyEvents> for LoadingState {
+    fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         let level_resource = &data.world.read_resource::<AssetStorage<Level>>();
         let level_handle = data.world.read_resource::<Loader>().load(
             "levels/level0.ron", // Here we load the associated ron file
@@ -149,7 +150,8 @@ impl SimpleState for LoadingState {
         self.level_handle = Some(level_handle);
     }
 
-    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+    fn update(&mut self, mut data: StateData<'_, GameData<'s, 's>>) -> Trans<GameData<'s,'s>, MyEvents> {
+        data.data.update(&mut data.world);
         if self.progress_counter.is_complete() {
             Trans::Switch(Box::new(Pizzatopia {
                 level_handle: self.level_handle.clone().unwrap(),
