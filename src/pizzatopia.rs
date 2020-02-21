@@ -32,6 +32,7 @@ use crate::components::graphics::AnimationCounter;
 use crate::systems::physics::CollisionDirection;
 use crate::events::Events;
 use std::io;
+use crate::components::game::{Health, Invincibility, CollisionEvent};
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -61,6 +62,7 @@ pub enum MyEvents {
 
 pub(crate) struct Pizzatopia {
     pub level_handle: Handle<Level>,
+    pub platform_size_prefab_handle: Handle<Prefab<PlatformCuboid>>,
     pub spritesheets: Vec<Handle<SpriteSheet>>,
 }
 
@@ -73,9 +75,7 @@ impl Pizzatopia {
     fn initialize_level(&mut self, world: &mut World) {
         let tiles_sprite_sheet_handle = self.spritesheets[Tiles as usize].clone();
         let actor_sprite_sheet_handle = self.spritesheets[Character as usize].clone();
-        let prefab_handle = world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
-            loader.load("prefab/tile_size.ron", RonFormat, ())
-        });
+        let prefab_handle = self.platform_size_prefab_handle.clone();
 
         world.delete_all();
 
@@ -108,10 +108,8 @@ impl<'s> State<GameData<'s,'s>, MyEvents> for Pizzatopia {
 
         world.register::<PlatformCuboid>();
         world.register::<PlatformCollisionPoints>();
-
-//        world.insert(
-//            EventChannel::<Events>::new(),
-//        );
+        world.register::<Health>();
+        world.register::<Invincibility>();
 
         self.load_sprite_sheets(world);
         self.initialize_level(world);
@@ -252,6 +250,8 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
             .with(Sticky(true))
             .with(GravityDirection(CollisionDirection::FromTop))
             .with(Collidee::new())
+            .with(Health(5))
+            .with(Invincibility(0))
             .build();
     } else {
         world

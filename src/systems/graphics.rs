@@ -1,12 +1,14 @@
-use crate::components::physics::{PlatformCuboid, Position, Velocity, GravityDirection};
+use crate::components::graphics::AnimationCounter;
+use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
+use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
+use amethyst::core::math::Vector3;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
-use amethyst::renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture};
-use amethyst::core::math::Vector3;
-use crate::components::graphics::AnimationCounter;
-use crate::systems::physics::{CollisionDirection, gravitationally_de_adapted_velocity};
+use amethyst::renderer::{
+    Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
+};
 
 #[derive(SystemDesc)]
 pub struct PositionDrawUpdateSystem;
@@ -25,16 +27,34 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
 pub struct SpriteUpdateSystem;
 
 impl<'s> System<'s> for SpriteUpdateSystem {
-    type SystemData = (WriteStorage<'s, Transform>, WriteStorage<'s, SpriteRender>, WriteStorage<'s, AnimationCounter>, ReadStorage<'s, Velocity>, ReadStorage<'s, GravityDirection>);
+    type SystemData = (
+        WriteStorage<'s, Transform>,
+        WriteStorage<'s, SpriteRender>,
+        WriteStorage<'s, AnimationCounter>,
+        ReadStorage<'s, Velocity>,
+        ReadStorage<'s, GravityDirection>,
+    );
 
-    fn run(&mut self, (mut transforms, mut sprites, mut counters, velocities, gravities): Self::SystemData) {
-        for (transform, sprite, counter, velocity, gravity) in (&mut transforms, &mut sprites, &mut counters, &velocities, (&gravities).maybe()).join() {
+    fn run(
+        &mut self,
+        (mut transforms, mut sprites, mut counters, velocities, gravities): Self::SystemData,
+    ) {
+        for (transform, sprite, counter, velocity, gravity) in (
+            &mut transforms,
+            &mut sprites,
+            &mut counters,
+            &velocities,
+            (&gravities).maybe(),
+        )
+            .join()
+        {
             let mut grav_dir = CollisionDirection::FromTop;
             if let Some(grav) = gravity {
                 grav_dir = grav.0;
             }
 
-            let grav_vel = gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
+            let grav_vel =
+                gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
 
             let mut sprite_number = sprite.sprite_number % 2;
             if grav_vel.x != 0.0 {
@@ -44,23 +64,38 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     counter.0 = 0;
                 }
                 match grav_vel.x < 0.0 {
-                    true => {transform.set_scale(Vector3::new(-1.0, 1.0, 1.0));},
-                    false => {transform.set_scale(Vector3::new(1.0, 1.0, 1.0));}
+                    true => {
+                        transform.set_scale(Vector3::new(-1.0, 1.0, 1.0));
+                    }
+                    false => {
+                        transform.set_scale(Vector3::new(1.0, 1.0, 1.0));
+                    }
                 };
             } else {
                 sprite_number = 0;
             }
             match grav_vel.y != 0.0 {
-                true => {sprite_number += 2;},
+                true => {
+                    sprite_number += 2;
+                }
                 false => {}
             };
             sprite.sprite_number = sprite_number;
 
             match grav_dir {
-                CollisionDirection::FromTop => {transform.set_rotation_z_axis(0.0);},
-                CollisionDirection::FromBottom => {transform.set_rotation_z_axis(std::f32::consts::PI);},
-                CollisionDirection::FromLeft => {transform.set_rotation_z_axis(std::f32::consts::FRAC_PI_2);},
-                CollisionDirection::FromRight => {transform.set_rotation_z_axis(std::f32::consts::PI + std::f32::consts::FRAC_PI_2);},
+                CollisionDirection::FromTop => {
+                    transform.set_rotation_z_axis(0.0);
+                }
+                CollisionDirection::FromBottom => {
+                    transform.set_rotation_z_axis(std::f32::consts::PI);
+                }
+                CollisionDirection::FromLeft => {
+                    transform.set_rotation_z_axis(std::f32::consts::FRAC_PI_2);
+                }
+                CollisionDirection::FromRight => {
+                    transform
+                        .set_rotation_z_axis(std::f32::consts::PI + std::f32::consts::FRAC_PI_2);
+                }
             }
         }
     }

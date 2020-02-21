@@ -1,12 +1,32 @@
-use crate::components::physics::{Collidee, CollideeDetails, CollisionSideOfBlock, Grounded, PlatformCollisionPoints, PlatformCuboid, Position, Velocity, Sticky, GravityDirection};
-use crate::pizzatopia::{MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH, FRICTION};
+use crate::components::physics::{
+    Collidee, CollideeDetails, CollisionSideOfBlock, GravityDirection, Grounded,
+    PlatformCollisionPoints, PlatformCuboid, Position, Sticky, Velocity,
+};
+use crate::events::Events;
+use crate::pizzatopia::{FRICTION, MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH};
 use crate::systems::physics::CollisionDirection::FromTop;
 use crate::utils::{Vec2, Vec3};
-use amethyst::core::{SystemDesc, Transform};
-use amethyst::derive::SystemDesc;
-use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage, Entity, Entities};
-use amethyst::input::{InputHandler, StringBindings};
+use amethyst::core::Transform;
+use amethyst::ecs::{Entities, Entity};
 use log::{debug, error, info, warn};
+
+use amethyst::{
+    core::{
+        bundle::SystemBundle,
+        frame_limiter::FrameRateLimitStrategy,
+        shrev::{EventChannel, ReaderId},
+        SystemDesc,
+    },
+    derive::SystemDesc,
+    ecs::{
+        Component, DenseVecStorage, Join, Read, ReadStorage, System, SystemData, World, Write,
+        WriteStorage,
+    },
+    input::{InputHandler, StringBindings},
+    prelude::*,
+};
+use crate::components::game::CollisionEvent;
+use crate::components::player::Player;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CollisionDirection {
@@ -21,7 +41,7 @@ impl CollisionDirection {
         match self {
             CollisionDirection::FromLeft => true,
             CollisionDirection::FromRight => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -30,43 +50,53 @@ impl CollisionDirection {
 pub struct ApplyStickySystem;
 
 impl<'s> System<'s> for ApplyStickySystem {
-    type SystemData = (WriteStorage<'s, Velocity>, ReadStorage<'s, Sticky>, ReadStorage<'s, Collidee>, WriteStorage<'s, GravityDirection>);
+    type SystemData = (
+        WriteStorage<'s, Velocity>,
+        ReadStorage<'s, Sticky>,
+        ReadStorage<'s, Collidee>,
+        WriteStorage<'s, GravityDirection>,
+    );
 
     fn run(&mut self, (mut velocities, stickies, collidees, mut gravities): Self::SystemData) {
-        for (velocity, sticky, collidee, gravity) in (&mut velocities, &stickies, &collidees, &mut gravities).join() {
+        for (velocity, sticky, collidee, gravity) in
+            (&mut velocities, &stickies, &collidees, &mut gravities).join()
+        {
             if sticky.0 {
                 let prev_gravity = gravity.0;
                 let mut collidee_velocity = velocity.0.clone();
                 gravity.0 = match CollisionDirection::is_horizontal(&gravity.0) {
-                    true => {match &collidee.vertical {
+                    true => match &collidee.vertical {
                         Some(x) => {
                             collidee_velocity = x.old_collider_vel.clone();
                             match x.side {
                                 CollisionSideOfBlock::Top => CollisionDirection::FromTop,
                                 CollisionSideOfBlock::Bottom => CollisionDirection::FromBottom,
-                                _ => gravity.0
+                                _ => gravity.0,
                             }
-                        },
-                        None => gravity.0}},
-                    false => {match &collidee.horizontal {
+                        }
+                        None => gravity.0,
+                    },
+                    false => match &collidee.horizontal {
                         Some(x) => {
                             collidee_velocity = x.old_collider_vel.clone();
                             match x.side {
                                 CollisionSideOfBlock::Right => CollisionDirection::FromRight,
                                 CollisionSideOfBlock::Left => CollisionDirection::FromLeft,
-                                _ => gravity.0
+                                _ => gravity.0,
                             }
-                        },
-                        None => gravity.0}},
+                        }
+                        None => gravity.0,
+                    },
                 };
 
                 // Check for walking off platform -> need to change gravity + adapt velocity
-                let lean_off_ledge = collidee.current_collision_points() == 0 && collidee.prev_collision_points() == 1;
+                let lean_off_ledge = collidee.current_collision_points() == 0
+                    && collidee.prev_collision_points() == 1;
                 let is_following_gravity = match gravity.0 {
-                    CollisionDirection::FromTop => {velocity.0.y < 0.0},
-                    CollisionDirection::FromBottom => {velocity.0.y > 0.0},
-                    CollisionDirection::FromLeft => {velocity.0.x > 0.0},
-                    CollisionDirection::FromRight => {velocity.0.x < 0.0},
+                    CollisionDirection::FromTop => velocity.0.y < 0.0,
+                    CollisionDirection::FromBottom => velocity.0.y > 0.0,
+                    CollisionDirection::FromLeft => velocity.0.x > 0.0,
+                    CollisionDirection::FromRight => velocity.0.x < 0.0,
                 };
                 if lean_off_ledge && is_following_gravity {
                     // Change gravity
@@ -74,29 +104,29 @@ impl<'s> System<'s> for ApplyStickySystem {
                         CollisionDirection::FromTop | CollisionDirection::FromBottom => {
                             if velocity.0.x > 0.0 {
                                 CollisionDirection::FromRight
-                            }
-                            else {
+                            } else {
                                 CollisionDirection::FromLeft
                             }
-                        },
+                        }
                         CollisionDirection::FromLeft | CollisionDirection::FromRight => {
                             if velocity.0.y > 0.0 {
                                 CollisionDirection::FromTop
-                            }
-                            else {
+                            } else {
                                 CollisionDirection::FromBottom
                             }
-                        },
+                        }
                     }
                 }
 
-                if collidee.current_collision_points() == 0 && collidee.prev_collision_points() != 0 {
+                if collidee.current_collision_points() == 0 && collidee.prev_collision_points() != 0
+                {
                 }
 
                 if prev_gravity != gravity.0 {
                     // Only keep movement momentum if not jumping off platform
                     if collidee_velocity.x == 0.0 || collidee_velocity.y == 0.0 || lean_off_ledge {
-                        velocity.0 = adapt_sticky_velocity(&collidee_velocity, &prev_gravity, &gravity.0);
+                        velocity.0 =
+                            adapt_sticky_velocity(&collidee_velocity, &prev_gravity, &gravity.0);
                         if lean_off_ledge {
                             match gravity.0 {
                                 CollisionDirection::FromBottom => velocity.0.y = TILE_WIDTH / 4.0,
@@ -105,7 +135,7 @@ impl<'s> System<'s> for ApplyStickySystem {
                                 CollisionDirection::FromRight => velocity.0.x = -TILE_WIDTH / 4.0,
                             }
                         }
-//                        println!("Changed vel from {:?} to {:?}", collidee_velocity, velocity.0);
+                        //                        println!("Changed vel from {:?} to {:?}", collidee_velocity, velocity.0);
                     }
                 }
             }
@@ -113,143 +143,76 @@ impl<'s> System<'s> for ApplyStickySystem {
     }
 }
 
-pub fn adapt_sticky_velocity(vel: &Vec2, prev_gravity: &CollisionDirection, cur_gravity: &CollisionDirection) -> Vec2 {
+pub fn adapt_sticky_velocity(
+    vel: &Vec2,
+    prev_gravity: &CollisionDirection,
+    cur_gravity: &CollisionDirection,
+) -> Vec2 {
     match prev_gravity {
-        CollisionDirection::FromRight => {
-            match cur_gravity {
-                CollisionDirection::FromTop => {
-                    Vec2{
-                        x: -vel.y,
-                        y: 0.0,
-                    }
-                },
-                CollisionDirection::FromBottom => {
-                    Vec2{
-                        x: vel.y,
-                        y: 0.0,
-                    }
-                },
-                _ => {vel.clone()},
-            }
+        CollisionDirection::FromRight => match cur_gravity {
+            CollisionDirection::FromTop => Vec2 { x: -vel.y, y: 0.0 },
+            CollisionDirection::FromBottom => Vec2 { x: vel.y, y: 0.0 },
+            _ => vel.clone(),
         },
-        CollisionDirection::FromLeft => {
-            match cur_gravity {
-                CollisionDirection::FromTop => {
-                    Vec2{
-                        x: vel.y,
-                        y: 0.0,
-                    }
-                },
-                CollisionDirection::FromBottom => {
-                    Vec2{
-                        x: -vel.y,
-                        y: 0.0,
-                    }
-                },
-                _ => {vel.clone()},
-            }
+        CollisionDirection::FromLeft => match cur_gravity {
+            CollisionDirection::FromTop => Vec2 { x: vel.y, y: 0.0 },
+            CollisionDirection::FromBottom => Vec2 { x: -vel.y, y: 0.0 },
+            _ => vel.clone(),
         },
-        CollisionDirection::FromTop => {
-            match cur_gravity {
-                CollisionDirection::FromRight => {
-                    Vec2{
-                        x: 0.0,
-                        y: -vel.x,
-                    }
-                },
-                CollisionDirection::FromLeft => {
-                    Vec2{
-                        x: 0.0,
-                        y: vel.x,
-                    }
-                },
-                _ => {vel.clone()},
-            }
+        CollisionDirection::FromTop => match cur_gravity {
+            CollisionDirection::FromRight => Vec2 { x: 0.0, y: -vel.x },
+            CollisionDirection::FromLeft => Vec2 { x: 0.0, y: vel.x },
+            _ => vel.clone(),
         },
-        CollisionDirection::FromBottom => {
-            match cur_gravity {
-                CollisionDirection::FromRight => {
-                    Vec2{
-                        x: 0.0,
-                        y: vel.x,
-                    }
-                },
-                CollisionDirection::FromLeft => {
-                    Vec2{
-                        x: 0.0,
-                        y: -vel.x,
-                    }
-                },
-                _ => {vel.clone()},
-            }
+        CollisionDirection::FromBottom => match cur_gravity {
+            CollisionDirection::FromRight => Vec2 { x: 0.0, y: vel.x },
+            CollisionDirection::FromLeft => Vec2 { x: 0.0, y: -vel.x },
+            _ => vel.clone(),
         },
     }
 }
 
 pub fn gravitationally_adapted_velocity(vel: &Vec2, gravity: &GravityDirection) -> Vec2 {
     match gravity.0 {
-        CollisionDirection::FromLeft => {
-            Vec2{
-                x: -vel.y,
-                y: vel.x,
-            }
+        CollisionDirection::FromLeft => Vec2 {
+            x: -vel.y,
+            y: vel.x,
         },
-        CollisionDirection::FromRight => {
-            Vec2{
-                x: vel.y,
-                y: -vel.x,
-            }
+        CollisionDirection::FromRight => Vec2 {
+            x: vel.y,
+            y: -vel.x,
         },
-        CollisionDirection::FromTop => {
-            Vec2{
-                x: vel.x,
-                y: vel.y,
-            }
-        },
-        CollisionDirection::FromBottom => {
-            Vec2{
-                x: -vel.x,
-                y: -vel.y,
-            }
+        CollisionDirection::FromTop => Vec2 { x: vel.x, y: vel.y },
+        CollisionDirection::FromBottom => Vec2 {
+            x: -vel.x,
+            y: -vel.y,
         },
     }
 }
 
 pub fn gravitationally_de_adapted_velocity(vel: &Vec2, gravity: &GravityDirection) -> Vec2 {
     match gravity.0 {
-        CollisionDirection::FromLeft => {
-            Vec2{
-                x: vel.y,
-                y: -vel.x,
-            }
+        CollisionDirection::FromLeft => Vec2 {
+            x: vel.y,
+            y: -vel.x,
         },
-        CollisionDirection::FromRight => {
-            Vec2{
-                x: -vel.y,
-                y: vel.x,
-            }
+        CollisionDirection::FromRight => Vec2 {
+            x: -vel.y,
+            y: vel.x,
         },
-        CollisionDirection::FromTop => {
-            Vec2{
-                x: vel.x,
-                y: vel.y,
-            }
-        },
-        CollisionDirection::FromBottom => {
-            Vec2{
-                x: -vel.x,
-                y: -vel.y,
-            }
+        CollisionDirection::FromTop => Vec2 { x: vel.x, y: vel.y },
+        CollisionDirection::FromBottom => Vec2 {
+            x: -vel.x,
+            y: -vel.y,
         },
     }
 }
 
-    #[derive(SystemDesc)]
-    pub struct ApplyVelocitySystem;
+#[derive(SystemDesc)]
+pub struct ApplyVelocitySystem;
 
 impl<'s> System<'s> for ApplyVelocitySystem {
-    type SystemData = (WriteStorage<'s, Velocity>, WriteStorage<'s, Position>,
-    );
+    type SystemData = (WriteStorage<'s, Velocity>, WriteStorage<'s, Position>);
 
     fn run(&mut self, (mut velocities, mut positions): Self::SystemData) {
         for (velocity, position) in (&mut velocities, &mut positions).join() {
@@ -271,14 +234,16 @@ impl<'s> System<'s> for ApplyGravitySystem {
     );
 
     fn run(&mut self, (mut velocities, grounded, gravities, input): Self::SystemData) {
-        for (velocity, grounded, gravity) in (&mut velocities, (&grounded).maybe(), (&gravities).maybe()).join() {
-
+        for (velocity, grounded, gravity) in
+            (&mut velocities, (&grounded).maybe(), (&gravities).maybe()).join()
+        {
             let mut grav_dir = CollisionDirection::FromTop;
             if let Some(grav) = gravity {
                 grav_dir = grav.0;
             }
 
-            let mut grav_vel = gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
+            let mut grav_vel =
+                gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
 
             // Apply friction and slow down
             if let Some(ground) = grounded {
@@ -292,14 +257,18 @@ impl<'s> System<'s> for ApplyGravitySystem {
                                 // Slow in opposite direction
                                 grav_vel.x *= FRICTION;
                             }
-                            velocity.0 = gravitationally_adapted_velocity(&grav_vel, &GravityDirection(grav_dir));
+                            velocity.0 = gravitationally_adapted_velocity(
+                                &grav_vel,
+                                &GravityDirection(grav_dir),
+                            );
                         }
                     }
                 }
             }
 
             let mut gravity_vec = Vec2::new(0.0, -0.28);
-            gravity_vec = gravitationally_adapted_velocity(&gravity_vec, &GravityDirection(grav_dir));
+            gravity_vec =
+                gravitationally_adapted_velocity(&gravity_vec, &GravityDirection(grav_dir));
 
             velocity.0.x += gravity_vec.x;
             velocity.0.y += gravity_vec.y;
@@ -317,17 +286,17 @@ impl<'s> System<'s> for ApplyGravitySystem {
 pub struct ActorCollisionSystem;
 
 impl ActorCollisionSystem {
-    fn create_corners_with_coll_points_tl_br(pos: &Vec2, points: &PlatformCollisionPoints) -> (Vec2, Vec2) {
+    fn create_corners_with_coll_points_tl_br(
+        pos: &Vec2,
+        points: &PlatformCollisionPoints,
+    ) -> (Vec2, Vec2) {
         let mut leftmost: f32 = 999999.0;
         let mut rightmost: f32 = -999999.0;
         let mut topmost: f32 = -999999.0;
         let mut bottommost: f32 = 999999.0;
         // Go through every collision point to create cuboid shape
         for collider_offset in &points.0 {
-            let point_pos = Vec2::new(
-                collider_offset.x + pos.x,
-                collider_offset.y + pos.y,
-            );
+            let point_pos = Vec2::new(collider_offset.x + pos.x, collider_offset.y + pos.y);
 
             leftmost = leftmost.min(point_pos.x);
             bottommost = bottommost.min(point_pos.y);
@@ -335,15 +304,26 @@ impl ActorCollisionSystem {
             topmost = topmost.max(point_pos.y);
         }
         //info!("TopLeft: {:?}, BottomRight: {:?}", Vec2::new(leftmost, topmost), Vec2::new(rightmost, bottommost));
-        (Vec2::new(leftmost, topmost), Vec2::new(rightmost, bottommost))
+        (
+            Vec2::new(leftmost, topmost),
+            Vec2::new(rightmost, bottommost),
+        )
     }
 
-    fn cuboid_intersection(top_left1: &Vec2, bottom_right1: &Vec2, top_left2: &Vec2, bottom_right2: &Vec2) -> bool {
+    fn cuboid_intersection(
+        top_left1: &Vec2,
+        bottom_right1: &Vec2,
+        top_left2: &Vec2,
+        bottom_right2: &Vec2,
+    ) -> bool {
         // Check if the x axis of both squares ever intersect
         let halfway_point = bottom_right2.x + (top_left1.x - bottom_right2.x) / 2.0;
         //info!("Halfway point X: {:?}", halfway_point);
-        if !(halfway_point > top_left1.x && halfway_point < bottom_right1.x &&
-            halfway_point > top_left2.x && halfway_point < bottom_right2.x) {
+        if !(halfway_point > top_left1.x
+            && halfway_point < bottom_right1.x
+            && halfway_point > top_left2.x
+            && halfway_point < bottom_right2.x)
+        {
             // no intersects
             return false;
         }
@@ -351,8 +331,11 @@ impl ActorCollisionSystem {
         // Check if the y axis of both squares ever intersect
         let halfway_point = top_left2.y + (bottom_right1.y - top_left2.y) / 2.0;
         //info!("Halfway point Y: {:?}", halfway_point);
-        if !(halfway_point < top_left1.y && halfway_point > bottom_right1.y &&
-            halfway_point < top_left2.y && halfway_point > bottom_right2.y) {
+        if !(halfway_point < top_left1.y
+            && halfway_point > bottom_right1.y
+            && halfway_point < top_left2.y
+            && halfway_point > bottom_right2.y)
+        {
             // no intersects
             return false;
         }
@@ -365,13 +348,16 @@ impl<'s> System<'s> for ActorCollisionSystem {
     type SystemData = (
         ReadStorage<'s, Position>,
         ReadStorage<'s, PlatformCollisionPoints>,
+        ReadStorage<'s, Player>,
         Entities<'s>,
+        Write<'s, EventChannel<CollisionEvent>>,
     );
 
-    fn run(&mut self, (positions, coll_points, entities): Self::SystemData) {
+    fn run(&mut self, (positions, coll_points, players, entities, mut events_channel): Self::SystemData) {
         for (ent_pos1, coll_point1, entity1) in (&positions, &coll_points, &entities).join() {
             let pos1 = Vec2::new(ent_pos1.0.x, ent_pos1.0.y);
-            let (top_left1, bottom_right1) = Self::create_corners_with_coll_points_tl_br(&pos1, coll_point1);
+            let (top_left1, bottom_right1) =
+                Self::create_corners_with_coll_points_tl_br(&pos1, coll_point1);
 
             for (ent_pos2, coll_point2, entity2) in (&positions, &coll_points, &entities).join() {
                 if entity1 == entity2 {
@@ -379,9 +365,23 @@ impl<'s> System<'s> for ActorCollisionSystem {
                 }
 
                 let pos2 = Vec2::new(ent_pos2.0.x, ent_pos2.0.y);
-                let (top_left2, bottom_right2) = Self::create_corners_with_coll_points_tl_br(&pos2, coll_point2);
-                if Self::cuboid_intersection(&top_left1, &bottom_right1, &top_left2, &bottom_right2) {
-                    //warn!("Wow! A collision! {}", pos1.x);
+                let (top_left2, bottom_right2) =
+                    Self::create_corners_with_coll_points_tl_br(&pos2, coll_point2);
+                if Self::cuboid_intersection(&top_left1, &bottom_right1, &top_left2, &bottom_right2)
+                {
+                    let actor1 = players.get(entity1).is_some();
+                    let actor2 = players.get(entity2).is_some();
+
+                    // One of them is an enemy and the other is a player
+                    // Okay to get hurt
+                    if actor1 ^ actor2 {
+                        let player = match actor1 {
+                            true => entity1,
+                            false => entity2,
+                        };
+                        events_channel.single_write(CollisionEvent::EnemyCollision(player.id(), 1));
+                    }
+
                 }
             }
         }
@@ -565,8 +565,14 @@ impl<'s> System<'s> for PlatformCollisionSystem {
         &mut self,
         (mut velocities, mut collidees, positions, cuboids, coll_points, gravities): Self::SystemData,
     ) {
-        for (velocity, collidee, ent_pos, coll_point, gravity) in
-            (&mut velocities, &mut collidees, &positions, &coll_points, (&gravities).maybe()).join()
+        for (velocity, collidee, ent_pos, coll_point, gravity) in (
+            &mut velocities,
+            &mut collidees,
+            &positions,
+            &coll_points,
+            (&gravities).maybe(),
+        )
+            .join()
         {
             // Reset collidees here they can be used for the rest of the frame
             std::mem::swap(&mut collidee.prev_horizontal, &mut collidee.horizontal);
@@ -757,8 +763,7 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                             ground.0 = grav_dir == CollisionDirection::FromTop;
                         };
                     }
-                    _ => {
-                    }
+                    _ => {}
                 }
                 velocity.0.y = 0.0;
             }
@@ -775,8 +780,7 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                             ground.0 = grav_dir == CollisionDirection::FromRight;
                         };
                     }
-                    _ => {
-                    }
+                    _ => {}
                 }
                 position.0.x += cdee.correction;
                 velocity.0.x = 0.0;
