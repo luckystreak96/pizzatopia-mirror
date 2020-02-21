@@ -9,6 +9,7 @@ use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteSto
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
+use crate::components::game::Health;
 
 #[derive(SystemDesc)]
 pub struct PositionDrawUpdateSystem;
@@ -19,6 +20,21 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
     fn run(&mut self, (mut transforms, positions): Self::SystemData) {
         for (transform, position) in (&mut transforms, &positions).join() {
             transform.set_translation_xyz(position.0.x, position.0.y, 0.0);
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct DeadDrawUpdateSystem;
+
+impl<'s> System<'s> for DeadDrawUpdateSystem {
+    type SystemData = (WriteStorage<'s, Transform>, ReadStorage<'s, Health>);
+
+    fn run(&mut self, (mut transforms, healths): Self::SystemData) {
+        for (transform, health) in (&mut transforms, &healths).join() {
+            if health.0 == 0 {
+                transform.set_translation_xyz(-9999.0, -9999.0, 0.0);
+            }
         }
     }
 }
@@ -82,6 +98,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             };
             sprite.sprite_number = sprite_number;
 
+            // Set the rotation for sticky nerds
             match grav_dir {
                 CollisionDirection::FromTop => {
                     transform.set_rotation_z_axis(0.0);

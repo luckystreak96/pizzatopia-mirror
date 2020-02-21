@@ -13,19 +13,19 @@ use amethyst::{
 
 use crate::utils::{read_line_from_console};
 use crate::components::physics::Grounded;
-use crate::events::Events;
+use crate::events::{Events, PlayerEvent};
 
 #[derive(SystemDesc)]
 pub struct ConsoleInputSystem;
 
 impl<'s> System<'s> for ConsoleInputSystem {
     type SystemData = (
-        ReadStorage<'s, Grounded>,
         Read<'s, InputHandler<StringBindings>>,
         Write<'s, EventChannel<Events>>,
+        Write<'s, EventChannel<PlayerEvent>>,
     );
 
-    fn run(&mut self, (grounded, input, mut events_channel): Self::SystemData) {
+    fn run(&mut self, (input, mut events_channel, mut player_event_channel): Self::SystemData) {
         let input_string;
 
         if input.action_is_down("console").unwrap_or(false) {
@@ -33,6 +33,9 @@ impl<'s> System<'s> for ConsoleInputSystem {
         }
         else if input.action_is_down("reset").unwrap_or(false) {
             input_string = String::from("reset");
+        }
+        else if input.action_is_down("revive").unwrap_or(false) {
+            input_string = String::from("revive");
         }
         else {
             input_string = String::new();
@@ -46,6 +49,9 @@ impl<'s> System<'s> for ConsoleInputSystem {
         match args[0] {
             "reset" => {
                 events_channel.single_write(Events::Reset);
+            },
+            "revive" => {
+                player_event_channel.single_write(PlayerEvent::Revive(5));
             },
             _ => {}
         }

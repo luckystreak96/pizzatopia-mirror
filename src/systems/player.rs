@@ -10,6 +10,7 @@ use crate::components::physics::{Grounded, PlatformCuboid, Position, Velocity, G
 use crate::components::player::Player;
 use crate::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT};
 use crate::systems::physics::{gravitationally_adapted_velocity, gravitationally_de_adapted_velocity};
+use crate::components::game::Health;
 
 #[derive(SystemDesc)]
 pub struct PlayerInputSystem;
@@ -19,12 +20,16 @@ impl<'s> System<'s> for PlayerInputSystem {
         WriteStorage<'s, Velocity>,
         Read<'s, InputHandler<StringBindings>>,
         ReadStorage<'s, Player>,
+        ReadStorage<'s, Health>,
         ReadStorage<'s, Grounded>,
         ReadStorage<'s, GravityDirection>,
     );
 
-    fn run(&mut self, (mut velocities, input, players, grounded, gravities): Self::SystemData) {
-        for (velocity, player, ground, gravity) in (&mut velocities, &players, (&grounded).maybe(), (&gravities).maybe()).join() {
+    fn run(&mut self, (mut velocities, input, players, healths, grounded, gravities): Self::SystemData) {
+        for (velocity, player, health, ground, gravity) in (&mut velocities, &players, &healths, (&grounded).maybe(), (&gravities).maybe()).join() {
+            if health.0 == 0 {
+                continue;
+            }
             // Controller input
             let v_move = input.axis_value("vertical_move");
             let h_move = input.axis_value("horizontal_move");

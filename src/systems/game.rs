@@ -1,6 +1,7 @@
 use crate::components::game::{CollisionEvent, Health, Invincibility};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
+use crate::events::PlayerEvent;
 use crate::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
 use amethyst::core::math::Vector3;
@@ -12,6 +13,8 @@ use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
 use log::warn;
+use log::info;
+use std::cmp::min;
 
 pub const IFRAMES_PER_HIT: u32 = 90;
 
@@ -52,10 +55,12 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                         .expect("Tried to hurt entity with no health component")
                         .0;
                     if *health > 0 && *iframes == 0 {
-                        *health -= *damage;
+                        // Don't deal more damage than the character has hp
+                        let dmg = min(*damage, *health);
+                        *health -= dmg;
                         *iframes += IFRAMES_PER_HIT;
+                        warn!("Health is now {}", health);
                     }
-                    warn!("Health is now {}", health);
                 }
             }
             //println!("Received an event: {:?}", event);
@@ -73,6 +78,47 @@ impl<'s> System<'s> for InvincibilitySystem {
         for (mut invinc, entity) in (&mut invincibilities, &entities).join() {
             if invinc.0 > 0 {
                 invinc.0 -= 1;
+            }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+#[system_desc(name(PlayerEventsSystemDesc))]
+pub struct PlayerEventsSystem {
+    #[system_desc(event_channel_reader)]
+    reader: ReaderId<PlayerEvent>,
+}
+
+impl PlayerEventsSystem {
+    pub(crate) fn new(reader: ReaderId<PlayerEvent>) -> Self {
+        Self { reader }
+    }
+}
+
+impl<'s> System<'s> for PlayerEventsSystem {
+    type SystemData = (
+        WriteStorage<'s, Health>,
+        WriteStorage<'s, Invincibility>,
+        Entities<'s>,
+        Read<'s, EventChannel<PlayerEvent>>,
+    );
+
+    fn run(
+        &mut self,
+        (mut healths, mut invincibilities, entities, event_channel): Self::SystemData,
+    ) {
+        for event in event_channel.read(&mut self.reader) {
+            for (mut health, mut invincibility, entity) in (&mut healths, &mut invincibilities, &entities).join() {
+                match event {
+                    PlayerEvent::Revive(new_health) => {
+                        if health.0 == 0 {
+                            health.0 = *new_health;
+                            invincibility.0 = IFRAMES_PER_HIT;
+                            info!("Player revived.");
+                        }
+                    }
+                }
             }
         }
     }

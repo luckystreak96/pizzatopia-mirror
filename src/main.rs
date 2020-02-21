@@ -2,29 +2,38 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 use amethyst::input::{InputBundle, StringBindings};
-use amethyst::{assets::{
-    Asset, AssetStorage, Format, Prefab, PrefabData, PrefabLoader, Handle, Loader, PrefabLoaderSystemDesc, ProcessingState,
-    Processor, ProgressCounter, RonFormat, Source,
-}, core::transform::TransformBundle, ecs::prelude::{ReadExpect, SystemData}, prelude::*, renderer::{
-    plugins::{RenderFlat2D, RenderToWindow},
-    types::DefaultBackend,
-    RenderingBundle,
-}, utils::application_root_dir, Logger, Error};
+use amethyst::{
+    assets::{
+        Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
+        PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
+    },
+    core::transform::TransformBundle,
+    ecs::prelude::{ReadExpect, SystemData},
+    prelude::*,
+    renderer::{
+        plugins::{RenderFlat2D, RenderToWindow},
+        types::DefaultBackend,
+        RenderingBundle,
+    },
+    utils::application_root_dir,
+    Error, Logger,
+};
 use log::info;
 
 mod components;
+mod events;
 mod level;
 mod pizzatopia;
 mod systems;
-mod events;
 mod utils;
 use crate::components::physics::PlatformCuboid;
-use crate::systems::console::ConsoleInputSystem;
 use crate::level::Level;
-use crate::pizzatopia::{Pizzatopia, MyEvents};
 use crate::pizzatopia::MyEventReader;
+use crate::pizzatopia::{MyEvents, Pizzatopia};
+use crate::systems::console::ConsoleInputSystem;
 use crate::systems::game::EnemyCollisionSystem;
 use crate::systems::game::EnemyCollisionSystemDesc;
+use crate::systems::game::PlayerEventsSystemDesc;
 use amethyst::{
     core::{
         bundle::SystemBundle,
@@ -55,6 +64,39 @@ impl<'a, 'b> SystemBundle<'a, 'b> for MyBundle {
             EnemyCollisionSystemDesc::default().build(world),
             "enemy_collision_system",
             &["invincibility_system"],
+        );
+        builder.add(
+            PlayerEventsSystemDesc::default().build(world),
+            "player_events_system",
+            &["enemy_collision_system"],
+        );
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+struct GraphicsBundle;
+
+impl<'a, 'b> SystemBundle<'a, 'b> for GraphicsBundle {
+    fn build(
+        self,
+        world: &mut World,
+        builder: &mut DispatcherBuilder<'a, 'b>,
+    ) -> Result<(), Error> {
+        builder.add(
+            systems::graphics::SpriteUpdateSystem,
+            "sprite_update_system",
+            &["apply_velocity_system"],
+        );
+        builder.add(
+            systems::graphics::PositionDrawUpdateSystem,
+            "position_draw_update_system",
+            &["sprite_update_system"],
+        );
+        builder.add(
+            systems::graphics::DeadDrawUpdateSystem,
+            "dead_draw_update_system",
+            &["position_draw_update_system"],
         );
         Ok(())
     }
@@ -133,16 +175,7 @@ fn main() -> amethyst::Result<()> {
             &["apply_velocity_system"],
         )
         .with_bundle(MyBundle)?
-        .with(
-            systems::graphics::SpriteUpdateSystem,
-            "sprite_update_system",
-            &["apply_velocity_system"],
-        )
-        .with(
-            systems::graphics::PositionDrawUpdateSystem,
-            "position_draw_update_system",
-            &["sprite_update_system"],
-        );
+        .with_bundle(GraphicsBundle)?;
 
     let assets_dir = app_root.join("assets");
 
@@ -168,11 +201,12 @@ pub struct LoadingState {
     platform_size_prefab_handle: Option<Handle<Prefab<PlatformCuboid>>>,
 }
 
-impl<'s> State<GameData<'s,'s>, MyEvents> for LoadingState {
+impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        let platform_size_prefab_handle = data.world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
-            loader.load("prefab/tile_size.ron", RonFormat, ())
-        });
+        let platform_size_prefab_handle =
+            data.world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
+                loader.load("prefab/tile_size.ron", RonFormat, ())
+            });
         let level_resource = &data.world.read_resource::<AssetStorage<Level>>();
         let level_handle = data.world.read_resource::<Loader>().load(
             "levels/level0.ron", // Here we load the associated ron file
@@ -185,7 +219,10 @@ impl<'s> State<GameData<'s,'s>, MyEvents> for LoadingState {
         self.level_handle = Some(level_handle);
     }
 
-    fn update(&mut self, mut data: StateData<'_, GameData<'s, 's>>) -> Trans<GameData<'s,'s>, MyEvents> {
+    fn update(
+        &mut self,
+        mut data: StateData<'_, GameData<'s, 's>>,
+    ) -> Trans<GameData<'s, 's>, MyEvents> {
         data.data.update(&mut data.world);
         if self.progress_counter.is_complete() {
             Trans::Switch(Box::new(Pizzatopia {
