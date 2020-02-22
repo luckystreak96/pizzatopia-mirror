@@ -49,7 +49,7 @@ impl<'s> System<'s> for PlayerInputSystem {
             if let Some(mv_amount) = v_move {
                 if mv_amount > 0.0 {
                     if on_ground {
-                        let jump_velocity = 12.0;
+                        let jump_velocity = 13.0;
                         grav_vel.y += jump_velocity;
                     }
                 }

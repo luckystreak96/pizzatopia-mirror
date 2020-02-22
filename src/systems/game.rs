@@ -15,6 +15,16 @@ use amethyst::renderer::{
 use log::warn;
 use log::info;
 use std::cmp::min;
+use std::ops::Deref;
+
+use amethyst::{
+    assets::AssetStorage,
+    audio::{output::Output, Source},
+    ecs::{ReadExpect},
+};
+
+use crate::audio::{play_damage_sound, Sounds};
+
 
 pub const IFRAMES_PER_HIT: u32 = 90;
 
@@ -37,11 +47,14 @@ impl<'s> System<'s> for EnemyCollisionSystem {
         WriteStorage<'s, Invincibility>,
         Entities<'s>,
         Read<'s, EventChannel<CollisionEvent>>,
+        Read<'s, AssetStorage<Source>>,
+        ReadExpect<'s, Sounds>,
+        Option<Read<'s, Output>>,
     );
 
     fn run(
         &mut self,
-        (mut healths, mut invincibilities, entities, event_channel): Self::SystemData,
+        (mut healths, mut invincibilities, entities, event_channel, storage, sounds, audio_output): Self::SystemData,
     ) {
         for event in event_channel.read(&mut self.reader) {
             match event {
@@ -59,6 +72,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                         let dmg = min(*damage, *health);
                         *health -= dmg;
                         *iframes += IFRAMES_PER_HIT;
+                        play_damage_sound(&*sounds, &storage, audio_output.as_ref().map(|o| o.deref()));
                         warn!("Health is now {}", health);
                     }
                 }

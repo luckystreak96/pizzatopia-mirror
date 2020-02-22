@@ -27,12 +27,15 @@ use amethyst::derive::EventReader;
 use amethyst::renderer::rendy::hal::image::{Filter, SamplerInfo, WrapMode};
 use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, TextureKind};
 use log::info;
+use log::warn;
 use crate::pizzatopia::SpriteSheetType::{Tiles, Character};
 use crate::components::graphics::AnimationCounter;
 use crate::systems::physics::CollisionDirection;
 use crate::events::Events;
 use std::io;
 use crate::components::game::{Health, Invincibility, CollisionEvent};
+use crate::audio::{initialise_audio, Sounds};
+
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -110,6 +113,8 @@ impl<'s> State<GameData<'s,'s>, MyEvents> for Pizzatopia {
         world.register::<PlatformCollisionPoints>();
         world.register::<Health>();
         world.register::<Invincibility>();
+
+        // initialise_audio(world);
 
         self.load_sprite_sheets(world);
         self.initialize_level(world);
@@ -247,7 +252,7 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
             .with(Velocity(Vec2::new(0.0, 0.0)))
             //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
             .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.0))
-            .with(Sticky(true))
+            .with(Sticky(false))
             .with(GravityDirection(CollisionDirection::FromTop))
             .with(Collidee::new())
             .with(Health(5))

@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 use amethyst::input::{InputBundle, StringBindings};
+use amethyst::audio::AudioBundle;
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
@@ -25,6 +26,7 @@ mod events;
 mod level;
 mod pizzatopia;
 mod systems;
+mod audio;
 mod utils;
 use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
@@ -45,6 +47,7 @@ use amethyst::{
     ecs::{DispatcherBuilder, Read, System, World, Write},
     prelude::*,
 };
+use crate::audio::initialise_audio;
 
 #[derive(Debug)]
 struct MyBundle;
@@ -128,6 +131,7 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(RenderFlat2D::default()),
         )?
         .with_bundle(input_bundle)?
+        .with_bundle(AudioBundle::default())?
         .with_bundle(TransformBundle::new())?
         .with(Processor::<Level>::new(), "", &[])
         .with(
@@ -179,6 +183,7 @@ fn main() -> amethyst::Result<()> {
 
     let assets_dir = app_root.join("assets");
 
+    info!("TEST");
     let mut game = CoreApplication::<_, MyEvents, MyEventReader>::new(
         assets_dir,
         LoadingState {
@@ -188,6 +193,7 @@ fn main() -> amethyst::Result<()> {
         },
         game_data,
     )?;
+    info!("TEST2");
     game.run();
 
     Ok(())
@@ -203,6 +209,9 @@ pub struct LoadingState {
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
+        {
+            initialise_audio(data.world);
+        }
         let platform_size_prefab_handle =
             data.world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
                 loader.load("prefab/tile_size.ron", RonFormat, ())
