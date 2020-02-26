@@ -1,14 +1,14 @@
 use amethyst::{
-    assets::{AssetStorage, Handle, Loader, PrefabData},
     assets::ProgressCounter,
+    assets::{AssetStorage, Handle, Loader, PrefabData},
     core::transform::Transform,
     derive::PrefabData,
-    ecs::Entity,
     ecs::prelude::{Component, DenseVecStorage},
+    ecs::Entity,
     ecs::WriteStorage,
-    Error,
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
+    Error,
 };
 use serde::{Deserialize, Serialize};
 

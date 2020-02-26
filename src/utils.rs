@@ -56,4 +56,3 @@ pub fn read_line_from_console() -> String {
     }
     input
 }
-

@@ -12,7 +12,6 @@ pub enum CollisionEvent {
     EnemyCollision(u32, u8),
 }
 
-
 #[derive(Default)]
 pub struct Health(pub u8);
 impl Component for Health {

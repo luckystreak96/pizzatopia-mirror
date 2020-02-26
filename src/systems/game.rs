@@ -12,19 +12,18 @@ use amethyst::ecs::{Entities, Join, Read, ReadStorage, System, SystemData, World
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
-use log::warn;
 use log::info;
+use log::warn;
 use std::cmp::min;
 use std::ops::Deref;
 
 use amethyst::{
     assets::AssetStorage,
     audio::{output::Output, Source},
-    ecs::{ReadExpect},
+    ecs::ReadExpect,
 };
 
 use crate::audio::{play_damage_sound, Sounds};
-
 
 pub const IFRAMES_PER_HIT: u32 = 90;
 
@@ -72,7 +71,11 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                         let dmg = min(*damage, *health);
                         *health -= dmg;
                         *iframes += IFRAMES_PER_HIT;
-                        play_damage_sound(&*sounds, &storage, audio_output.as_ref().map(|o| o.deref()));
+                        play_damage_sound(
+                            &*sounds,
+                            &storage,
+                            audio_output.as_ref().map(|o| o.deref()),
+                        );
                         warn!("Health is now {}", health);
                     }
                 }
@@ -123,7 +126,9 @@ impl<'s> System<'s> for PlayerEventsSystem {
         (mut healths, mut invincibilities, entities, event_channel): Self::SystemData,
     ) {
         for event in event_channel.read(&mut self.reader) {
-            for (mut health, mut invincibility, entity) in (&mut healths, &mut invincibilities, &entities).join() {
+            for (mut health, mut invincibility, entity) in
+                (&mut healths, &mut invincibilities, &entities).join()
+            {
                 match event {
                     PlayerEvent::Revive(new_health) => {
                         if health.0 == 0 {

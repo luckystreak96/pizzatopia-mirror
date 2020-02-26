@@ -6,11 +6,13 @@ use amethyst::ecs::{
 use amethyst::input::{InputHandler, StringBindings};
 
 // You'll have to mark TILE_HEIGHT as public in pong.rs
-use crate::components::physics::{Grounded, PlatformCuboid, Position, Velocity, GravityDirection};
+use crate::components::game::Health;
+use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::components::player::Player;
 use crate::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT};
-use crate::systems::physics::{gravitationally_adapted_velocity, gravitationally_de_adapted_velocity};
-use crate::components::game::Health;
+use crate::systems::physics::{
+    gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
+};
 
 #[derive(SystemDesc)]
 pub struct PlayerInputSystem;
@@ -25,8 +27,19 @@ impl<'s> System<'s> for PlayerInputSystem {
         ReadStorage<'s, GravityDirection>,
     );
 
-    fn run(&mut self, (mut velocities, input, players, healths, grounded, gravities): Self::SystemData) {
-        for (velocity, player, health, ground, gravity) in (&mut velocities, &players, &healths, (&grounded).maybe(), (&gravities).maybe()).join() {
+    fn run(
+        &mut self,
+        (mut velocities, input, players, healths, grounded, gravities): Self::SystemData,
+    ) {
+        for (velocity, player, health, ground, gravity) in (
+            &mut velocities,
+            &players,
+            &healths,
+            (&grounded).maybe(),
+            (&gravities).maybe(),
+        )
+            .join()
+        {
             if health.0 == 0 {
                 continue;
             }

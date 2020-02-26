@@ -1,7 +1,7 @@
 pub use self::player::PlayerInputSystem;
 
+pub(crate) mod console;
+pub mod game;
 pub mod graphics;
 pub mod physics;
-pub mod game;
 mod player;
-pub(crate) mod console;

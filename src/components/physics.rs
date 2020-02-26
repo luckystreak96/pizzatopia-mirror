@@ -1,20 +1,20 @@
 use amethyst::{
-    assets::{AssetStorage, Handle, Loader, PrefabData},
     assets::ProgressCounter,
+    assets::{AssetStorage, Handle, Loader, PrefabData},
     core::transform::Transform,
     derive::PrefabData,
-    ecs::Entity,
     ecs::prelude::{Component, DenseVecStorage},
+    ecs::Entity,
     ecs::WriteStorage,
-    Error,
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
+    Error,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
-use crate::utils::Vec2;
 use crate::systems::physics::CollisionDirection;
+use crate::utils::Vec2;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CollisionSideOfBlock {
@@ -135,14 +135,14 @@ impl Component for Velocity {
 
 pub struct Sticky(pub bool);
 
-impl Component for Sticky{
+impl Component for Sticky {
     type Storage = DenseVecStorage<Self>;
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct GravityDirection(pub CollisionDirection);
 
-impl Component for GravityDirection{
+impl Component for GravityDirection {
     type Storage = DenseVecStorage<Self>;
 }
 

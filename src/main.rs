@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
-use amethyst::input::{InputBundle, StringBindings};
 use amethyst::audio::AudioBundle;
+use amethyst::input::{InputBundle, StringBindings};
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
@@ -21,13 +21,14 @@ use amethyst::{
 };
 use log::info;
 
+mod audio;
 mod components;
 mod events;
 mod level;
 mod pizzatopia;
 mod systems;
-mod audio;
 mod utils;
+use crate::audio::initialise_audio;
 use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
 use crate::pizzatopia::MyEventReader;
@@ -47,7 +48,6 @@ use amethyst::{
     ecs::{DispatcherBuilder, Read, System, World, Write},
     prelude::*,
 };
-use crate::audio::initialise_audio;
 
 #[derive(Debug)]
 struct MyBundle;

@@ -1,5 +1,4 @@
 use amethyst::{
-    prelude::*,
     core::{
         bundle::SystemBundle,
         frame_limiter::FrameRateLimitStrategy,
@@ -7,13 +6,17 @@ use amethyst::{
         SystemDesc,
     },
     derive::SystemDesc,
-    ecs::{Component, DenseVecStorage, Write, Join, Read, ReadStorage, System, SystemData, World, WriteStorage},
+    ecs::{
+        Component, DenseVecStorage, Join, Read, ReadStorage, System, SystemData, World, Write,
+        WriteStorage,
+    },
     input::{InputHandler, StringBindings},
+    prelude::*,
 };
 
-use crate::utils::{read_line_from_console};
 use crate::components::physics::Grounded;
 use crate::events::{Events, PlayerEvent};
+use crate::utils::read_line_from_console;
 
 #[derive(SystemDesc)]
 pub struct ConsoleInputSystem;
@@ -30,18 +33,15 @@ impl<'s> System<'s> for ConsoleInputSystem {
 
         if input.action_is_down("console").unwrap_or(false) {
             input_string = read_line_from_console();
-        }
-        else if input.action_is_down("reset").unwrap_or(false) {
+        } else if input.action_is_down("reset").unwrap_or(false) {
             input_string = String::from("reset");
-        }
-        else if input.action_is_down("revive").unwrap_or(false) {
+        } else if input.action_is_down("revive").unwrap_or(false) {
             input_string = String::from("revive");
-        }
-        else {
+        } else {
             input_string = String::new();
         }
 
-        let args : Vec<_> = input_string.split_whitespace().collect();
+        let args: Vec<_> = input_string.split_whitespace().collect();
         if args.is_empty() {
             return;
         }
@@ -49,12 +49,11 @@ impl<'s> System<'s> for ConsoleInputSystem {
         match args[0] {
             "reset" => {
                 events_channel.single_write(Events::Reset);
-            },
+            }
             "revive" => {
                 player_event_channel.single_write(PlayerEvent::Revive(5));
-            },
+            }
             _ => {}
         }
-
     }
 }

@@ -1,3 +1,4 @@
+use crate::components::game::Health;
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
@@ -9,7 +10,6 @@ use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteSto
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
-use crate::components::game::Health;
 
 #[derive(SystemDesc)]
 pub struct PositionDrawUpdateSystem;

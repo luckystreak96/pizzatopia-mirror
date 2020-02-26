@@ -1,11 +1,11 @@
 use amethyst::{
-    assets::Loader,
-    audio::{OggFormat, WavFormat, SourceHandle},
-    ecs::{World, WorldExt},
-};
-use amethyst::{
     assets::AssetStorage,
     audio::{output::Output, Source},
+};
+use amethyst::{
+    assets::Loader,
+    audio::{OggFormat, SourceHandle, WavFormat},
+    ecs::{World, WorldExt},
 };
 
 const DAMAGE_SOUND: &str = "audio/ding-ding-ding.ogg";

@@ -1,41 +1,42 @@
-use crate::components::physics::{Collidee, Grounded, PlatformCollisionPoints, PlatformCuboid, Position, Velocity, Sticky, GravityDirection, CollisionSideOfBlock};
+use crate::audio::{initialise_audio, Sounds};
+use crate::components::game::{CollisionEvent, Health, Invincibility};
+use crate::components::graphics::AnimationCounter;
+use crate::components::physics::{
+    Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
+    PlatformCuboid, Position, Sticky, Velocity,
+};
 use crate::components::player::Player;
+use crate::events::Events;
 use crate::level::Level;
+use crate::pizzatopia::SpriteSheetType::{Character, Tiles};
+use crate::systems::physics::CollisionDirection;
 use crate::utils::Vec2;
-use amethyst::input::{InputHandler, StringBindings, is_key_down, VirtualKeyCode};
+use amethyst::derive::EventReader;
+use amethyst::input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode};
+use amethyst::renderer::rendy::hal::image::{Filter, SamplerInfo, WrapMode};
+use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, TextureKind};
+use amethyst::ui::UiEvent;
+use amethyst::winit::Event;
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
         PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
     },
+    core::{
+        bundle::SystemBundle,
+        ecs::{Read, SystemData, World},
+        frame_limiter::FrameRateLimitStrategy,
+        shrev::{EventChannel, ReaderId},
+        transform::Transform,
+        EventReader, SystemDesc,
+    },
     ecs::prelude::{Component, DenseVecStorage},
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
-    core::{
-        transform::Transform,
-        bundle::SystemBundle,
-        frame_limiter::FrameRateLimitStrategy,
-        shrev::{EventChannel, ReaderId},
-        SystemDesc,
-        ecs::{Read, SystemData, World},
-        EventReader
-    },
 };
-use amethyst::winit::Event;
-use amethyst::ui::UiEvent;
-use amethyst::derive::EventReader;
-use amethyst::renderer::rendy::hal::image::{Filter, SamplerInfo, WrapMode};
-use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, TextureKind};
 use log::info;
 use log::warn;
-use crate::pizzatopia::SpriteSheetType::{Tiles, Character};
-use crate::components::graphics::AnimationCounter;
-use crate::systems::physics::CollisionDirection;
-use crate::events::Events;
 use std::io;
-use crate::components::game::{Health, Invincibility, CollisionEvent};
-use crate::audio::{initialise_audio, Sounds};
-
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -71,8 +72,10 @@ pub(crate) struct Pizzatopia {
 
 impl Pizzatopia {
     fn load_sprite_sheets(&mut self, world: &mut World) {
-        self.spritesheets.push(load_spritesheet(String::from("texture/tiles"), world));
-        self.spritesheets.push(load_spritesheet(String::from("texture/spritesheet"), world));
+        self.spritesheets
+            .push(load_spritesheet(String::from("texture/tiles"), world));
+        self.spritesheets
+            .push(load_spritesheet(String::from("texture/spritesheet"), world));
     }
 
     fn initialize_level(&mut self, world: &mut World) {
@@ -102,10 +105,9 @@ impl Pizzatopia {
         );
         initialise_camera(world);
     }
-
 }
 
-impl<'s> State<GameData<'s,'s>, MyEvents> for Pizzatopia {
+impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         let world = data.world;
 
@@ -120,7 +122,11 @@ impl<'s> State<GameData<'s,'s>, MyEvents> for Pizzatopia {
         self.initialize_level(world);
     }
 
-    fn handle_event(&mut self, mut data: StateData<'_, GameData<'s, 's>>, event: MyEvents) -> Trans<GameData<'s,'s>, MyEvents> {
+    fn handle_event(
+        &mut self,
+        mut data: StateData<'_, GameData<'s, 's>>,
+        event: MyEvents,
+    ) -> Trans<GameData<'s, 's>, MyEvents> {
         let world = &mut data.world;
         if let MyEvents::Window(event) = &event {
             let input = world.read_resource::<InputHandler<StringBindings>>();
@@ -134,7 +140,7 @@ impl<'s> State<GameData<'s,'s>, MyEvents> for Pizzatopia {
                 Events::Reset => {
                     println!("Resetting map...");
                     self.initialize_level(world);
-                },
+                }
                 _ => {}
             }
         }
@@ -143,7 +149,10 @@ impl<'s> State<GameData<'s,'s>, MyEvents> for Pizzatopia {
         Trans::None
     }
 
-    fn update(&mut self, mut data: StateData<'_, GameData<'s, 's>>) -> Trans<GameData<'s,'s>, MyEvents> {
+    fn update(
+        &mut self,
+        mut data: StateData<'_, GameData<'s, 's>>,
+    ) -> Trans<GameData<'s, 's>, MyEvents> {
         data.data.update(&mut data.world);
         Trans::None
     }
@@ -218,12 +227,7 @@ fn initialise_playground(
     }
 
     for tile in tiles {
-        initialise_ground(
-            world,
-            sprite_sheet.clone(),
-            tile,
-            tile_size.clone(),
-        );
+        initialise_ground(world, sprite_sheet.clone(), tile, tile_size.clone());
     }
 }
 
@@ -300,4 +304,3 @@ fn initialise_camera(world: &mut World) {
         .with(transform)
         .build();
 }
-
