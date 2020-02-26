@@ -10,6 +10,8 @@ use amethyst::core::Transform;
 use amethyst::ecs::{Entities, Entity};
 use log::{debug, error, info, warn};
 
+use crate::components::game::CollisionEvent;
+use crate::components::player::Player;
 use amethyst::{
     core::{
         bundle::SystemBundle,
@@ -25,8 +27,6 @@ use amethyst::{
     input::{InputHandler, StringBindings},
     prelude::*,
 };
-use crate::components::game::CollisionEvent;
-use crate::components::player::Player;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CollisionDirection {
@@ -353,7 +353,10 @@ impl<'s> System<'s> for ActorCollisionSystem {
         Write<'s, EventChannel<CollisionEvent>>,
     );
 
-    fn run(&mut self, (positions, coll_points, players, entities, mut events_channel): Self::SystemData) {
+    fn run(
+        &mut self,
+        (positions, coll_points, players, entities, mut events_channel): Self::SystemData,
+    ) {
         for (ent_pos1, coll_point1, entity1) in (&positions, &coll_points, &entities).join() {
             let pos1 = Vec2::new(ent_pos1.0.x, ent_pos1.0.y);
             let (top_left1, bottom_right1) =
@@ -381,7 +384,6 @@ impl<'s> System<'s> for ActorCollisionSystem {
                         };
                         events_channel.single_write(CollisionEvent::EnemyCollision(player.id(), 1));
                     }
-
                 }
             }
         }
@@ -702,6 +704,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                         };
                         // Both collisions are found -> we done
                         if collidee.both() {
+                            //println!("BOTH {:?}", collidee.vertical.as_ref().unwrap().old_collider_vel);
                             break;
                         }
                     }
@@ -772,12 +775,12 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                 match cdee.side {
                     CollisionSideOfBlock::Left => {
                         if let Some(ground) = &mut grounded {
-                            ground.0 = grav_dir == CollisionDirection::FromLeft;
+                            ground.0 = ground.0 || grav_dir == CollisionDirection::FromLeft;
                         };
                     }
                     CollisionSideOfBlock::Right => {
                         if let Some(ground) = &mut grounded {
-                            ground.0 = grav_dir == CollisionDirection::FromRight;
+                            ground.0 = ground.0 || grav_dir == CollisionDirection::FromRight;
                         };
                     }
                     _ => {}
@@ -785,9 +788,6 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                 position.0.x += cdee.correction;
                 velocity.0.x = 0.0;
             }
-
-            //collidee.horizontal = None;
-            //collidee.vertical = None;
         }
     }
 }
