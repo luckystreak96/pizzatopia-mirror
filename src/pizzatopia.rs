@@ -11,12 +11,6 @@ use crate::level::Level;
 use crate::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::Vec2;
-use amethyst::derive::EventReader;
-use amethyst::input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode};
-use amethyst::renderer::rendy::hal::image::{Filter, SamplerInfo, WrapMode};
-use amethyst::renderer::rendy::texture::image::{ImageTextureConfig, Repr, TextureKind};
-use amethyst::ui::UiEvent;
-use amethyst::winit::Event;
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
@@ -29,10 +23,22 @@ use amethyst::{
         shrev::{EventChannel, ReaderId},
         transform::Transform,
         EventReader, SystemDesc,
+        Time,
     },
-    ecs::prelude::{Component, DenseVecStorage},
+    derive::EventReader,
+    ecs::prelude::{Entity, Component, DenseVecStorage},
+    input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
-    renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
+    renderer::{
+        Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
+        rendy::{
+            hal::image::{Filter, SamplerInfo, WrapMode},
+            texture::image::{ImageTextureConfig, Repr, TextureKind},
+        }
+    },
+    utils::{application_root_dir, fps_counter::{FpsCounter, FpsCounterBundle},},
+    ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
+    winit::Event,
 };
 use log::info;
 use log::warn;
@@ -68,6 +74,8 @@ pub(crate) struct Pizzatopia {
     pub level_handle: Handle<Level>,
     pub platform_size_prefab_handle: Handle<Prefab<PlatformCuboid>>,
     pub spritesheets: Vec<Handle<SpriteSheet>>,
+    pub fps_display: Option<Entity>,
+    pub load_ui: Option<Entity>,
 }
 
 impl Pizzatopia {
@@ -116,7 +124,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
         world.register::<Health>();
         world.register::<Invincibility>();
 
-        // initialise_audio(world);
+        self.load_ui = Some(world.exec(|mut creator: UiCreator<'_>| {
+            creator.create("ui/fps.ron", ())
+        }));
 
         self.load_sprite_sheets(world);
         self.initialize_level(world);
@@ -145,6 +155,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
             }
         }
 
+        if let MyEvents::Ui(event) = &event {
+            println!("Ui event triggered!");
+        }
+
         // Escape isn't pressed, so we stay in this `State`.
         Trans::None
     }
@@ -154,6 +168,23 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
         mut data: StateData<'_, GameData<'s, 's>>,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         data.data.update(&mut data.world);
+        if self.fps_display.is_none() {
+            data.world.exec(|finder: UiFinder<'_>| {
+                if let Some(entity) = finder.find("fps_text") {
+                    warn!("WE FOUND THE LABEL");
+                    self.fps_display = Some(entity);
+                }
+            });
+        }
+        let mut ui_text = data.world.write_storage::<UiText>();
+        {
+            if let Some(fps_display) = self.fps_display.and_then(|entity| ui_text.get_mut(entity)) {
+                if data.world.read_resource::<Time>().frame_number() % 20 == 0 {
+                    let fps = data.world.read_resource::<FpsCounter>().sampled_fps();
+                    fps_display.text = format!("FPS: {:.*}", 2, fps);
+                }
+            }
+        }
         Trans::None
     }
 }

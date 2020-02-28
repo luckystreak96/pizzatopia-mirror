@@ -9,14 +9,15 @@ use amethyst::{
         PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
     },
     core::transform::TransformBundle,
-    ecs::prelude::{ReadExpect, SystemData},
+    ecs::prelude::{Entity, ReadExpect, SystemData},
     prelude::*,
+    ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
     renderer::{
         plugins::{RenderFlat2D, RenderToWindow},
         types::DefaultBackend,
         RenderingBundle,
     },
-    utils::application_root_dir,
+    utils::{application_root_dir, fps_counter::{FpsCounter, FpsCounterBundle},},
     Error, Logger,
 };
 use log::info;
@@ -121,6 +122,11 @@ fn main() -> amethyst::Result<()> {
 
     let game_data = GameDataBuilder::default()
         .with_system_desc(PrefabLoaderSystemDesc::<PlatformCuboid>::default(), "", &[])
+        .with_bundle(input_bundle)?
+        .with_bundle(AudioBundle::default())?
+        .with_bundle(TransformBundle::new())?
+        .with_bundle(UiBundle::<StringBindings>::new())?
+        .with_bundle(FpsCounterBundle::default())?
         .with_bundle(
             RenderingBundle::<DefaultBackend>::new()
                 // The RenderToWindow plugin provides all the scaffolding for opening a window and drawing on it
@@ -128,11 +134,9 @@ fn main() -> amethyst::Result<()> {
                     RenderToWindow::from_config_path(display_config_path)?
                         .with_clear([0.34, 0.36, 0.52, 1.0]),
                 )
-                .with_plugin(RenderFlat2D::default()),
+                .with_plugin(RenderFlat2D::default())
+                .with_plugin(RenderUi::default()),
         )?
-        .with_bundle(input_bundle)?
-        .with_bundle(AudioBundle::default())?
-        .with_bundle(TransformBundle::new())?
         .with(Processor::<Level>::new(), "", &[])
         .with(
             ConsoleInputSystem,
@@ -183,7 +187,6 @@ fn main() -> amethyst::Result<()> {
 
     let assets_dir = app_root.join("assets");
 
-    info!("TEST");
     let mut game = CoreApplication::<_, MyEvents, MyEventReader>::new(
         assets_dir,
         LoadingState {
@@ -193,7 +196,6 @@ fn main() -> amethyst::Result<()> {
         },
         game_data,
     )?;
-    info!("TEST2");
     game.run();
 
     Ok(())
@@ -209,15 +211,17 @@ pub struct LoadingState {
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
+        let StateData { world, .. } = data;
         {
-            initialise_audio(data.world);
+            initialise_audio(world);
         }
         let platform_size_prefab_handle =
-            data.world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
+            world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
                 loader.load("prefab/tile_size.ron", RonFormat, ())
             });
-        let level_resource = &data.world.read_resource::<AssetStorage<Level>>();
-        let level_handle = data.world.read_resource::<Loader>().load(
+
+        let level_resource = &world.read_resource::<AssetStorage<Level>>();
+        let level_handle = world.read_resource::<Loader>().load(
             "levels/level0.ron", // Here we load the associated ron file
             RonFormat,
             &mut self.progress_counter,
@@ -238,6 +242,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
                 level_handle: self.level_handle.clone().unwrap(),
                 platform_size_prefab_handle: self.platform_size_prefab_handle.clone().unwrap(),
                 spritesheets: Vec::new(),
+                fps_display: None,
+                load_ui: None,
             }))
         } else {
             Trans::None
