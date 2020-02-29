@@ -243,7 +243,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
                 platform_size_prefab_handle: self.platform_size_prefab_handle.clone().unwrap(),
                 spritesheets: Vec::new(),
                 fps_display: None,
-                load_ui: None,
             }))
         } else {
             Trans::None

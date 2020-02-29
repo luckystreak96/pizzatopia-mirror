@@ -23,3 +23,9 @@ pub struct Invincibility(pub u32);
 impl Component for Invincibility {
     type Storage = DenseVecStorage<Self>;
 }
+
+#[derive(Default)]
+pub struct Resettable;
+impl Component for Resettable {
+    type Storage = NullStorage<Self>;
+}

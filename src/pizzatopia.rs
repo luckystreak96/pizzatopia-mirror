@@ -1,5 +1,5 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::game::{CollisionEvent, Health, Invincibility};
+use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -26,7 +26,7 @@ use amethyst::{
         Time,
     },
     derive::EventReader,
-    ecs::prelude::{Entity, Component, DenseVecStorage},
+    ecs::prelude::{Join, Entity, Component, DenseVecStorage},
     input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
     renderer::{
@@ -75,7 +75,6 @@ pub(crate) struct Pizzatopia {
     pub platform_size_prefab_handle: Handle<Prefab<PlatformCuboid>>,
     pub spritesheets: Vec<Handle<SpriteSheet>>,
     pub fps_display: Option<Entity>,
-    pub load_ui: Option<Entity>,
 }
 
 impl Pizzatopia {
@@ -86,12 +85,17 @@ impl Pizzatopia {
             .push(load_spritesheet(String::from("texture/spritesheet"), world));
     }
 
-    fn initialize_level(&mut self, world: &mut World) {
+    fn initialize_level(&mut self, world: &mut World, resetting: bool) {
         let tiles_sprite_sheet_handle = self.spritesheets[Tiles as usize].clone();
         let actor_sprite_sheet_handle = self.spritesheets[Character as usize].clone();
         let prefab_handle = self.platform_size_prefab_handle.clone();
 
-        world.delete_all();
+        // remove entities to be reset
+        let mut entities = Vec::new();
+        for (entity, reset) in (&world.entities(), &world.read_storage::<Resettable>()).join() {
+            entities.push(entity);
+        }
+        world.delete_entities(entities.as_slice()).expect("Failed to delete entities for reset.");
 
         initialise_actor(
             Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0),
@@ -105,13 +109,15 @@ impl Pizzatopia {
             world,
             actor_sprite_sheet_handle.clone(),
         );
-        initialise_playground(
-            world,
-            tiles_sprite_sheet_handle.clone(),
-            prefab_handle,
-            self.level_handle.clone(),
-        );
-        initialise_camera(world);
+        if !resetting {
+            initialise_playground(
+                world,
+                tiles_sprite_sheet_handle.clone(),
+                prefab_handle,
+                self.level_handle.clone(),
+            );
+            initialise_camera(world);
+        }
     }
 }
 
@@ -123,13 +129,15 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
         world.register::<PlatformCollisionPoints>();
         world.register::<Health>();
         world.register::<Invincibility>();
-
-        self.load_ui = Some(world.exec(|mut creator: UiCreator<'_>| {
-            creator.create("ui/fps.ron", ())
-        }));
+        world.register::<Resettable>();
 
         self.load_sprite_sheets(world);
-        self.initialize_level(world);
+        self.initialize_level(world, false);
+
+        world.exec(|mut creator: UiCreator<'_>| {
+            let mut progress = ProgressCounter::new();
+            creator.create("ui/fps.ron", &mut progress);
+        });
     }
 
     fn handle_event(
@@ -149,7 +157,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
             match event {
                 Events::Reset => {
                     println!("Resetting map...");
-                    self.initialize_level(world);
+                    self.initialize_level(world, true);
                 }
                 _ => {}
             }
@@ -171,7 +179,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
         if self.fps_display.is_none() {
             data.world.exec(|finder: UiFinder<'_>| {
                 if let Some(entity) = finder.find("fps_text") {
-                    warn!("WE FOUND THE LABEL");
                     self.fps_display = Some(entity);
                 }
             });
@@ -278,6 +285,7 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
     if player {
         world
             .create_entity()
+            .with(Resettable)
             .with(transform)
             .with(sprite_render.clone())
             .with(AnimationCounter(0))
@@ -296,6 +304,7 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
     } else {
         world
             .create_entity()
+            .with(Resettable)
             .with(transform)
             .with(sprite_render.clone())
             .with(AnimationCounter(0))
