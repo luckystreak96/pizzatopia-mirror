@@ -78,6 +78,16 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         self.time_start = Instant::now();
 
+        // Create cursor
+        data.world
+            .create_entity()
+            .with(EditorEntity)
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(pos.clone())
+            .with(amethyst::core::Hidden)
+            .build();
+
         Self::set_instance_transparent(data.world, 0.5);
         Self::set_editor_hidden(data.world, false);
     }

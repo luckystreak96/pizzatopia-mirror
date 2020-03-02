@@ -221,6 +221,19 @@ fn initialise_camera(world: &mut World) {
         .build();
 }
 
+fn get_camera_center(world: &mut World) -> Vec2 {
+    for (entity, camera, transform) in (
+        &world.entities(),
+        &world.read_storage::<Camera>(),
+        &world.read_storage::<Transform>(),
+    )
+        .join()
+    {
+        return Vec2::new(transform.translation().x, transform.translation().y);
+    }
+    return Vec2::new(0.0, 0.0);
+}
+
 impl<'a, 'b> Pizzatopia<'a, 'b> {
     fn create_pizzatopia_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
