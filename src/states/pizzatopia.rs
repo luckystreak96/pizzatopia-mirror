@@ -1,6 +1,6 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
-use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
+use crate::components::game::{CollisionEvent, EditorEntity, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -9,6 +9,7 @@ use crate::components::physics::{
 use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::Level;
+use crate::level::Tile;
 use crate::states::editor::Editor;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::systems;
@@ -124,6 +125,8 @@ impl Pizzatopia<'_, '_> {
 impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         data.world.register::<Resettable>();
+        data.world.register::<EditorEntity>();
+        data.world.register::<Tile>();
 
         // setup dispatcher
         let mut dispatcher = Pizzatopia::create_pizzatopia_dispatcher(data.world);

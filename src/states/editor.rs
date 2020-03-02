@@ -1,5 +1,5 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
+use crate::components::game::{CollisionEvent, EditorEntity, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -25,17 +25,21 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
-        ArcThreadPool, EventReader, SystemDesc, Time,
+        ArcThreadPool, EventReader, Hidden, SystemDesc, Time,
     },
     derive::EventReader,
-    ecs::prelude::{Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join},
+    ecs::prelude::{
+        Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join, WriteStorage,
+    },
     input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
     renderer::{
+        palette::{LinSrgba, Srgb, Srgba},
         rendy::{
             hal::image::{Filter, SamplerInfo, WrapMode},
             texture::image::{ImageTextureConfig, Repr, TextureKind},
         },
+        resources::Tint,
         Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
     },
     ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
@@ -71,6 +75,16 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         let mut dispatcher = Editor::create_dispatcher(data.world);
         dispatcher.setup(data.world);
         self.dispatcher = Some(dispatcher);
+
+        self.time_start = Instant::now();
+
+        Self::set_instance_transparent(data.world, 0.5);
+        Self::set_editor_hidden(data.world, false);
+    }
+
+    fn on_stop(&mut self, data: StateData<'_, GameData<'s, 's>>) {
+        Self::set_instance_transparent(data.world, 1.0);
+        Self::set_editor_hidden(data.world, true);
     }
 
     fn handle_event(
@@ -126,5 +140,52 @@ impl<'a, 'b> Editor<'a, 'b> {
         dispatcher_builder
             .with_pool((*world.read_resource::<ArcThreadPool>()).clone())
             .build()
+    }
+
+    fn set_instance_transparent(world: &mut World, transparency: f32) {
+        // make entities transparent
+        for (entity, transform, pos, editor) in (
+            &world.entities(),
+            &world.read_storage::<Transform>(),
+            &world.read_storage::<Position>(),
+            !&world.read_storage::<EditorEntity>(),
+        )
+            .join()
+        {
+            let storage = &mut world.write_storage::<Tint>();
+            storage
+                .insert(entity, Tint(Srgba::new(1.0, 1.0, 1.0, transparency)))
+                .expect("Error inserting Tint to entity in editor mode");
+        }
+    }
+
+    fn set_editor_hidden(world: &mut World, hide: bool) {
+        if hide {
+            for (entity, transform, pos, editor) in (
+                &world.entities(),
+                &world.read_storage::<Transform>(),
+                &world.read_storage::<Position>(),
+                &world.read_storage::<EditorEntity>(),
+            )
+                .join()
+            {
+                let storage = &mut world.write_storage::<Hidden>();
+                storage
+                    .insert(entity, Hidden)
+                    .expect("Error inserting Hidden to entity in editor mode");
+            }
+        } else {
+            for (entity, transform, pos, editor) in (
+                &world.entities(),
+                &world.read_storage::<Transform>(),
+                &world.read_storage::<Position>(),
+                &world.read_storage::<EditorEntity>(),
+            )
+                .join()
+            {
+                let storage = &mut world.write_storage::<Hidden>();
+                storage.remove(entity);
+            }
+        }
     }
 }

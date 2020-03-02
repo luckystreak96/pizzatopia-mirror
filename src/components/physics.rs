@@ -146,7 +146,7 @@ impl Component for GravityDirection {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Position(pub Vec2);
 
 impl Component for Position {

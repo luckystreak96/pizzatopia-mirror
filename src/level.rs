@@ -1,4 +1,4 @@
-use crate::components::game::{Health, Invincibility, Resettable};
+use crate::components::game::{EditorEntity, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
@@ -15,9 +15,14 @@ use amethyst::{
         ProgressCounter, Source,
     },
     core::transform::Transform,
+    ecs::prelude::{Component, DenseVecStorage, NullStorage},
     ecs::VecStorage,
     error::{format_err, Error, ResultExt},
     prelude::*,
+    renderer::palette::Color,
+    renderer::palette::{LinSrgba, Srgb, Srgba},
+    renderer::resources::Tint,
+    renderer::Transparent,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     utils::application_root_dir,
 };
@@ -43,9 +48,13 @@ impl From<Level> for Result<Level, Error> {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-struct Tile {
+pub(crate) struct Tile {
     pos: Vec2,
     sprite: usize,
+}
+
+impl Component for Tile {
+    type Storage = DenseVecStorage<Self>;
 }
 
 impl Level {
@@ -66,6 +75,18 @@ impl Level {
             sprite_number: tile.sprite, // grass is the first sprite in the sprite_sheet
         };
 
+        // create editor entity
+        world
+            .create_entity()
+            .with(EditorEntity)
+            .with(tile.clone())
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(pos.clone())
+            .with(amethyst::core::Hidden)
+            .build();
+
+        // Create gameplay entity
         world
             .create_entity()
             .with(tile_size.clone())
@@ -106,39 +127,42 @@ impl Level {
             sprite_number: 1, // grass is the first sprite in the sprite_sheet
         };
 
+        // create editor entity
+        world
+            .create_entity()
+            .with(EditorEntity)
+            // .with(tile)
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(Position(Vec2::new(pos.x, pos.y)))
+            // .with(Tint(Srgba::new(1.0, 1.0, 1.0, 0.5).into()))
+            .with(amethyst::core::Hidden)
+            .build();
+
+        let builder = world
+            .create_entity()
+            .with(Resettable)
+            .with(transform)
+            .with(sprite_render.clone())
+            .with(AnimationCounter(0))
+            .with(Grounded(false))
+            .with(Position(Vec2::new(pos.x, pos.y)))
+            .with(Velocity(Vec2::new(0.0, 0.0)))
+            .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.0))
+            .with(Collidee::new())
+            .with(Health(5))
+            .with(Invincibility(0))
+            // .with(Sticky(false))
+            // .with(GravityDirection(CollisionDirection::FromTop))
+            .with(Transparent);
+
         if player {
-            world
-                .create_entity()
-                .with(Resettable)
-                .with(transform)
-                .with(sprite_render.clone())
-                .with(AnimationCounter(0))
-                .with(Player)
-                .with(Grounded(false))
-                .with(Position(Vec2::new(pos.x, pos.y)))
-                .with(Velocity(Vec2::new(0.0, 0.0)))
-                //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
-                .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.0))
-                .with(Sticky(false))
+            builder
                 .with(GravityDirection(CollisionDirection::FromTop))
-                .with(Collidee::new())
-                .with(Health(5))
-                .with(Invincibility(0))
+                .with(Player)
                 .build();
         } else {
-            world
-                .create_entity()
-                .with(Resettable)
-                .with(transform)
-                .with(sprite_render.clone())
-                .with(AnimationCounter(0))
-                .with(Grounded(false))
-                .with(Position(Vec2::new(pos.x, pos.y)))
-                .with(Velocity(Vec2::new(0.0, 0.0)))
-                //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
-                .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
-                .with(Collidee::new())
-                .build();
+            builder.build();
         }
     }
 }
