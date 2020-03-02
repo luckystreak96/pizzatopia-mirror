@@ -1,7 +1,7 @@
 use crate::components::game::Health;
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
-use crate::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
+use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
 use amethyst::core::math::Vector3;
 use amethyst::core::{SystemDesc, Transform};

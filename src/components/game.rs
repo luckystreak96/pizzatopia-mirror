@@ -29,3 +29,9 @@ pub struct Resettable;
 impl Component for Resettable {
     type Storage = NullStorage<Self>;
 }
+
+#[derive(Default)]
+pub struct InstantiatedEntity;
+impl Component for InstantiatedEntity {
+    type Storage = NullStorage<Self>;
+}

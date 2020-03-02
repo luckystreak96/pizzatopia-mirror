@@ -1,5 +1,7 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
+use crate::components::game::{
+    CollisionEvent, Health, InstantiatedEntity, Invincibility, Resettable,
+};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -8,7 +10,7 @@ use crate::components::physics::{
 use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::Level;
-use crate::pizzatopia::SpriteSheetType::{Character, Tiles};
+use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::Vec2;
 use amethyst::{
@@ -22,26 +24,29 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
-        EventReader, SystemDesc,
-        Time,
+        EventReader, SystemDesc, Time,
     },
     derive::EventReader,
-    ecs::prelude::{Join, Entity, Component, DenseVecStorage},
+    ecs::prelude::{Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join},
     input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
     renderer::{
-        Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
         rendy::{
             hal::image::{Filter, SamplerInfo, WrapMode},
             texture::image::{ImageTextureConfig, Repr, TextureKind},
-        }
+        },
+        Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
     },
-    utils::{application_root_dir, fps_counter::{FpsCounter, FpsCounterBundle},},
     ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
+    utils::{
+        application_root_dir,
+        fps_counter::{FpsCounter, FpsCounterBundle},
+    },
     winit::Event,
 };
 use log::info;
 use log::warn;
+use std::borrow::Borrow;
 use std::io;
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
@@ -70,68 +75,49 @@ pub enum MyEvents {
     App(Events),
 }
 
-pub(crate) struct Pizzatopia {
-    pub level_handle: Handle<Level>,
-    pub platform_size_prefab_handle: Handle<Prefab<PlatformCuboid>>,
-    pub spritesheets: Vec<Handle<SpriteSheet>>,
-    pub fps_display: Option<Entity>,
+pub(crate) struct Pizzatopia<'a, 'b> {
+    fps_display: Option<Entity>,
+    dispatcher: Option<Dispatcher<'a, 'b>>,
 }
 
-impl Pizzatopia {
-    fn load_sprite_sheets(&mut self, world: &mut World) {
-        self.spritesheets
-            .push(load_spritesheet(String::from("texture/tiles"), world));
-        self.spritesheets
-            .push(load_spritesheet(String::from("texture/spritesheet"), world));
-    }
-
-    fn initialize_level(&mut self, world: &mut World, resetting: bool) {
-        let tiles_sprite_sheet_handle = self.spritesheets[Tiles as usize].clone();
-        let actor_sprite_sheet_handle = self.spritesheets[Character as usize].clone();
-        let prefab_handle = self.platform_size_prefab_handle.clone();
-
-        // remove entities to be reset
-        let mut entities = Vec::new();
-        for (entity, reset) in (&world.entities(), &world.read_storage::<Resettable>()).join() {
-            entities.push(entity);
+impl Default for Pizzatopia<'_, '_> {
+    fn default() -> Self {
+        Pizzatopia {
+            fps_display: None,
+            dispatcher: None,
         }
-        world.delete_entities(entities.as_slice()).expect("Failed to delete entities for reset.");
+    }
+}
 
-        initialise_actor(
-            Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0),
-            true,
-            world,
-            actor_sprite_sheet_handle.clone(),
-        );
+impl Pizzatopia<'_, '_> {
+    fn initialize_level(&mut self, world: &mut World, resetting: bool) {
+        // remove entities to be reset
+        let mut to_remove = Vec::new();
+        for (entity, reset) in (&world.entities(), &world.read_storage::<Resettable>()).join() {
+            to_remove.push(entity);
+        }
+        world
+            .delete_entities(to_remove.as_slice())
+            .expect("Failed to delete entities for reset.");
+
+        // add the entities for the level
+        initialise_actor(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world);
         initialise_actor(
             Vec2::new(CAM_WIDTH / 2.0 - (TILE_HEIGHT * 2.0), CAM_HEIGHT / 2.0),
             false,
             world,
-            actor_sprite_sheet_handle.clone(),
         );
         if !resetting {
-            initialise_playground(
-                world,
-                tiles_sprite_sheet_handle.clone(),
-                prefab_handle,
-                self.level_handle.clone(),
-            );
+            initialise_playground(world);
             initialise_camera(world);
         }
     }
 }
 
-impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
+impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         let world = data.world;
-
-        world.register::<PlatformCuboid>();
-        world.register::<PlatformCollisionPoints>();
-        world.register::<Health>();
-        world.register::<Invincibility>();
         world.register::<Resettable>();
-
-        self.load_sprite_sheets(world);
         self.initialize_level(world, false);
 
         world.exec(|mut creator: UiCreator<'_>| {
@@ -196,43 +182,16 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia {
     }
 }
 
-fn load_spritesheet(filename_without_extension: String, world: &mut World) -> Handle<SpriteSheet> {
-    // Load the sprite sheet necessary to render the graphics.
-    // The texture is the pixel data
-    // `texture_handle` is a cloneable reference to the texture
-    let texture_handle = {
-        let loader = world.read_resource::<Loader>();
-        let texture_storage = world.read_resource::<AssetStorage<Texture>>();
-        loader.load(
-            filename_without_extension.clone() + ".png",
-            ImageFormat(get_image_texure_config()),
-            (),
-            &texture_storage,
-        )
-    };
-
-    let loader = world.read_resource::<Loader>();
-    let sprite_sheet_store = world.read_resource::<AssetStorage<SpriteSheet>>();
-    loader.load(
-        filename_without_extension.clone() + ".ron", // Here we load the associated ron file
-        SpriteSheetFormat(texture_handle),
-        (),
-        &sprite_sheet_store,
-    )
-}
-
 /// Initialises the ground.
-fn initialise_ground(
-    world: &mut World,
-    sprite_sheet: Handle<SpriteSheet>,
-    pos: Vec2,
-    tile_size: Handle<Prefab<PlatformCuboid>>,
-) {
+fn initialise_ground(world: &mut World, pos: Vec2) {
+    let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
+
     let transform = Transform::default();
 
     // Correctly position the tile.
     let pos = Position(pos);
 
+    let sprite_sheet = world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
     // Assign the sprite
     let sprite_render = SpriteRender {
         sprite_sheet: sprite_sheet.clone(),
@@ -241,7 +200,7 @@ fn initialise_ground(
 
     world
         .create_entity()
-        .with(tile_size)
+        .with(tile_size.clone())
         //.with(PlatformCuboid::new())
         .with(pos)
         .with(transform)
@@ -249,33 +208,30 @@ fn initialise_ground(
         .build();
 }
 
-fn initialise_playground(
-    world: &mut World,
-    sprite_sheet: Handle<SpriteSheet>,
-    tile_size: Handle<Prefab<PlatformCuboid>>,
-    level_handle: Handle<Level>,
-) {
+fn initialise_playground(world: &mut World) {
     let tiles;
     {
         let asset = &world.read_resource::<AssetStorage<Level>>();
         let level = asset
-            .get(&level_handle)
+            .get(&world.read_resource::<Handle<Level>>().clone())
             .expect("Expected level to be loaded.");
         tiles = level.tiles.clone();
     }
 
     for tile in tiles {
-        initialise_ground(world, sprite_sheet.clone(), tile, tile_size.clone());
+        initialise_ground(world, tile);
     }
 }
 
 /// Initialises one tile.
-fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
+fn initialise_actor(pos: Vec2, player: bool, world: &mut World) {
     let mut transform = Transform::default();
 
     // Correctly position the paddles.
     transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
+    let sprite_sheet =
+        world.read_resource::<Vec<Handle<SpriteSheet>>>()[Character as usize].clone();
     // Assign the sprite
     let sprite_render = SpriteRender {
         sprite_sheet: sprite_sheet.clone(),
@@ -300,6 +256,7 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
             .with(Collidee::new())
             .with(Health(5))
             .with(Invincibility(0))
+            .with(InstantiatedEntity)
             .build();
     } else {
         world
@@ -315,21 +272,6 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World, sprite_sheet: Ha
             .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
             .with(Collidee::new())
             .build();
-    }
-}
-
-fn get_image_texure_config() -> ImageTextureConfig {
-    ImageTextureConfig {
-        // Determine format automatically
-        format: None,
-        // Color channel
-        repr: Repr::Srgb,
-        // Two-dimensional texture
-        kind: TextureKind::D2,
-        sampler_info: SamplerInfo::new(Filter::Linear, WrapMode::Clamp),
-        // Don't generate mipmaps for this image
-        generate_mips: false,
-        premultiply_alpha: true,
     }
 }
 

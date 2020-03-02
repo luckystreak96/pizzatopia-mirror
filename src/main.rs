@@ -9,36 +9,6 @@ use amethyst::{
         PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
     },
     core::transform::TransformBundle,
-    ecs::prelude::{Entity, ReadExpect, SystemData},
-    prelude::*,
-    ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
-    renderer::{
-        plugins::{RenderFlat2D, RenderToWindow},
-        types::DefaultBackend,
-        RenderingBundle,
-    },
-    utils::{application_root_dir, fps_counter::{FpsCounter, FpsCounterBundle},},
-    Error, Logger,
-};
-use log::info;
-
-mod audio;
-mod components;
-mod events;
-mod level;
-mod pizzatopia;
-mod systems;
-mod utils;
-use crate::audio::initialise_audio;
-use crate::components::physics::PlatformCuboid;
-use crate::level::Level;
-use crate::pizzatopia::MyEventReader;
-use crate::pizzatopia::{MyEvents, Pizzatopia};
-use crate::systems::console::ConsoleInputSystem;
-use crate::systems::game::EnemyCollisionSystem;
-use crate::systems::game::EnemyCollisionSystemDesc;
-use crate::systems::game::PlayerEventsSystemDesc;
-use amethyst::{
     core::{
         bundle::SystemBundle,
         frame_limiter::FrameRateLimitStrategy,
@@ -46,65 +16,40 @@ use amethyst::{
         SystemDesc,
     },
     derive::SystemDesc,
+    ecs::prelude::{Entity, ReadExpect, SystemData},
     ecs::{DispatcherBuilder, Read, System, World, Write},
     prelude::*,
+    renderer::{
+        plugins::{RenderFlat2D, RenderToWindow},
+        types::DefaultBackend,
+        ImageFormat, RenderingBundle, SpriteSheet, Texture,
+    },
+    ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
+    utils::{
+        application_root_dir,
+        fps_counter::{FpsCounter, FpsCounterBundle},
+    },
+    Error, Logger,
 };
+use log::info;
 
-#[derive(Debug)]
-struct MyBundle;
-
-impl<'a, 'b> SystemBundle<'a, 'b> for MyBundle {
-    fn build(
-        self,
-        world: &mut World,
-        builder: &mut DispatcherBuilder<'a, 'b>,
-    ) -> Result<(), Error> {
-        builder.add(
-            systems::game::InvincibilitySystem,
-            "invincibility_system",
-            &["apply_velocity_system"],
-        );
-        builder.add(
-            EnemyCollisionSystemDesc::default().build(world),
-            "enemy_collision_system",
-            &["invincibility_system"],
-        );
-        builder.add(
-            PlayerEventsSystemDesc::default().build(world),
-            "player_events_system",
-            &["enemy_collision_system"],
-        );
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-struct GraphicsBundle;
-
-impl<'a, 'b> SystemBundle<'a, 'b> for GraphicsBundle {
-    fn build(
-        self,
-        world: &mut World,
-        builder: &mut DispatcherBuilder<'a, 'b>,
-    ) -> Result<(), Error> {
-        builder.add(
-            systems::graphics::SpriteUpdateSystem,
-            "sprite_update_system",
-            &["apply_velocity_system"],
-        );
-        builder.add(
-            systems::graphics::PositionDrawUpdateSystem,
-            "position_draw_update_system",
-            &["sprite_update_system"],
-        );
-        builder.add(
-            systems::graphics::DeadDrawUpdateSystem,
-            "dead_draw_update_system",
-            &["position_draw_update_system"],
-        );
-        Ok(())
-    }
-}
+mod audio;
+mod bundles;
+mod components;
+mod events;
+mod level;
+mod states;
+mod systems;
+mod utils;
+use crate::audio::initialise_audio;
+use crate::bundles::{GameLogicBundle, GraphicsBundle};
+use crate::components::physics::PlatformCuboid;
+use crate::level::Level;
+use crate::states::loading::LoadingState;
+use crate::states::pizzatopia::MyEventReader;
+use crate::states::pizzatopia::{MyEvents, Pizzatopia};
+use crate::systems::console::ConsoleInputSystem;
+use crate::systems::game::EnemyCollisionSystem;
 
 fn main() -> amethyst::Result<()> {
     // Logging for GL stuff
@@ -182,70 +127,17 @@ fn main() -> amethyst::Result<()> {
             "apply_sticky_system",
             &["apply_velocity_system"],
         )
-        .with_bundle(MyBundle)?
+        .with_bundle(GameLogicBundle)?
         .with_bundle(GraphicsBundle)?;
 
     let assets_dir = app_root.join("assets");
 
     let mut game = CoreApplication::<_, MyEvents, MyEventReader>::new(
         assets_dir,
-        LoadingState {
-            progress_counter: ProgressCounter::new(),
-            level_handle: None,
-            platform_size_prefab_handle: None,
-        },
+        LoadingState::default(),
         game_data,
     )?;
     game.run();
 
     Ok(())
-}
-
-pub struct LoadingState {
-    /// Tracks loaded assets.
-    progress_counter: ProgressCounter,
-    /// Handle to the energy blast.
-    level_handle: Option<Handle<Level>>,
-    platform_size_prefab_handle: Option<Handle<Prefab<PlatformCuboid>>>,
-}
-
-impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
-    fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        let StateData { world, .. } = data;
-        {
-            initialise_audio(world);
-        }
-        let platform_size_prefab_handle =
-            world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
-                loader.load("prefab/tile_size.ron", RonFormat, ())
-            });
-
-        let level_resource = &world.read_resource::<AssetStorage<Level>>();
-        let level_handle = world.read_resource::<Loader>().load(
-            "levels/level0.ron", // Here we load the associated ron file
-            RonFormat,
-            &mut self.progress_counter,
-            &level_resource,
-        );
-
-        self.platform_size_prefab_handle = Some(platform_size_prefab_handle);
-        self.level_handle = Some(level_handle);
-    }
-
-    fn update(
-        &mut self,
-        mut data: StateData<'_, GameData<'s, 's>>,
-    ) -> Trans<GameData<'s, 's>, MyEvents> {
-        data.data.update(&mut data.world);
-        if self.progress_counter.is_complete() {
-            Trans::Switch(Box::new(Pizzatopia {
-                level_handle: self.level_handle.clone().unwrap(),
-                platform_size_prefab_handle: self.platform_size_prefab_handle.clone().unwrap(),
-                spritesheets: Vec::new(),
-                fps_display: None,
-            }))
-        } else {
-            Trans::None
-        }
-    }
 }

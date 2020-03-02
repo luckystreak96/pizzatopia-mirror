@@ -12,7 +12,7 @@ use amethyst::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
+use crate::states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::Vec2;
 

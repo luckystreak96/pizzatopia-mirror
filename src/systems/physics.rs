@@ -3,14 +3,14 @@ use crate::components::physics::{
     PlatformCollisionPoints, PlatformCuboid, Position, Sticky, Velocity,
 };
 use crate::events::Events;
-use crate::pizzatopia::{FRICTION, MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH};
+use crate::states::pizzatopia::{FRICTION, MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH};
 use crate::systems::physics::CollisionDirection::FromTop;
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::Transform;
 use amethyst::ecs::{Entities, Entity};
 use log::{debug, error, info, warn};
 
-use crate::components::game::CollisionEvent;
+use crate::components::game::{CollisionEvent, InstantiatedEntity};
 use crate::components::player::Player;
 use amethyst::{
     core::{
@@ -212,9 +212,13 @@ pub fn gravitationally_de_adapted_velocity(vel: &Vec2, gravity: &GravityDirectio
 pub struct ApplyVelocitySystem;
 
 impl<'s> System<'s> for ApplyVelocitySystem {
-    type SystemData = (WriteStorage<'s, Velocity>, WriteStorage<'s, Position>);
+    type SystemData = (
+        WriteStorage<'s, Velocity>,
+        WriteStorage<'s, Position>,
+        ReadStorage<'s, InstantiatedEntity>,
+    );
 
-    fn run(&mut self, (mut velocities, mut positions): Self::SystemData) {
+    fn run(&mut self, (mut velocities, mut positions, instanced): Self::SystemData) {
         for (velocity, position) in (&mut velocities, &mut positions).join() {
             position.0.x += velocity.0.x;
             position.0.y += velocity.0.y;

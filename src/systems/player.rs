@@ -9,7 +9,7 @@ use amethyst::input::{InputHandler, StringBindings};
 use crate::components::game::Health;
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::components::player::Player;
-use crate::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT};
+use crate::states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT};
 use crate::systems::physics::{
     gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
 };
