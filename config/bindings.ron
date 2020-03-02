@@ -8,5 +8,6 @@
     "console": [[Key(Backslash)]],
     "reset": [[Key(Home)]],
     "revive": [[Key(PageUp)]],
+    "editor": [[Key(LControl)]],
   },
 )

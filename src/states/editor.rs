@@ -10,6 +10,8 @@ use crate::events::Events;
 use crate::level::Level;
 use crate::states::pizzatopia::MyEvents;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
+use crate::systems;
+use crate::systems::console::ConsoleInputSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::Vec2;
 use amethyst::{
@@ -23,7 +25,7 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
-        EventReader, SystemDesc, Time,
+        ArcThreadPool, EventReader, SystemDesc, Time,
     },
     derive::EventReader,
     ecs::prelude::{Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join},
@@ -47,29 +49,28 @@ use log::info;
 use log::warn;
 use std::borrow::Borrow;
 use std::io;
+use std::time::{Duration, Instant};
 
 pub(crate) struct Editor<'a, 'b> {
-    fps_display: Option<Entity>,
     dispatcher: Option<Dispatcher<'a, 'b>>,
+    time_start: Instant,
 }
 
 impl Default for Editor<'_, '_> {
     fn default() -> Self {
         Editor {
-            fps_display: None,
             dispatcher: None,
+            time_start: Instant::now(),
         }
     }
 }
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        let world = data.world;
-
-        world.exec(|mut creator: UiCreator<'_>| {
-            let mut progress = ProgressCounter::new();
-            creator.create("ui/fps.ron", &mut progress);
-        });
+        // setup dispatcher
+        let mut dispatcher = Editor::create_dispatcher(data.world);
+        dispatcher.setup(data.world);
+        self.dispatcher = Some(dispatcher);
     }
 
     fn handle_event(
@@ -82,6 +83,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
             let input = world.read_resource::<InputHandler<StringBindings>>();
             if input.action_is_down("exit").unwrap_or(false) {
                 return Trans::Quit;
+            } else if input.action_is_down("editor").unwrap_or(false) {
+                if self.time_start.elapsed().as_secs() > 0 {
+                    return Trans::Pop;
+                }
             }
         }
 
@@ -100,22 +105,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         mut data: StateData<'_, GameData<'s, 's>>,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         data.data.update(&mut data.world);
-        if self.fps_display.is_none() {
-            data.world.exec(|finder: UiFinder<'_>| {
-                if let Some(entity) = finder.find("fps_text") {
-                    self.fps_display = Some(entity);
-                }
-            });
+        if let Some(dispatcher) = self.dispatcher.as_mut() {
+            dispatcher.dispatch(&data.world);
         }
-        let mut ui_text = data.world.write_storage::<UiText>();
-        {
-            if let Some(fps_display) = self.fps_display.and_then(|entity| ui_text.get_mut(entity)) {
-                if data.world.read_resource::<Time>().frame_number() % 20 == 0 {
-                    let fps = data.world.read_resource::<FpsCounter>().sampled_fps();
-                    fps_display.text = format!("FPS: {:.*}", 2, fps);
-                }
-            }
-        }
+
         Trans::None
     }
 }
@@ -144,4 +137,20 @@ fn initialise_ground(world: &mut World, pos: Vec2) {
         .with(transform)
         .with(sprite_render.clone())
         .build();
+}
+
+impl<'a, 'b> Editor<'a, 'b> {
+    fn create_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
+        let mut dispatcher_builder = DispatcherBuilder::new();
+        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
+        dispatcher_builder.add(
+            systems::graphics::PositionDrawUpdateSystem,
+            "position_draw_update_system",
+            &[],
+        );
+
+        dispatcher_builder
+            .with_pool((*world.read_resource::<ArcThreadPool>()).clone())
+            .build()
+    }
 }

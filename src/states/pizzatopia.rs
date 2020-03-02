@@ -9,6 +9,7 @@ use crate::components::physics::{
 use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::Level;
+use crate::states::editor::Editor;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
@@ -49,6 +50,8 @@ use log::info;
 use log::warn;
 use std::borrow::Borrow;
 use std::io;
+use std::thread::park_timeout;
+use std::time::Instant;
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -79,6 +82,7 @@ pub enum MyEvents {
 pub(crate) struct Pizzatopia<'a, 'b> {
     fps_display: Option<Entity>,
     dispatcher: Option<Dispatcher<'a, 'b>>,
+    time_start: Instant,
 }
 
 impl Default for Pizzatopia<'_, '_> {
@@ -86,6 +90,7 @@ impl Default for Pizzatopia<'_, '_> {
         Pizzatopia {
             fps_display: None,
             dispatcher: None,
+            time_start: Instant::now(),
         }
     }
 }
@@ -117,71 +122,23 @@ impl Pizzatopia<'_, '_> {
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        let mut world = data.world;
-        world.register::<Resettable>();
+        data.world.register::<Resettable>();
 
         // setup dispatcher
-        let mut dispatcher_builder = DispatcherBuilder::new();
-        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
-        dispatcher_builder.add(
-            systems::PlayerInputSystem,
-            "player_input_system",
-            &["console_input_system"],
-        );
-        dispatcher_builder.add(
-            systems::physics::ActorCollisionSystem,
-            "actor_collision_system",
-            &[],
-        );
-        dispatcher_builder.add(
-            systems::physics::ApplyGravitySystem,
-            "apply_gravity_system",
-            &[],
-        );
-        dispatcher_builder.add(
-            systems::physics::PlatformCollisionSystem,
-            "platform_collision_system",
-            &[
-                "player_input_system",
-                "apply_gravity_system",
-                "actor_collision_system",
-            ],
-        );
-        dispatcher_builder.add(
-            systems::physics::ApplyCollisionSystem,
-            "apply_collision_system",
-            &["platform_collision_system"],
-        );
-        dispatcher_builder.add(
-            systems::physics::ApplyVelocitySystem,
-            "apply_velocity_system",
-            &["apply_collision_system"],
-        );
-        dispatcher_builder.add(
-            systems::physics::ApplyStickySystem,
-            "apply_sticky_system",
-            &["apply_velocity_system"],
-        );
-        // register a bundle to the builder
-        GameLogicBundle::default()
-            .build(&mut world, &mut dispatcher_builder)
-            .expect("Failed to register GameLogic bundle.");
-        GraphicsBundle::default()
-            .build(&mut world, &mut dispatcher_builder)
-            .expect("Failed to register Graphics bundle.");
-
-        let mut dispatcher = dispatcher_builder
-            .with_pool((*world.read_resource::<ArcThreadPool>()).clone())
-            .build();
-        dispatcher.setup(world);
+        let mut dispatcher = Pizzatopia::create_pizzatopia_dispatcher(data.world);
+        dispatcher.setup(data.world);
         self.dispatcher = Some(dispatcher);
 
-        self.initialize_level(world, false);
+        self.initialize_level(data.world, false);
 
-        world.exec(|mut creator: UiCreator<'_>| {
+        data.world.exec(|mut creator: UiCreator<'_>| {
             let mut progress = ProgressCounter::new();
             creator.create("ui/fps.ron", &mut progress);
         });
+    }
+
+    fn on_resume(&mut self, _data: StateData<'_, GameData<'s, 's>>) {
+        self.time_start = Instant::now();
     }
 
     fn handle_event(
@@ -194,6 +151,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
             let input = world.read_resource::<InputHandler<StringBindings>>();
             if input.action_is_down("exit").unwrap_or(false) {
                 return Trans::Quit;
+            } else if input.action_is_down("editor").unwrap_or(false) {
+                if self.time_start.elapsed().as_secs() > 0 {
+                    return Trans::Push(Box::new(Editor::default()));
+                }
             }
         }
 
@@ -346,4 +307,61 @@ fn initialise_camera(world: &mut World) {
         .with(Camera::standard_2d(CAM_WIDTH, CAM_HEIGHT))
         .with(transform)
         .build();
+}
+
+impl<'a, 'b> Pizzatopia<'a, 'b> {
+    fn create_pizzatopia_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
+        let mut dispatcher_builder = DispatcherBuilder::new();
+        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
+        dispatcher_builder.add(
+            systems::PlayerInputSystem,
+            "player_input_system",
+            &["console_input_system"],
+        );
+        dispatcher_builder.add(
+            systems::physics::ActorCollisionSystem,
+            "actor_collision_system",
+            &[],
+        );
+        dispatcher_builder.add(
+            systems::physics::ApplyGravitySystem,
+            "apply_gravity_system",
+            &[],
+        );
+        dispatcher_builder.add(
+            systems::physics::PlatformCollisionSystem,
+            "platform_collision_system",
+            &[
+                "player_input_system",
+                "apply_gravity_system",
+                "actor_collision_system",
+            ],
+        );
+        dispatcher_builder.add(
+            systems::physics::ApplyCollisionSystem,
+            "apply_collision_system",
+            &["platform_collision_system"],
+        );
+        dispatcher_builder.add(
+            systems::physics::ApplyVelocitySystem,
+            "apply_velocity_system",
+            &["apply_collision_system"],
+        );
+        dispatcher_builder.add(
+            systems::physics::ApplyStickySystem,
+            "apply_sticky_system",
+            &["apply_velocity_system"],
+        );
+        // register a bundle to the builder
+        GameLogicBundle::default()
+            .build(world, &mut dispatcher_builder)
+            .expect("Failed to register GameLogic bundle.");
+        GraphicsBundle::default()
+            .build(world, &mut dispatcher_builder)
+            .expect("Failed to register Graphics bundle.");
+
+        dispatcher_builder
+            .with_pool((*world.read_resource::<ArcThreadPool>()).clone())
+            .build()
+    }
 }
