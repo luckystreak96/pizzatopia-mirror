@@ -10,7 +10,7 @@ use amethyst::core::Transform;
 use amethyst::ecs::{Entities, Entity};
 use log::{debug, error, info, warn};
 
-use crate::components::game::{CollisionEvent, InstantiatedEntity};
+use crate::components::game::CollisionEvent;
 use crate::components::player::Player;
 use amethyst::{
     core::{
@@ -212,13 +212,9 @@ pub fn gravitationally_de_adapted_velocity(vel: &Vec2, gravity: &GravityDirectio
 pub struct ApplyVelocitySystem;
 
 impl<'s> System<'s> for ApplyVelocitySystem {
-    type SystemData = (
-        WriteStorage<'s, Velocity>,
-        WriteStorage<'s, Position>,
-        ReadStorage<'s, InstantiatedEntity>,
-    );
+    type SystemData = (WriteStorage<'s, Velocity>, WriteStorage<'s, Position>);
 
-    fn run(&mut self, (mut velocities, mut positions, instanced): Self::SystemData) {
+    fn run(&mut self, (mut velocities, mut positions): Self::SystemData) {
         for (velocity, position) in (&mut velocities, &mut positions).join() {
             position.0.x += velocity.0.x;
             position.0.y += velocity.0.y;

@@ -82,53 +82,7 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(RenderFlat2D::default())
                 .with_plugin(RenderUi::default()),
         )?
-        .with(Processor::<Level>::new(), "", &[])
-        .with(
-            ConsoleInputSystem,
-            "console_input_system",
-            &["input_system"],
-        )
-        .with(
-            systems::PlayerInputSystem,
-            "player_input_system",
-            &["input_system", "console_input_system"],
-        )
-        .with(
-            systems::physics::ActorCollisionSystem,
-            "actor_collision_system",
-            &[],
-        )
-        .with(
-            systems::physics::ApplyGravitySystem,
-            "apply_gravity_system",
-            &[],
-        )
-        .with(
-            systems::physics::PlatformCollisionSystem,
-            "platform_collision_system",
-            &[
-                "player_input_system",
-                "apply_gravity_system",
-                "actor_collision_system",
-            ],
-        )
-        .with(
-            systems::physics::ApplyCollisionSystem,
-            "apply_collision_system",
-            &["platform_collision_system"],
-        )
-        .with(
-            systems::physics::ApplyVelocitySystem,
-            "apply_velocity_system",
-            &["apply_collision_system"],
-        )
-        .with(
-            systems::physics::ApplyStickySystem,
-            "apply_sticky_system",
-            &["apply_velocity_system"],
-        )
-        .with_bundle(GameLogicBundle)?
-        .with_bundle(GraphicsBundle)?;
+        .with(Processor::<Level>::new(), "", &[]);
 
     let assets_dir = app_root.join("assets");
 

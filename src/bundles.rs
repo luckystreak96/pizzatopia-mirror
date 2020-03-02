@@ -10,6 +10,12 @@ use amethyst::Error;
 #[derive(Debug)]
 pub(crate) struct GameLogicBundle;
 
+impl Default for GameLogicBundle {
+    fn default() -> Self {
+        GameLogicBundle {}
+    }
+}
+
 impl<'a, 'b> SystemBundle<'a, 'b> for GameLogicBundle {
     fn build(
         self,
@@ -37,6 +43,12 @@ impl<'a, 'b> SystemBundle<'a, 'b> for GameLogicBundle {
 
 #[derive(Debug)]
 pub(crate) struct GraphicsBundle;
+
+impl Default for GraphicsBundle {
+    fn default() -> Self {
+        GraphicsBundle {}
+    }
+}
 
 impl<'a, 'b> SystemBundle<'a, 'b> for GraphicsBundle {
     fn build(

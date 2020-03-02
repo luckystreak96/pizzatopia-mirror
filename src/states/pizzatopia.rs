@@ -1,7 +1,6 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::game::{
-    CollisionEvent, Health, InstantiatedEntity, Invincibility, Resettable,
-};
+use crate::bundles::{GameLogicBundle, GraphicsBundle};
+use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -11,6 +10,8 @@ use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::Level;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
+use crate::systems;
+use crate::systems::console::ConsoleInputSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::Vec2;
 use amethyst::{
@@ -24,7 +25,7 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
-        EventReader, SystemDesc, Time,
+        ArcThreadPool, EventReader, SystemDesc, Time,
     },
     derive::EventReader,
     ecs::prelude::{Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join},
@@ -62,7 +63,7 @@ pub const FRICTION: f32 = 0.90;
 
 #[repr(u8)]
 #[derive(Clone)]
-enum SpriteSheetType {
+pub enum SpriteSheetType {
     Tiles = 0,
     Character,
 }
@@ -116,8 +117,65 @@ impl Pizzatopia<'_, '_> {
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        let world = data.world;
+        let mut world = data.world;
         world.register::<Resettable>();
+
+        // setup dispatcher
+        let mut dispatcher_builder = DispatcherBuilder::new();
+        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
+        dispatcher_builder.add(
+            systems::PlayerInputSystem,
+            "player_input_system",
+            &["console_input_system"],
+        );
+        dispatcher_builder.add(
+            systems::physics::ActorCollisionSystem,
+            "actor_collision_system",
+            &[],
+        );
+        dispatcher_builder.add(
+            systems::physics::ApplyGravitySystem,
+            "apply_gravity_system",
+            &[],
+        );
+        dispatcher_builder.add(
+            systems::physics::PlatformCollisionSystem,
+            "platform_collision_system",
+            &[
+                "player_input_system",
+                "apply_gravity_system",
+                "actor_collision_system",
+            ],
+        );
+        dispatcher_builder.add(
+            systems::physics::ApplyCollisionSystem,
+            "apply_collision_system",
+            &["platform_collision_system"],
+        );
+        dispatcher_builder.add(
+            systems::physics::ApplyVelocitySystem,
+            "apply_velocity_system",
+            &["apply_collision_system"],
+        );
+        dispatcher_builder.add(
+            systems::physics::ApplyStickySystem,
+            "apply_sticky_system",
+            &["apply_velocity_system"],
+        );
+        // register a bundle to the builder
+        GameLogicBundle::default()
+            .build(&mut world, &mut dispatcher_builder)
+            .expect("Failed to register GameLogic bundle.");
+        GraphicsBundle::default()
+            .build(&mut world, &mut dispatcher_builder)
+            .expect("Failed to register Graphics bundle.");
+
+        let mut dispatcher = dispatcher_builder
+            .with_pool((*world.read_resource::<ArcThreadPool>()).clone())
+            .build();
+        dispatcher.setup(world);
+        self.dispatcher = Some(dispatcher);
+
         self.initialize_level(world, false);
 
         world.exec(|mut creator: UiCreator<'_>| {
@@ -162,6 +220,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         mut data: StateData<'_, GameData<'s, 's>>,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         data.data.update(&mut data.world);
+        if let Some(dispatcher) = self.dispatcher.as_mut() {
+            dispatcher.dispatch(&mut data.world);
+        }
+
         if self.fps_display.is_none() {
             data.world.exec(|finder: UiFinder<'_>| {
                 if let Some(entity) = finder.find("fps_text") {
@@ -256,7 +318,6 @@ fn initialise_actor(pos: Vec2, player: bool, world: &mut World) {
             .with(Collidee::new())
             .with(Health(5))
             .with(Invincibility(0))
-            .with(InstantiatedEntity)
             .build();
     } else {
         world
