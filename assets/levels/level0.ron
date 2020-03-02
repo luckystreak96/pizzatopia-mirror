@@ -1,165 +1,285 @@
 #![enable(implicit_some)]
 Level(
     tiles: [
-        Vec2(
+    Tile(
+        pos: Vec2(
             x: 0.0,
             y: 128.0,
         ),
-        Vec2(
+        sprite: 1,
+        ),
+    Tile(
+        pos: Vec2(
             x: 0.0,
             y: 256.0,
         ),
-        Vec2(
+        sprite: 1,
+        ),
+    Tile(
+        pos: Vec2(
             x: 0.0,
             y: 384.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 0.0,
             y: 512.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 0.0,
             y: 640.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 0.0,
             y: 768.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 0.0,
             y: 896.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 512.0,
             y: 128.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 512.0,
             y: 256.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 512.0,
             y: 384.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 2048.0,
             y: 128.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 0.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 128.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 256.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 384.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 512.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 640.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 768.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 896.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1024.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1152.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1280.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1408.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1536.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1664.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1792.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1920.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 2048.0,
             y: 0.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 2048.0,
             y: 1536.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1920.0,
             y: 1536.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1792.0,
             y: 1536.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 2048.0,
             y: 1408.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 2048.0,
             y: 1280.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 2048.0,
             y: 1152.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1280.0,
             y: 128.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1280.0,
             y: 256.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1664.0,
             y: 1536.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1536.0,
             y: 1536.0,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1408.0,
             y: 1536.0 ,
         ),
-        Vec2(
+        sprite: 0,
+        ),
+    Tile(
+        pos: Vec2(
             x: 1280.0,
             y: 1536.0 ,
+        ),
+        sprite: 0,
         ),
     ],
 )

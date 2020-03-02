@@ -107,14 +107,15 @@ impl Pizzatopia<'_, '_> {
             .expect("Failed to delete entities for reset.");
 
         // add the entities for the level
-        initialise_actor(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world);
-        initialise_actor(
+        // will want to move this in the future to level.rs
+        Level::initialise_actor(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world);
+        Level::initialise_actor(
             Vec2::new(CAM_WIDTH / 2.0 - (TILE_HEIGHT * 2.0), CAM_HEIGHT / 2.0),
             false,
             world,
         );
         if !resetting {
-            initialise_playground(world);
+            Level::initialize_level(world);
             initialise_camera(world);
         }
     }
@@ -202,98 +203,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
             }
         }
         Trans::None
-    }
-}
-
-/// Initialises the ground.
-fn initialise_ground(world: &mut World, pos: Vec2) {
-    let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
-
-    let transform = Transform::default();
-
-    // Correctly position the tile.
-    let pos = Position(pos);
-
-    let sprite_sheet = world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
-    // Assign the sprite
-    let sprite_render = SpriteRender {
-        sprite_sheet: sprite_sheet.clone(),
-        sprite_number: 0, // grass is the first sprite in the sprite_sheet
-    };
-
-    world
-        .create_entity()
-        .with(tile_size.clone())
-        //.with(PlatformCuboid::new())
-        .with(pos)
-        .with(transform)
-        .with(sprite_render.clone())
-        .build();
-}
-
-fn initialise_playground(world: &mut World) {
-    let tiles;
-    {
-        let asset = &world.read_resource::<AssetStorage<Level>>();
-        let level = asset
-            .get(&world.read_resource::<Handle<Level>>().clone())
-            .expect("Expected level to be loaded.");
-        tiles = level.tiles.clone();
-    }
-
-    for tile in tiles {
-        initialise_ground(world, tile);
-    }
-}
-
-/// Initialises one tile.
-fn initialise_actor(pos: Vec2, player: bool, world: &mut World) {
-    let mut transform = Transform::default();
-
-    // Correctly position the paddles.
-    transform.set_translation_xyz(pos.x, pos.y, 0.0);
-
-    let sprite_sheet =
-        world.read_resource::<Vec<Handle<SpriteSheet>>>()[Character as usize].clone();
-    // Assign the sprite
-    let sprite_render = SpriteRender {
-        sprite_sheet: sprite_sheet.clone(),
-        sprite_number: 1, // grass is the first sprite in the sprite_sheet
-    };
-
-    if player {
-        world
-            .create_entity()
-            .with(Resettable)
-            .with(transform)
-            .with(sprite_render.clone())
-            .with(AnimationCounter(0))
-            .with(Player)
-            .with(Grounded(false))
-            .with(Position(Vec2::new(pos.x, pos.y)))
-            .with(Velocity(Vec2::new(0.0, 0.0)))
-            //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
-            .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.0))
-            .with(Sticky(false))
-            .with(GravityDirection(CollisionDirection::FromTop))
-            .with(Collidee::new())
-            .with(Health(5))
-            .with(Invincibility(0))
-            .build();
-    } else {
-        world
-            .create_entity()
-            .with(Resettable)
-            .with(transform)
-            .with(sprite_render.clone())
-            .with(AnimationCounter(0))
-            .with(Grounded(false))
-            .with(Position(Vec2::new(pos.x, pos.y)))
-            .with(Velocity(Vec2::new(0.0, 0.0)))
-            //.with(PlatformCollisionPoints::vertical_line(TILE_HEIGHT / 2.0))
-            .with(PlatformCollisionPoints::triangle(TILE_HEIGHT / 2.0))
-            .with(Collidee::new())
-            .build();
     }
 }
 

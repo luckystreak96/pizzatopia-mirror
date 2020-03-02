@@ -113,32 +113,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     }
 }
 
-/// Initialises the ground.
-fn initialise_ground(world: &mut World, pos: Vec2) {
-    let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
-
-    let transform = Transform::default();
-
-    // Correctly position the tile.
-    let pos = Position(pos);
-
-    let sprite_sheet = world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
-    // Assign the sprite
-    let sprite_render = SpriteRender {
-        sprite_sheet: sprite_sheet.clone(),
-        sprite_number: 0, // grass is the first sprite in the sprite_sheet
-    };
-
-    world
-        .create_entity()
-        .with(tile_size.clone())
-        //.with(PlatformCuboid::new())
-        .with(pos)
-        .with(transform)
-        .with(sprite_render.clone())
-        .build();
-}
-
 impl<'a, 'b> Editor<'a, 'b> {
     fn create_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
