@@ -6,9 +6,9 @@ use crate::components::physics::{
 };
 use crate::components::player::Player;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
-use crate::states::pizzatopia::TILE_HEIGHT;
+use crate::states::pizzatopia::{TILE_HEIGHT, DEPTH_ACTORS};
 use crate::systems::physics::CollisionDirection;
-use crate::utils::Vec2;
+use crate::utils::{Vec2, Vec3};
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, ProcessingState, Processor,
@@ -65,7 +65,7 @@ impl Level {
         let transform = Transform::default();
 
         // Correctly position the tile.
-        let pos = Position(tile.pos.clone());
+        let pos = Position(tile.pos.to_vec3().clone());
 
         let sprite_sheet =
             world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
@@ -115,8 +115,6 @@ impl Level {
     /// Initialises one tile.
     pub fn initialise_actor(pos: Vec2, player: bool, world: &mut World) {
         let mut transform = Transform::default();
-
-        // Correctly position the paddles.
         transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
         let sprite_sheet =
@@ -134,7 +132,7 @@ impl Level {
             // .with(tile)
             .with(transform.clone())
             .with(sprite_render.clone())
-            .with(Position(Vec2::new(pos.x, pos.y)))
+            .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
             // .with(Tint(Srgba::new(1.0, 1.0, 1.0, 0.5).into()))
             .with(amethyst::core::Hidden)
             .build();
@@ -146,7 +144,7 @@ impl Level {
             .with(sprite_render.clone())
             .with(AnimationCounter(0))
             .with(Grounded(false))
-            .with(Position(Vec2::new(pos.x, pos.y)))
+            .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
             .with(Velocity(Vec2::new(0.0, 0.0)))
             .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.0))
             .with(Collidee::new())

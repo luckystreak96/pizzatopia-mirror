@@ -19,7 +19,7 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
 
     fn run(&mut self, (mut transforms, positions): Self::SystemData) {
         for (transform, position) in (&mut transforms, &positions).join() {
-            transform.set_translation_xyz(position.0.x, position.0.y, 0.0);
+            transform.set_translation_xyz(position.0.x, position.0.y, position.0.z);
         }
     }
 }
@@ -79,12 +79,15 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     sprite_number = (sprite_number + 1) % 2;
                     counter.0 = 0;
                 }
+                let mut cur_scale = transform.scale().clone();
                 match grav_vel.x < 0.0 {
                     true => {
-                        transform.set_scale(Vector3::new(-1.0, 1.0, 1.0));
+                        cur_scale.x = -1.0 * cur_scale.x.abs();
+                        transform.set_scale(cur_scale);
                     }
                     false => {
-                        transform.set_scale(Vector3::new(1.0, 1.0, 1.0));
+                        cur_scale.x = cur_scale.x.abs();
+                        transform.set_scale(cur_scale);
                     }
                 };
             } else {

@@ -5,15 +5,16 @@ use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Sticky, Velocity,
 };
+use amethyst::core::math::Vector3;
 use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::Level;
-use crate::states::pizzatopia::MyEvents;
+use crate::states::pizzatopia::{MyEvents, Pizzatopia, get_camera_center};
 use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
 use crate::systems::physics::CollisionDirection;
-use crate::utils::Vec2;
+use crate::utils::{Vec2, Vec3};
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
@@ -54,6 +55,7 @@ use log::warn;
 use std::borrow::Borrow;
 use std::io;
 use std::time::{Duration, Instant};
+use crate::states::pizzatopia;
 
 pub(crate) struct Editor<'a, 'b> {
     dispatcher: Option<Dispatcher<'a, 'b>>,
@@ -78,15 +80,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         self.time_start = Instant::now();
 
-        // Create cursor
-        data.world
-            .create_entity()
-            .with(EditorEntity)
-            .with(transform.clone())
-            .with(sprite_render.clone())
-            .with(pos.clone())
-            .with(amethyst::core::Hidden)
-            .build();
+        Self::initialize_cursor(data.world);
 
         Self::set_instance_transparent(data.world, 0.5);
         Self::set_editor_hidden(data.world, false);
@@ -197,5 +191,32 @@ impl<'a, 'b> Editor<'a, 'b> {
                 storage.remove(entity);
             }
         }
+    }
+
+    fn initialize_cursor(world: &mut World) {
+        let mut transform = Transform::default();
+        transform.set_scale(Vector3::new(0.5, 0.5, 1.0));
+
+        // Correctly position the tile.
+        let mut pos = get_camera_center(world).to_vec3();
+        pos.z = pizzatopia::DEPTH_EDITOR;
+        let pos = Position(pos);
+
+        let sprite_sheet =
+            world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
+        // Assign the sprite
+        let sprite_render = SpriteRender {
+            sprite_sheet: sprite_sheet.clone(),
+            sprite_number: 4,
+        };
+
+        // Create cursor
+        world
+            .create_entity()
+            .with(EditorEntity)
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(pos.clone())
+            .build();
     }
 }

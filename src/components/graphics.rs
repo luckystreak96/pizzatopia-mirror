@@ -13,7 +13,7 @@ use amethyst::{
 use serde::{Deserialize, Serialize};
 
 use crate::states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
-use crate::utils::Vec2;
+use crate::utils::Vec3;
 
 pub struct AnimationCounter(pub u32);
 

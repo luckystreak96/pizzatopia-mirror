@@ -587,7 +587,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
             //  given the changes in position and velocity
             // These bad boys get modified at the end of the loop
             let mut current_vel = velocity.0.clone();
-            let mut current_ent_pos = ent_pos.0.clone();
+            let mut current_ent_pos = ent_pos.0.to_vec2().clone();
             loop {
                 debug!("Velocity: {:?}", current_vel);
                 // We want the shortest distance collision of all points
@@ -607,15 +607,15 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                         // delta so if we go through the corner of a block we still check
                         // Must stay gt or eq to the max speed that will be reached
                         let delta = TILE_WIDTH;
-                        let platform_position = plat_pos.0.clone();
+                        let platform_position = plat_pos.0.to_vec2();
                         let point_vel_pos = Vec2::new(
                             collider_offset.x + ent_pos.0.x + current_vel.x,
                             collider_offset.y + ent_pos.0.y + current_vel.y,
                         );
 
                         // Is the block even close to us
-                        if Self::within_range_x(&point_vel_pos, &plat_pos.0, cuboid, delta) {
-                            if Self::within_range_y(&point_vel_pos, &plat_pos.0, cuboid, delta) {
+                        if Self::within_range_x(&point_vel_pos, &platform_position, cuboid, delta) {
+                            if Self::within_range_y(&point_vel_pos, &platform_position, cuboid, delta) {
                                 // point of collision and side
                                 let point_of_collision = Self::raycast(
                                     &point_pos,

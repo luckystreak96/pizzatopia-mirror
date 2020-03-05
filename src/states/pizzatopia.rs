@@ -15,7 +15,7 @@ use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
 use crate::systems::physics::CollisionDirection;
-use crate::utils::Vec2;
+use crate::utils::{Vec2, Vec3};
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
@@ -56,6 +56,11 @@ use std::time::Instant;
 
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
+
+pub const DEPTH_TILES: f32 = 1.0;
+pub const DEPTH_ACTORS: f32 = DEPTH_TILES + 1.0;
+pub const DEPTH_EDITOR: f32 = DEPTH_ACTORS + 1.0;
+pub const DEPTH_UI: f32 = DEPTH_EDITOR + 1.0;
 
 pub const TILE_WIDTH: f32 = 128.0;
 pub const TILE_HEIGHT: f32 = 128.0;
@@ -212,7 +217,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
 fn initialise_camera(world: &mut World) {
     // Setup camera in a way that our screen covers whole arena and (0, 0) is in the bottom left.
     let mut transform = Transform::default();
-    transform.set_translation_xyz(CAM_WIDTH * 0.5, CAM_HEIGHT * 0.5, 1.0);
+    transform.set_translation_xyz(CAM_WIDTH * 0.5, CAM_HEIGHT * 0.5, 2000.0);
 
     world
         .create_entity()
@@ -221,7 +226,7 @@ fn initialise_camera(world: &mut World) {
         .build();
 }
 
-fn get_camera_center(world: &mut World) -> Vec2 {
+pub fn get_camera_center(world: &mut World) -> Vec2 {
     for (entity, camera, transform) in (
         &world.entities(),
         &world.read_storage::<Camera>(),

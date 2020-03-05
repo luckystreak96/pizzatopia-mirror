@@ -20,6 +20,14 @@ impl Vec2 {
             y: first.y - subtract_by.y,
         }
     }
+
+    pub fn to_vec3(&self) -> Vec3 {
+        Vec3 {
+            x : self.x,
+        y : self.y,
+            z: 0.0,
+        }
+    }
 }
 
 impl Eq for Vec2 {}
@@ -30,6 +38,7 @@ impl Ord for Vec2 {
     }
 }
 
+#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
@@ -39,6 +48,21 @@ pub struct Vec3 {
 impl Vec3 {
     pub fn new(x: f32, y: f32, z: f32) -> Vec3 {
         Vec3 { x, y, z }
+    }
+
+    pub fn to_vec2(&self) -> Vec2 {
+        Vec2 {
+            x : self.x,
+            y : self.y,
+        }
+    }
+}
+
+impl Eq for Vec3 {}
+
+impl Ord for Vec3 {
+    fn cmp(&self, other: &Vec3) -> Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
