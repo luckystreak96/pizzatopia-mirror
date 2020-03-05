@@ -1,13 +1,13 @@
 use crate::components::editor::EditorEntity;
 use crate::components::game::{Health, Invincibility, Resettable};
-use crate::components::graphics::AnimationCounter;
+use crate::components::graphics::{AnimationCounter, Scale};
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
     Sticky, Velocity,
 };
 use crate::components::player::Player;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Snap, Tiles};
-use crate::states::pizzatopia::{DEPTH_ACTORS, TILE_HEIGHT};
+use crate::states::pizzatopia::{DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
@@ -27,6 +27,7 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     utils::application_root_dir,
 };
+use derivative::Derivative;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -48,10 +49,14 @@ impl From<Level> for Result<Level, Error> {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Derivative)]
+#[serde(default)]
+#[derivative(Default)]
 pub(crate) struct Tile {
     pos: Vec2,
     sprite: usize,
+    #[derivative(Default(value = "Vec2::new(TILE_WIDTH, TILE_HEIGHT)"))]
+    size: Vec2,
 }
 
 impl Component for Tile {
@@ -61,7 +66,12 @@ impl Component for Tile {
 impl Level {
     /// Initialises the ground.
     fn initialize_ground(world: &mut World, tile: &Tile) {
-        let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
+        // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
+        let tile_size = PlatformCuboid::create(tile.size.x, tile.size.y);
+        let scale = Scale(Vec2::new(
+            tile.size.x / TILE_WIDTH,
+            tile.size.y / TILE_HEIGHT,
+        ));
 
         let transform = Transform::default();
 
@@ -85,6 +95,7 @@ impl Level {
             .with(sprite_render.clone())
             .with(pos.clone())
             .with(amethyst::core::Hidden)
+            .with(scale.clone())
             .build();
 
         // Create gameplay entity
@@ -95,6 +106,7 @@ impl Level {
             .with(pos)
             .with(transform)
             .with(sprite_render.clone())
+            .with(scale.clone())
             .build();
     }
 
@@ -126,7 +138,7 @@ impl Level {
             sprite_sheet = world.read_resource::<Vec<Handle<SpriteSheet>>>()[Snap as usize].clone();
         }
         // Assign the sprite
-        let mut sprite_render = SpriteRender {
+        let sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
             sprite_number: 1,
         };

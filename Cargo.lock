@@ -2246,6 +2246,7 @@ name = "pizzatopia"
 version = "0.1.0"
 dependencies = [
  "amethyst",
+ "derivative",
  "log",
  "serde",
 ]

@@ -3,10 +3,14 @@ Level(
     tiles: [
     Tile(
         pos: Vec2(
-            x: 0.0,
+            x: 128.0,
             y: 128.0,
         ),
         sprite: 1,
+        size: Vec2(
+            x: 256.0,
+            y: 128.0,
+        ),
         ),
     Tile(
         pos: Vec2(

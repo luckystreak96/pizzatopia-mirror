@@ -9,6 +9,7 @@ edition = "2018"
 amethyst = {  git = "https://github.com/amethyst/amethyst.git", branch = "master", features = ["vulkan", "no-slow-safety-checks"]}
 log = "0.4.8"
 serde = { version = "1.0", features = ["derive"] }
+derivative = "1.0.3"
 
 [features]
 default = ["vulkan"]

@@ -67,9 +67,14 @@ impl<'a, 'b> SystemBundle<'a, 'b> for GraphicsBundle {
             &["sprite_update_system"],
         );
         builder.add(
+            systems::graphics::ScaleDrawUpdateSystem,
+            "scale_draw_update_system",
+            &["position_draw_update_system"],
+        );
+        builder.add(
             systems::graphics::DeadDrawUpdateSystem,
             "dead_draw_update_system",
-            &["position_draw_update_system"],
+            &["scale_draw_update_system"],
         );
         Ok(())
     }

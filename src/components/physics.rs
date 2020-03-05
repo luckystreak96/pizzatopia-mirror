@@ -202,10 +202,10 @@ impl PlatformCuboid {
         }
     }
 
-    pub fn create(size_x: f32, size_y: f32) -> PlatformCuboid {
+    pub fn create(tile_size_x: f32, tile_size_y: f32) -> PlatformCuboid {
         PlatformCuboid {
-            half_width: CAM_WIDTH,
-            half_height: TILE_HEIGHT,
+            half_width: tile_size_x / 2.0,
+            half_height: tile_size_y / 2.0,
         }
     }
 }

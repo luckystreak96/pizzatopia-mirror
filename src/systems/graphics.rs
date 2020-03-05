@@ -1,5 +1,5 @@
 use crate::components::game::Health;
-use crate::components::graphics::{AnimationCounter, PulseAnimation};
+use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
@@ -25,22 +25,38 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
 }
 
 #[derive(SystemDesc)]
+pub struct ScaleDrawUpdateSystem;
+
+impl<'s> System<'s> for ScaleDrawUpdateSystem {
+    type SystemData = (WriteStorage<'s, Transform>, ReadStorage<'s, Scale>);
+
+    fn run(&mut self, (mut transforms, scales): Self::SystemData) {
+        for (transform, scale) in (&mut transforms, &scales).join() {
+            transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
+        }
+    }
+}
+
+#[derive(SystemDesc)]
 pub struct PulseAnimationSystem;
 
 impl<'s> System<'s> for PulseAnimationSystem {
-    type SystemData = (WriteStorage<'s, Transform>, WriteStorage<'s, PulseAnimation>);
+    type SystemData = (
+        WriteStorage<'s, Transform>,
+        WriteStorage<'s, PulseAnimation>,
+        WriteStorage<'s, Scale>,
+    );
 
-    fn run(&mut self, (mut transforms, mut pulses): Self::SystemData) {
-        for (transform, pulse) in (&mut transforms, &mut pulses).join() {
-            pulse.counter += 1;
+    fn run(&mut self, (mut transforms, mut pulses, mut scales): Self::SystemData) {
+        for (transform, pulse, scale) in (&mut transforms, &mut pulses, &mut scales).join() {
+            pulse.0 += 1;
             // sin() swaps ever 3.14, so this will swap ~1x/sec
-            let cf = pulse.counter as f32 / 20.0;
+            let cf = pulse.0 as f32 / 20.0;
             // We want the amplitude to be 0.125
             let sin = cf.sin() / 8.0;
             // From 1.5 to 0.5
             let sin = sin + 1.0;
-            let ps = &pulse.scale;
-            transform.set_scale(Vector3::new(sin * ps.x, sin * ps.y, ps.z));
+            transform.set_scale(Vector3::new(sin * scale.0.x, sin * scale.0.y, 1.0));
         }
     }
 }
