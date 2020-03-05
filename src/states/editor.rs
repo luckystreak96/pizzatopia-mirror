@@ -1,20 +1,25 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::game::{CollisionEvent, EditorEntity, Health, Invincibility, Resettable};
-use crate::components::graphics::AnimationCounter;
+use crate::components::editor::{EditorCursor, EditorEntity, RealCursorPosition};
+use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
+use crate::components::graphics::{AnimationCounter, PulseAnimation};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Sticky, Velocity,
 };
-use amethyst::core::math::Vector3;
 use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::Level;
-use crate::states::pizzatopia::{MyEvents, Pizzatopia, get_camera_center};
+use crate::states::pizzatopia;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
+use crate::states::pizzatopia::TILE_WIDTH;
+use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
+use crate::systems::editor::CursorPositionSystem;
+use crate::systems::graphics::PulseAnimationSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
+use amethyst::core::math::Vector3;
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
@@ -35,13 +40,14 @@ use amethyst::{
     input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
     renderer::{
+        debug_drawing::{DebugLines, DebugLinesComponent, DebugLinesParams},
         palette::{LinSrgba, Srgb, Srgba},
         rendy::{
             hal::image::{Filter, SamplerInfo, WrapMode},
             texture::image::{ImageTextureConfig, Repr, TextureKind},
         },
         resources::Tint,
-        Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
+        Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture, Transparent,
     },
     ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
     utils::{
@@ -55,7 +61,8 @@ use log::warn;
 use std::borrow::Borrow;
 use std::io;
 use std::time::{Duration, Instant};
-use crate::states::pizzatopia;
+
+pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
 
 pub(crate) struct Editor<'a, 'b> {
     dispatcher: Option<Dispatcher<'a, 'b>>,
@@ -73,6 +80,9 @@ impl Default for Editor<'_, '_> {
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
+        data.world.insert(DebugLines::new());
+        data.world.insert(DebugLinesParams { line_width: 2.0 });
+
         // setup dispatcher
         let mut dispatcher = Editor::create_dispatcher(data.world);
         dispatcher.setup(data.world);
@@ -89,6 +99,20 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     fn on_stop(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         Self::set_instance_transparent(data.world, 1.0);
         Self::set_editor_hidden(data.world, true);
+
+        // Clean up cursor
+        let mut to_remove = Vec::new();
+        for (entity, reset) in (
+            &data.world.entities(),
+            &data.world.read_storage::<EditorCursor>(),
+        )
+            .join()
+        {
+            to_remove.push(entity);
+        }
+        data.world
+            .delete_entities(to_remove.as_slice())
+            .expect("Failed to delete cursor entities.");
     }
 
     fn handle_event(
@@ -102,7 +126,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
             if input.action_is_down("exit").unwrap_or(false) {
                 return Trans::Quit;
             } else if input.action_is_down("editor").unwrap_or(false) {
-                if self.time_start.elapsed().as_secs() > 0 {
+                if self.time_start.elapsed().as_millis() > 250 {
                     return Trans::Pop;
                 }
             }
@@ -136,9 +160,19 @@ impl<'a, 'b> Editor<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
         dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
         dispatcher_builder.add(
+            CursorPositionSystem::default(),
+            "cursor_position_system",
+            &[],
+        );
+        dispatcher_builder.add(
+            PulseAnimationSystem,
+            "pulse_animation_system",
+            &["cursor_position_system"],
+        );
+        dispatcher_builder.add(
             systems::graphics::PositionDrawUpdateSystem,
             "position_draw_update_system",
-            &[],
+            &["pulse_animation_system"],
         );
 
         dispatcher_builder
@@ -195,7 +229,8 @@ impl<'a, 'b> Editor<'a, 'b> {
 
     fn initialize_cursor(world: &mut World) {
         let mut transform = Transform::default();
-        transform.set_scale(Vector3::new(0.5, 0.5, 1.0));
+        let scale = Vec3::new(0.5, 0.5, 1.0);
+        transform.set_scale(Vector3::new(scale.x, scale.y, scale.z));
 
         // Correctly position the tile.
         let mut pos = get_camera_center(world).to_vec3();
@@ -214,9 +249,13 @@ impl<'a, 'b> Editor<'a, 'b> {
         world
             .create_entity()
             .with(EditorEntity)
+            .with(EditorCursor)
+            .with(RealCursorPosition(pos.0.to_vec2()))
+            .with(PulseAnimation::new(scale))
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(pos.clone())
+            .with(Transparent)
             .build();
     }
 }

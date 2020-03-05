@@ -1,5 +1,5 @@
 use crate::components::game::Health;
-use crate::components::graphics::AnimationCounter;
+use crate::components::graphics::{AnimationCounter, PulseAnimation};
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
@@ -20,6 +20,27 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
     fn run(&mut self, (mut transforms, positions): Self::SystemData) {
         for (transform, position) in (&mut transforms, &positions).join() {
             transform.set_translation_xyz(position.0.x, position.0.y, position.0.z);
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct PulseAnimationSystem;
+
+impl<'s> System<'s> for PulseAnimationSystem {
+    type SystemData = (WriteStorage<'s, Transform>, WriteStorage<'s, PulseAnimation>);
+
+    fn run(&mut self, (mut transforms, mut pulses): Self::SystemData) {
+        for (transform, pulse) in (&mut transforms, &mut pulses).join() {
+            pulse.counter += 1;
+            // sin() swaps ever 3.14, so this will swap ~1x/sec
+            let cf = pulse.counter as f32 / 20.0;
+            // We want the amplitude to be 0.125
+            let sin = cf.sin() / 8.0;
+            // From 1.5 to 0.5
+            let sin = sin + 1.0;
+            let ps = &pulse.scale;
+            transform.set_scale(Vector3::new(sin * ps.x, sin * ps.y, ps.z));
         }
     }
 }

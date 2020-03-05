@@ -1,6 +1,7 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
-use crate::components::game::{CollisionEvent, EditorEntity, Health, Invincibility, Resettable};
+use crate::components::editor::EditorEntity;
+use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -75,6 +76,7 @@ pub const FRICTION: f32 = 0.90;
 pub enum SpriteSheetType {
     Tiles = 0,
     Character,
+    Snap,
 }
 
 #[derive(Debug, EventReader, Clone)]
@@ -161,7 +163,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
             if input.action_is_down("exit").unwrap_or(false) {
                 return Trans::Quit;
             } else if input.action_is_down("editor").unwrap_or(false) {
-                if self.time_start.elapsed().as_secs() > 0 {
+                if self.time_start.elapsed().as_millis() > 250 {
                     return Trans::Push(Box::new(Editor::default()));
                 }
             }

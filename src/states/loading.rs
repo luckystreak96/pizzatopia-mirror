@@ -69,12 +69,16 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
 
         let tiles = load_spritesheet(String::from("texture/tiles"), world);
         let sprites = load_spritesheet(String::from("texture/spritesheet"), world);
+        let sprites2 = load_spritesheet(String::from("texture/spritesheet2"), world);
         world
             .write_resource::<Vec<Handle<SpriteSheet>>>()
             .push(tiles);
         world
             .write_resource::<Vec<Handle<SpriteSheet>>>()
             .push(sprites);
+        world
+            .write_resource::<Vec<Handle<SpriteSheet>>>()
+            .push(sprites2);
     }
 
     fn update(

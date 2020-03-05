@@ -1,12 +1,13 @@
-use crate::components::game::{EditorEntity, Health, Invincibility, Resettable};
+use crate::components::editor::EditorEntity;
+use crate::components::game::{Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
     Sticky, Velocity,
 };
 use crate::components::player::Player;
-use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
-use crate::states::pizzatopia::{TILE_HEIGHT, DEPTH_ACTORS};
+use crate::states::pizzatopia::SpriteSheetType::{Character, Snap, Tiles};
+use crate::states::pizzatopia::{DEPTH_ACTORS, TILE_HEIGHT};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
@@ -117,12 +118,17 @@ impl Level {
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
-        let sprite_sheet =
-            world.read_resource::<Vec<Handle<SpriteSheet>>>()[Character as usize].clone();
+        let sprite_sheet;
+        if player {
+            sprite_sheet =
+                world.read_resource::<Vec<Handle<SpriteSheet>>>()[Character as usize].clone();
+        } else {
+            sprite_sheet = world.read_resource::<Vec<Handle<SpriteSheet>>>()[Snap as usize].clone();
+        }
         // Assign the sprite
-        let sprite_render = SpriteRender {
+        let mut sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
-            sprite_number: 1, // grass is the first sprite in the sprite_sheet
+            sprite_number: 1,
         };
 
         // create editor entity
@@ -135,6 +141,7 @@ impl Level {
             .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
             // .with(Tint(Srgba::new(1.0, 1.0, 1.0, 0.5).into()))
             .with(amethyst::core::Hidden)
+            .with(Transparent)
             .build();
 
         let builder = world
