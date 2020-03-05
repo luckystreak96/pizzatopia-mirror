@@ -1,5 +1,7 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::editor::{EditorCursor, EditorEntity, RealCursorPosition};
+use crate::components::editor::{
+    CursorWasInThisEntity, EditorCursor, EditorEntity, RealCursorPosition,
+};
 use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
 use crate::components::physics::{
@@ -253,6 +255,7 @@ impl<'a, 'b> Editor<'a, 'b> {
             .with(RealCursorPosition(pos.0.to_vec2()))
             .with(PulseAnimation::default())
             .with(Scale(Vec2::new(scale.x, scale.y)))
+            .with(CursorWasInThisEntity(None))
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(pos.clone())

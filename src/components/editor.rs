@@ -1,3 +1,4 @@
+use crate::utils::Vec2;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::transform::Transform,
@@ -5,7 +6,6 @@ use amethyst::{
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
-use crate::utils::Vec2;
 
 #[derive(Default)]
 pub struct EditorEntity;
@@ -22,5 +22,19 @@ impl Component for EditorCursor {
 pub struct RealCursorPosition(pub Vec2);
 
 impl Component for RealCursorPosition {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default)]
+pub struct SizeForEditorGrid(pub Vec2);
+
+impl Component for SizeForEditorGrid {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Clone)]
+pub struct CursorWasInThisEntity(pub Option<u32>);
+
+impl Component for CursorWasInThisEntity {
     type Storage = DenseVecStorage<Self>;
 }

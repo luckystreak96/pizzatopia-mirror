@@ -1,4 +1,4 @@
-use crate::components::editor::EditorEntity;
+use crate::components::editor::{EditorEntity, SizeForEditorGrid};
 use crate::components::game::{Health, Invincibility, Resettable};
 use crate::components::graphics::{AnimationCounter, Scale};
 use crate::components::physics::{
@@ -96,6 +96,7 @@ impl Level {
             .with(pos.clone())
             .with(amethyst::core::Hidden)
             .with(scale.clone())
+            .with(SizeForEditorGrid(tile.size.clone()))
             .build();
 
         // Create gameplay entity

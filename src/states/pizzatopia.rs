@@ -1,6 +1,6 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
-use crate::components::editor::EditorEntity;
+use crate::components::editor::{EditorEntity, SizeForEditorGrid};
 use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
@@ -134,6 +134,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         data.world.register::<Resettable>();
         data.world.register::<EditorEntity>();
         data.world.register::<Tile>();
+        data.world.register::<SizeForEditorGrid>();
 
         // setup dispatcher
         let mut dispatcher = Pizzatopia::create_pizzatopia_dispatcher(data.world);
