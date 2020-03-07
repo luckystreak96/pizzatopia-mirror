@@ -148,7 +148,7 @@ impl Level {
         world
             .create_entity()
             .with(EditorEntity)
-            // .with(tile)
+            .with(SizeForEditorGrid(Vec2::new(TILE_WIDTH, TILE_HEIGHT)))
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
