@@ -9,18 +9,20 @@ use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLi
 use amethyst::renderer::palette::Srgba;
 
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, RealCursorPosition, SizeForEditorGrid,
+    CursorWasInThisEntity, EditorCursor, RealCursorPosition, RealEntityId, SizeForEditorGrid,
 };
 use crate::components::game::Health;
 use crate::components::graphics::Scale;
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::components::player::Player;
+use crate::level::Level;
 use crate::states::editor::EDITOR_GRID_SIZE;
 use crate::states::pizzatopia::{CAM_HEIGHT, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{
     gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
 };
 use crate::utils::Vec2;
+use log::{info, warn};
 use std::time::{Duration, Instant};
 
 #[derive(SystemDesc)]
@@ -211,6 +213,14 @@ impl<'s> System<'s> for CursorPositionSystem {
                 scale.0.y = EDITOR_GRID_SIZE / TILE_WIDTH;
             }
 
+            // Reset tile size if size is not default and cursor touch nothing
+            if scale.0.x != EDITOR_GRID_SIZE / TILE_WIDTH && new_prev.is_none() {
+                scale.0.x = EDITOR_GRID_SIZE / TILE_WIDTH;
+                scale.0.y = EDITOR_GRID_SIZE / TILE_WIDTH;
+                position.0.x = real_pos.0.x;
+                position.0.y = real_pos.0.y;
+            }
+
             previous.0 = new_prev.clone();
 
             debug_lines_resource.draw_line(
@@ -224,6 +234,56 @@ impl<'s> System<'s> for CursorPositionSystem {
                 [real_pos.0.x - 16.0, real_pos.0.y - 16.0, DEPTH_UI].into(),
                 Srgba::new(0.1, 0.1, 0.4, 1.0),
             );
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct EditorButtonEventSystem;
+
+impl<'s> System<'s> for EditorButtonEventSystem {
+    type SystemData = (
+        Read<'s, InputHandler<StringBindings>>,
+        ReadStorage<'s, EditorCursor>,
+        ReadStorage<'s, RealEntityId>,
+        WriteStorage<'s, CursorWasInThisEntity>,
+        Entities<'s>,
+    );
+
+    fn run(
+        &mut self,
+        (input, cursors, real_entity_ids, mut previous_block, entities): Self::SystemData,
+    ) {
+        // Controller input
+        if input.action_is_down("cancel").unwrap_or(false) {
+            info!("One run of system");
+            for (cursor, previous_block, cursor_entity) in
+                (&cursors, &mut previous_block, &entities).join()
+            {
+                let mut target: Option<u32> = previous_block.0;
+                let mut deleted = false;
+                if target.is_some() {
+                    deleted = true;
+                    warn!("Deleting tile!");
+                    // Get the editor entity
+                    let editor_entity = entities.entity(target.unwrap());
+
+                    // Delete the real entity using editor entity
+                    let real_ent_id = real_entity_ids
+                        .get(editor_entity)
+                        .expect("Tried to delete editor entity with no real entity.");
+                    if let Some(real_entity_id) = real_ent_id.0 {
+                        let real_entity = entities.entity(real_entity_id);
+                        entities.delete(real_entity);
+                    }
+                    entities.delete(editor_entity);
+                }
+                if deleted {
+                    previous_block.0 = None;
+                }
+            }
+        } else if input.action_is_down("accept").unwrap_or(false) {
+            // Send event - you have no choice
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::components::editor::{EditorEntity, SizeForEditorGrid};
+use crate::components::editor::{EditorEntity, RealEntityId, SizeForEditorGrid};
 use crate::components::game::{Health, Invincibility, Resettable};
 use crate::components::graphics::{AnimationCounter, Scale};
 use crate::components::physics::{
@@ -65,7 +65,7 @@ impl Component for Tile {
 
 impl Level {
     /// Initialises the ground.
-    fn initialize_ground(world: &mut World, tile: &Tile) {
+    pub fn initialize_ground(world: &mut World, tile: &Tile) {
         // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
         let tile_size = PlatformCuboid::create(tile.size.x, tile.size.y);
         let scale = Scale(Vec2::new(
@@ -86,9 +86,21 @@ impl Level {
             sprite_number: tile.sprite, // grass is the first sprite in the sprite_sheet
         };
 
+        // Create gameplay entity
+        let entity = world
+            .create_entity()
+            .with(tile_size.clone())
+            //.with(PlatformCuboid::new())
+            .with(pos.clone())
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(scale.clone())
+            .build();
+
         // create editor entity
         world
             .create_entity()
+            .with(RealEntityId(Some(entity.id())))
             .with(EditorEntity)
             .with(tile.clone())
             .with(transform.clone())
@@ -97,17 +109,6 @@ impl Level {
             .with(amethyst::core::Hidden)
             .with(scale.clone())
             .with(SizeForEditorGrid(tile.size.clone()))
-            .build();
-
-        // Create gameplay entity
-        world
-            .create_entity()
-            .with(tile_size.clone())
-            //.with(PlatformCuboid::new())
-            .with(pos)
-            .with(transform)
-            .with(sprite_render.clone())
-            .with(scale.clone())
             .build();
     }
 
@@ -144,9 +145,37 @@ impl Level {
             sprite_number: 1,
         };
 
+        let entity;
+        let builder = world
+            .create_entity()
+            .with(Resettable)
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(AnimationCounter(0))
+            .with(Grounded(false))
+            .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
+            .with(Velocity(Vec2::new(0.0, 0.0)))
+            // 2.25 to fit in 1 block holes
+            .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.25))
+            .with(Collidee::new())
+            .with(Health(5))
+            .with(Invincibility(0))
+            // .with(Sticky(false))
+            // .with(GravityDirection(CollisionDirection::FromTop))
+            .with(Transparent);
+
+        entity = match player {
+            true => builder
+                .with(GravityDirection(CollisionDirection::FromTop))
+                .with(Player)
+                .build(),
+            false => builder.build(),
+        };
+
         // create editor entity
         world
             .create_entity()
+            .with(RealEntityId(Some(entity.id())))
             .with(EditorEntity)
             .with(SizeForEditorGrid(Vec2::new(TILE_WIDTH, TILE_HEIGHT)))
             .with(transform.clone())
@@ -156,31 +185,5 @@ impl Level {
             .with(amethyst::core::Hidden)
             .with(Transparent)
             .build();
-
-        let builder = world
-            .create_entity()
-            .with(Resettable)
-            .with(transform)
-            .with(sprite_render.clone())
-            .with(AnimationCounter(0))
-            .with(Grounded(false))
-            .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
-            .with(Velocity(Vec2::new(0.0, 0.0)))
-            .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.0))
-            .with(Collidee::new())
-            .with(Health(5))
-            .with(Invincibility(0))
-            // .with(Sticky(false))
-            // .with(GravityDirection(CollisionDirection::FromTop))
-            .with(Transparent);
-
-        if player {
-            builder
-                .with(GravityDirection(CollisionDirection::FromTop))
-                .with(Player)
-                .build();
-        } else {
-            builder.build();
-        }
     }
 }

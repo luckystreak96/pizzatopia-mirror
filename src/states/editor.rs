@@ -17,7 +17,7 @@ use crate::states::pizzatopia::TILE_WIDTH;
 use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
-use crate::systems::editor::CursorPositionSystem;
+use crate::systems::editor::{CursorPositionSystem, EditorButtonEventSystem};
 use crate::systems::graphics::PulseAnimationSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
@@ -172,9 +172,14 @@ impl<'a, 'b> Editor<'a, 'b> {
             &["cursor_position_system"],
         );
         dispatcher_builder.add(
+            EditorButtonEventSystem,
+            "editor_button_event_system",
+            &["cursor_position_system"],
+        );
+        dispatcher_builder.add(
             systems::graphics::PositionDrawUpdateSystem,
             "position_draw_update_system",
-            &["pulse_animation_system"],
+            &["editor_button_event_system"],
         );
 
         dispatcher_builder

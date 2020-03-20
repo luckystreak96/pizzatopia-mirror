@@ -9,5 +9,7 @@
     "reset": [[Key(Home)]],
     "revive": [[Key(PageUp)]],
     "editor": [[Key(LControl)]],
+    "cancel": [[Key(Z)]],
+    "accept": [[Key(X)]],
   },
 )

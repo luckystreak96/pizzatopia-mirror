@@ -38,3 +38,10 @@ pub struct CursorWasInThisEntity(pub Option<u32>);
 impl Component for CursorWasInThisEntity {
     type Storage = DenseVecStorage<Self>;
 }
+
+#[derive(Default, Clone)]
+pub struct RealEntityId(pub Option<u32>);
+
+impl Component for RealEntityId {
+    type Storage = DenseVecStorage<Self>;
+}
