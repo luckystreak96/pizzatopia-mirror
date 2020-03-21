@@ -52,7 +52,7 @@ impl From<Level> for Result<Level, Error> {
 #[derive(Clone, Debug, Serialize, Deserialize, Derivative)]
 #[serde(default)]
 #[derivative(Default)]
-pub(crate) struct Tile {
+pub struct Tile {
     pos: Vec2,
     sprite: usize,
     #[derivative(Default(value = "Vec2::new(TILE_WIDTH, TILE_HEIGHT)"))]

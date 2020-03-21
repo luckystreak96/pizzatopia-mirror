@@ -1,3 +1,4 @@
+use amethyst::core::shrev::{EventChannel, ReaderId};
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{Entities, Entity};
@@ -24,6 +25,12 @@ use crate::systems::physics::{
 use crate::utils::Vec2;
 use log::{info, warn};
 use std::time::{Duration, Instant};
+
+#[derive(Debug)]
+pub enum EditorEvents {
+    A,
+    B,
+}
 
 #[derive(SystemDesc)]
 pub struct CursorPositionSystem {
@@ -244,6 +251,7 @@ pub struct EditorButtonEventSystem;
 impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
         Read<'s, InputHandler<StringBindings>>,
+        Write<'s, EventChannel<EditorEvents>>,
         ReadStorage<'s, EditorCursor>,
         ReadStorage<'s, RealEntityId>,
         WriteStorage<'s, CursorWasInThisEntity>,
@@ -252,7 +260,7 @@ impl<'s> System<'s> for EditorButtonEventSystem {
 
     fn run(
         &mut self,
-        (input, cursors, real_entity_ids, mut previous_block, entities): Self::SystemData,
+        (input, mut editor_event_writer, cursors, real_entity_ids, mut previous_block, entities): Self::SystemData,
     ) {
         // Controller input
         if input.action_is_down("cancel").unwrap_or(false) {
@@ -284,6 +292,32 @@ impl<'s> System<'s> for EditorButtonEventSystem {
             }
         } else if input.action_is_down("accept").unwrap_or(false) {
             // Send event - you have no choice
+            editor_event_writer.single_write(EditorEvents::A);
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct EditorEventHandlingSystem {
+    reader: ReaderId<EditorEvents>,
+}
+
+impl EditorEventHandlingSystem {
+    pub fn new(world: &mut World) -> Self {
+        <Self as System<'_>>::SystemData::setup(world);
+        let reader = world
+            .fetch_mut::<EventChannel<EditorEvents>>()
+            .register_reader();
+        Self { reader }
+    }
+}
+
+impl<'s> System<'s> for EditorEventHandlingSystem {
+    type SystemData = (Read<'s, EventChannel<EditorEvents>>, Entities<'s>);
+
+    fn run(&mut self, (editor_event_channel, entities): Self::SystemData) {
+        for event in editor_event_channel.read(&mut self.reader) {
+            println!("Received an event: {:?}", event);
         }
     }
 }

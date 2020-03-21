@@ -17,7 +17,9 @@ use crate::states::pizzatopia::TILE_WIDTH;
 use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
-use crate::systems::editor::{CursorPositionSystem, EditorButtonEventSystem};
+use crate::systems::editor::{
+    CursorPositionSystem, EditorButtonEventSystem, EditorEventHandlingSystem, EditorEvents,
+};
 use crate::systems::graphics::PulseAnimationSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
@@ -90,6 +92,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         dispatcher.setup(data.world);
         self.dispatcher = Some(dispatcher);
 
+        // data.world.insert(EventChannel::<EditorEvents>::new());
+
         self.time_start = Instant::now();
 
         Self::initialize_cursor(data.world);
@@ -161,19 +165,20 @@ impl<'a, 'b> Editor<'a, 'b> {
     fn create_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
         dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
+        dispatcher_builder.add(EditorButtonEventSystem, "editor_button_event_system", &[]);
+        dispatcher_builder.add(
+            EditorEventHandlingSystem::new(world),
+            "editor_event_handling_system",
+            &["editor_button_event_system"],
+        );
         dispatcher_builder.add(
             CursorPositionSystem::default(),
             "cursor_position_system",
-            &[],
+            &["editor_event_handling_system"],
         );
         dispatcher_builder.add(
             PulseAnimationSystem,
             "pulse_animation_system",
-            &["cursor_position_system"],
-        );
-        dispatcher_builder.add(
-            EditorButtonEventSystem,
-            "editor_button_event_system",
             &["cursor_position_system"],
         );
         dispatcher_builder.add(
