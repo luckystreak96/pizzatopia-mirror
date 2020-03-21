@@ -87,6 +87,8 @@ impl<'s> System<'s> for CursorPositionSystem {
         // Controller input
         let v_move = input.axis_value("vertical_move");
         let h_move = input.axis_value("horizontal_move");
+        let some_action = input.buttons_that_are_down().count() > 0
+            || input.controller_buttons_that_are_down().count() > 0;
 
         let mut vertical = v_move.unwrap_or(0.0).round();
         let mut horizontal = h_move.unwrap_or(0.0).round();
@@ -221,7 +223,7 @@ impl<'s> System<'s> for CursorPositionSystem {
             }
 
             // Reset tile size if size is not default and cursor touch nothing
-            if scale.0.x != EDITOR_GRID_SIZE / TILE_WIDTH && new_prev.is_none() {
+            if some_action && new_prev.is_none() && scale.0.x != EDITOR_GRID_SIZE / TILE_WIDTH {
                 scale.0.x = EDITOR_GRID_SIZE / TILE_WIDTH;
                 scale.0.y = EDITOR_GRID_SIZE / TILE_WIDTH;
                 position.0.x = real_pos.0.x;

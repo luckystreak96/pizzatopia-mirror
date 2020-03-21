@@ -184,7 +184,7 @@ impl<'a, 'b> Editor<'a, 'b> {
         dispatcher_builder.add(
             systems::graphics::PositionDrawUpdateSystem,
             "position_draw_update_system",
-            &["editor_button_event_system"],
+            &["cursor_position_system"],
         );
 
         dispatcher_builder
