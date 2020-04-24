@@ -179,7 +179,13 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                     println!("Resetting map...");
                     self.initialize_level(world, true);
                 }
-                _ => {}
+                Events::AddTile(tile) => {
+                    println!("ADDING TILE EVENT");
+                    Level::initialize_ground(data.world, tile);
+                }
+                _ => {
+                    println!("ADDING EVENT");
+                }
             }
         }
 

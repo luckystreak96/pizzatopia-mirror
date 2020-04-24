@@ -140,6 +140,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         if let MyEvents::App(event) = &event {
             match event {
+                Events::AddTile(tile) => {
+                    Level::initialize_ground(data.world, tile);
+                }
                 _ => {}
             }
         }

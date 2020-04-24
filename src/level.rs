@@ -53,10 +53,11 @@ impl From<Level> for Result<Level, Error> {
 #[serde(default)]
 #[derivative(Default)]
 pub struct Tile {
-    pos: Vec2,
-    sprite: usize,
+    pub pos: Vec2,
+    #[derivative(Default(value = "1"))]
+    pub sprite: usize,
     #[derivative(Default(value = "Vec2::new(TILE_WIDTH, TILE_HEIGHT)"))]
-    size: Vec2,
+    pub size: Vec2,
 }
 
 impl Component for Tile {

@@ -16,7 +16,8 @@ use crate::components::game::Health;
 use crate::components::graphics::Scale;
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::components::player::Player;
-use crate::level::Level;
+use crate::events::Events;
+use crate::level::{Level, Tile};
 use crate::states::editor::EDITOR_GRID_SIZE;
 use crate::states::pizzatopia::{CAM_HEIGHT, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{
@@ -30,6 +31,8 @@ use std::time::{Duration, Instant};
 pub enum EditorEvents {
     A,
     B,
+    AddTile,
+    RemoveTile,
 }
 
 #[derive(SystemDesc)]
@@ -254,47 +257,14 @@ impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
         Read<'s, InputHandler<StringBindings>>,
         Write<'s, EventChannel<EditorEvents>>,
-        ReadStorage<'s, EditorCursor>,
-        ReadStorage<'s, RealEntityId>,
-        WriteStorage<'s, CursorWasInThisEntity>,
-        Entities<'s>,
     );
 
-    fn run(
-        &mut self,
-        (input, mut editor_event_writer, cursors, real_entity_ids, mut previous_block, entities): Self::SystemData,
-    ) {
+    fn run(&mut self, (input, mut editor_event_writer): Self::SystemData) {
         // Controller input
         if input.action_is_down("cancel").unwrap_or(false) {
-            info!("One run of system");
-            for (cursor, previous_block, cursor_entity) in
-                (&cursors, &mut previous_block, &entities).join()
-            {
-                let mut target: Option<u32> = previous_block.0;
-                let mut deleted = false;
-                if target.is_some() {
-                    deleted = true;
-                    warn!("Deleting tile!");
-                    // Get the editor entity
-                    let editor_entity = entities.entity(target.unwrap());
-
-                    // Delete the real entity using editor entity
-                    let real_ent_id = real_entity_ids
-                        .get(editor_entity)
-                        .expect("Tried to delete editor entity with no real entity.");
-                    if let Some(real_entity_id) = real_ent_id.0 {
-                        let real_entity = entities.entity(real_entity_id);
-                        entities.delete(real_entity);
-                    }
-                    entities.delete(editor_entity);
-                }
-                if deleted {
-                    previous_block.0 = None;
-                }
-            }
+            editor_event_writer.single_write(EditorEvents::RemoveTile);
         } else if input.action_is_down("accept").unwrap_or(false) {
-            // Send event - you have no choice
-            editor_event_writer.single_write(EditorEvents::A);
+            editor_event_writer.single_write(EditorEvents::AddTile);
         }
     }
 }
@@ -315,11 +285,74 @@ impl EditorEventHandlingSystem {
 }
 
 impl<'s> System<'s> for EditorEventHandlingSystem {
-    type SystemData = (Read<'s, EventChannel<EditorEvents>>, Entities<'s>);
+    type SystemData = (
+        Read<'s, InputHandler<StringBindings>>,
+        Read<'s, EventChannel<EditorEvents>>,
+        Write<'s, EventChannel<Events>>,
+        ReadStorage<'s, EditorCursor>,
+        ReadStorage<'s, RealEntityId>,
+        WriteStorage<'s, CursorWasInThisEntity>,
+        Entities<'s>,
+    );
 
-    fn run(&mut self, (editor_event_channel, entities): Self::SystemData) {
+    fn run(
+        &mut self,
+        (
+            input,
+            editor_event_channel,
+            mut world_events_channel,
+            cursors,
+            real_entity_ids,
+            mut previous_block,
+            entities,
+        ): Self::SystemData,
+    ) {
         for event in editor_event_channel.read(&mut self.reader) {
-            println!("Received an event: {:?}", event);
+            match event {
+                EditorEvents::A => {}
+                EditorEvents::B => {}
+                EditorEvents::AddTile => {
+                    // TODO : Set correct tile position! (I think that position is the cursor center 🤔)
+                    // TODO : Check to see if the spot is already filled by another tile!
+                    let mut tile = Tile::default();
+                    tile.pos = Vec2::new(512.0, 512.0);
+                    warn!("Adding tile!");
+                    world_events_channel.single_write(Events::AddTile(tile));
+                }
+                EditorEvents::RemoveTile => {
+                    for (cursor, previous_block, cursor_entity) in
+                        (&cursors, &mut previous_block, &entities).join()
+                    {
+                        let target: Option<u32> = previous_block.0;
+                        let mut deleted = false;
+                        if target.is_some() {
+                            deleted = true;
+                            warn!("Deleting tile!");
+                            // Get the editor entity
+                            let editor_entity = entities.entity(target.unwrap());
+
+                            // Delete the real entity using editor entity
+                            let real_ent_id = real_entity_ids
+                                .get(editor_entity)
+                                .expect("Tried to delete editor entity with no real entity.");
+                            if let Some(real_entity_id) = real_ent_id.0 {
+                                let real_entity = entities.entity(real_entity_id);
+                                match entities.delete(real_entity) {
+                                    Ok(val) => {}
+                                    Err(e) => println!("Error deleting real entity."),
+                                }
+                            }
+                            match entities.delete(editor_entity) {
+                                Ok(val) => {}
+                                Err(e) => println!("Error deleting editor entity."),
+                            }
+                        }
+                        if deleted {
+                            previous_block.0 = None;
+                        }
+                    }
+                }
+            };
         }
     }
 }
