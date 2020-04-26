@@ -166,28 +166,33 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
 impl<'a, 'b> Editor<'a, 'b> {
     fn create_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
+        // Main logic
         let mut dispatcher_builder = DispatcherBuilder::new();
-        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
-        dispatcher_builder.add(EditorButtonEventSystem, "editor_button_event_system", &[]);
-        dispatcher_builder.add(
-            EditorEventHandlingSystem::new(world),
-            "editor_event_handling_system",
-            &["editor_button_event_system"],
-        );
         dispatcher_builder.add(
             CursorPositionSystem::new(world),
             "cursor_position_system",
-            &["editor_event_handling_system"],
+            &[],
         );
+
+        // The event handling is all done at the end since entities are created and deleted lazily
+        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &["cursor_position_system"]);
+        dispatcher_builder.add(EditorButtonEventSystem, "editor_button_event_system", &["cursor_position_system"]);
+        dispatcher_builder.add(
+            EditorEventHandlingSystem::new(world),
+            "editor_event_handling_system",
+            &["editor_button_event_system", "console_input_system"],
+        );
+
+        // Graphics
         dispatcher_builder.add(
             PulseAnimationSystem,
             "pulse_animation_system",
-            &["cursor_position_system"],
+            &["editor_event_handling_system"],
         );
         dispatcher_builder.add(
             systems::graphics::PositionDrawUpdateSystem,
             "position_draw_update_system",
-            &["cursor_position_system"],
+            &["editor_event_handling_system"],
         );
 
         dispatcher_builder

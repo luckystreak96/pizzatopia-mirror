@@ -114,6 +114,59 @@ impl Level {
         println!("New editor tile id is : {}", editor_entity.id());
     }
 
+    /// Initialises the ground using storages.
+    // pub fn create_tile(tile: &Tile, spritesheet: Fetch<Vec<Handle<SpriteSheet>>>, ) {
+        // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
+    //     let tile_size = PlatformCuboid::create(tile.size.x, tile.size.y);
+    //     let scale = Scale(Vec2::new(
+    //         tile.size.x / TILE_WIDTH,
+    //         tile.size.y / TILE_HEIGHT,
+    //     ));
+    //
+    //     let transform = Transform::default();
+    //
+    //     // Correctly position the tile.
+    //     let pos = Position(tile.pos.to_vec3().clone());
+    //
+    //     let sprite_sheet =
+    //         world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
+    //     // Assign the sprite
+    //     let sprite_render = SpriteRender {
+    //         sprite_sheet: sprite_sheet.clone(),
+    //         sprite_number: tile.sprite, // grass is the first sprite in the sprite_sheet
+    //     };
+    //
+    //     // tile_size: ReadStorage<PlatformCuboid>, position: ReadStorage<Position>,
+    //     // transform: ReadStorage<Transform>,sprite_render: ReadStorage<SpriteRender>,scale: ReadStorage<Scale>,real_entity_id: ReadStorage<RealEntityId>,
+    //     // position: ReadStorage<Position>,position: ReadStorage<Position>,position: ReadStorage<Position>,position: ReadStorage<Position>,
+    //
+    //     // Create gameplay entity
+    //     let entity = world
+    //         .create_entity()
+    //         .with(tile_size.clone())
+    //         //.with(PlatformCuboid::new())
+    //         .with(pos.clone())
+    //         .with(transform.clone())
+    //         .with(sprite_render.clone())
+    //         .with(scale.clone())
+    //         .build();
+    //
+    //     // create editor entity
+    //     let editor_entity = world
+    //         .create_entity()
+    //         .with(RealEntityId(Some(entity.id())))
+    //         .with(EditorEntity)
+    //         .with(tile.clone())
+    //         .with(transform.clone())
+    //         .with(sprite_render.clone())
+    //         .with(pos.clone())
+    //         .with(amethyst::core::Hidden)
+    //         .with(scale.clone())
+    //         .with(SizeForEditorGrid(tile.size.clone()))
+    //         .build();
+    //     println!("New editor tile id is : {}", editor_entity.id());
+    // }
+
     pub(crate) fn initialize_level(world: &mut World) {
         let tiles;
         {

@@ -376,8 +376,9 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                             warn!("Adding tile! {}", vec_sprite_handle.len());
                             tile.pos = position.0.clone();
                             snap_cursor_position_to_grid_corner(&mut tile.pos);
-                            // TODO : This shouldn't be an event, it's too slow (won't work till next frame). Make a func in Level that takes all the storages as arguments.
-                            // TODO : https://book.amethyst.rs/master/concepts/system.html?highlight=create#creating-new-entities-in-a-system
+                            // Writing an event here is fine - entities are created lazily (only at frame end)
+                            // May as well use World and save the trouble for the tile creation
+                            // https://book.amethyst.rs/master/concepts/system.html?highlight=create#creating-new-entities-in-a-system
                             world_events_channel.single_write(Events::AddTile(tile.clone()));
                         }
                     }
@@ -402,7 +403,6 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                             let real_ent_id = real_entity_ids.get(editor_entity).expect(
                                 "Tried to delete editor entity with no associated real entity.",
                             );
-                            // TODO : Entities remain alive until the end of the frame. Move their butts to a different position at least until they can be cleaned up properly.
                             if let Some(real_entity_id) = real_ent_id.0 {
                                 let real_entity = entities.entity(real_entity_id);
                                 match entities.delete(real_entity) {
