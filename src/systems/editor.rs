@@ -23,8 +23,11 @@ use crate::states::pizzatopia::{CAM_HEIGHT, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{
     gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
 };
-use crate::utils::Vec2;
-use log::{info, warn};
+use crate::utils::{Vec2, Vec3};
+use amethyst::assets::Handle;
+use amethyst::ecs::prelude::ReadExpect;
+use amethyst::renderer::SpriteSheet;
+use log::{error, info, warn};
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]
@@ -35,6 +38,37 @@ pub enum EditorEvents {
     RemoveTile,
 }
 
+fn snap_cursor_position_to_grid_center(position: &mut Vec2) {
+    position.x -= (position.x % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
+    position.y -= (position.y % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
+}
+
+fn snap_cursor_position_to_grid_corner(position: &mut Vec2) {
+    position.x += position.x % EDITOR_GRID_SIZE;
+    position.y += position.y % EDITOR_GRID_SIZE;
+}
+
+//(&positions, &size_for_editor, &entities, !&cursors).join()
+fn get_tile_at_position(
+    pos: &Vec2,
+    positions: &WriteStorage<Position>,
+    size_for_editor: &ReadStorage<SizeForEditorGrid>,
+    cursors: &ReadStorage<EditorCursor>,
+    entities: &Entities,
+) -> Option<(Vec3, Vec2, u32)> {
+    for (position, size, entity, _) in (positions, size_for_editor, entities, !cursors).join() {
+        if entities.is_alive(entity) {
+            let half_w = size.0.x / 2.0;
+            let half_h = size.0.y / 2.0;
+            if (position.0.x - pos.x).abs() <= half_w && (position.0.y - pos.y).abs() <= half_h {
+                // We are in contact with a block
+                return Some((position.0.clone(), size.0.clone(), entity.id()));
+            }
+        }
+    }
+    return None;
+}
+
 #[derive(SystemDesc)]
 pub struct CursorPositionSystem {
     repeat_delay_h: Instant,
@@ -42,16 +76,22 @@ pub struct CursorPositionSystem {
     ready_v: bool,
     ready_h: bool,
     counter: u32,
+    reader: ReaderId<EditorEvents>,
 }
 
-impl Default for CursorPositionSystem {
-    fn default() -> Self {
-        CursorPositionSystem {
+impl CursorPositionSystem {
+    pub fn new(world: &mut World) -> Self {
+        <Self as System<'_>>::SystemData::setup(world);
+        let reader = world
+            .fetch_mut::<EventChannel<EditorEvents>>()
+            .register_reader();
+        Self {
             repeat_delay_h: Instant::now(),
             repeat_delay_v: Instant::now(),
             ready_h: true,
             ready_v: true,
             counter: 0,
+            reader,
         }
     }
 }
@@ -59,6 +99,7 @@ impl Default for CursorPositionSystem {
 impl<'s> System<'s> for CursorPositionSystem {
     type SystemData = (
         Write<'s, DebugLines>,
+        Read<'s, EventChannel<EditorEvents>>,
         Read<'s, InputHandler<StringBindings>>,
         WriteStorage<'s, Position>,
         ReadStorage<'s, EditorCursor>,
@@ -73,6 +114,7 @@ impl<'s> System<'s> for CursorPositionSystem {
         &mut self,
         (
             mut debug_lines_resource,
+            editor_events,
             input,
             mut positions,
             cursors,
@@ -83,6 +125,9 @@ impl<'s> System<'s> for CursorPositionSystem {
             entities,
         ): Self::SystemData,
     ) {
+        // presence of events that need the cursor to change
+        let mut should_update_cursor = false;
+        // cursor moved
         let mut no_movement = true;
         let mut pos = Vec2::new(0.0, 0.0);
         let mut prev_block: Option<u32> = None;
@@ -135,7 +180,10 @@ impl<'s> System<'s> for CursorPositionSystem {
                 horizontal = 0.0;
             }
 
-            // need to set again after possible changes
+            // need to check again after possible changes
+            for event in editor_events.read(&mut self.reader) {
+                should_update_cursor = true;
+            }
             no_movement = horizontal == 0.0 && vertical == 0.0;
 
             // Set ready to false after you start moving
@@ -151,8 +199,7 @@ impl<'s> System<'s> for CursorPositionSystem {
             real_pos.0.y += vertical * EDITOR_GRID_SIZE;
 
             // Snap to nearest grid size
-            real_pos.0.x -= (real_pos.0.x % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
-            real_pos.0.y -= (real_pos.0.y % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
+            snap_cursor_position_to_grid_center(&mut real_pos.0);
 
             pos = real_pos.0.clone();
         }
@@ -160,8 +207,8 @@ impl<'s> System<'s> for CursorPositionSystem {
         let mut new_scale = None;
         let mut new_position = None;
         let mut new_prev = prev_block.clone();
-        // look for a block on us
-        if !no_movement {
+        // look for a block on us if we moved
+        if !no_movement || should_update_cursor {
             let mut was_same = true;
             // Loop until you exit the block
             while was_same {
@@ -170,28 +217,29 @@ impl<'s> System<'s> for CursorPositionSystem {
                 new_position = None;
                 new_scale = None;
                 // if the block exists, snap to it
-                for (position, size, entity, _) in
-                    (&positions, &size_for_editor, &entities, !&cursors).join()
-                {
-                    let half_w = size.0.x / 2.0;
-                    let half_h = size.0.y / 2.0;
-                    if (position.0.x - pos.x).abs() <= half_w
-                        && (position.0.y - pos.y).abs() <= half_h
-                    {
-                        // We are in contact with a block
-                        new_position = Some(position.0.clone());
-                        new_scale = Some(Vec2::new(size.0.x / TILE_WIDTH, size.0.y / TILE_HEIGHT));
+                let tile =
+                    get_tile_at_position(&pos, &positions, &size_for_editor, &cursors, &entities);
 
-                        let prev = prev_block.unwrap_or(9999999);
-                        if prev == entity.id() {
+                if tile.is_some() {
+                    let (position, size, entity) = tile.unwrap();
+
+                    // Update the cursor characteristics
+                    new_position = Some(position.clone());
+                    new_scale = Some(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
+
+                    let prev = prev_block.unwrap_or(9999999);
+                    if prev == entity && !no_movement {
+                        // If we moved, we try to find the next block
+                        if !no_movement {
                             // Move the cursor one more grid size
                             pos.x += horizontal * EDITOR_GRID_SIZE;
                             pos.y += vertical * EDITOR_GRID_SIZE;
                             was_same = true;
-                        } else {
-                            new_prev = Some(entity.id());
-                            was_same = false;
                         }
+                    } else if prev != entity {
+                        new_prev = Some(entity);
+                        warn!("New prev is now: {}", entity);
+                        was_same = false;
                     }
                 }
             }
@@ -290,9 +338,11 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         Read<'s, EventChannel<EditorEvents>>,
         Write<'s, EventChannel<Events>>,
         ReadStorage<'s, EditorCursor>,
+        ReadStorage<'s, RealCursorPosition>,
         ReadStorage<'s, RealEntityId>,
         WriteStorage<'s, CursorWasInThisEntity>,
         Entities<'s>,
+        ReadExpect<'s, Vec<Handle<SpriteSheet>>>,
     );
 
     fn run(
@@ -302,9 +352,11 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
             editor_event_channel,
             mut world_events_channel,
             cursors,
+            real_positions,
             real_entity_ids,
             mut previous_block,
             entities,
+            vec_sprite_handle,
         ): Self::SystemData,
     ) {
         for event in editor_event_channel.read(&mut self.reader) {
@@ -312,12 +364,23 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 EditorEvents::A => {}
                 EditorEvents::B => {}
                 EditorEvents::AddTile => {
-                    // TODO : Set correct tile position! (I think that position is the cursor center 🤔)
-                    // TODO : Check to see if the spot is already filled by another tile!
                     let mut tile = Tile::default();
-                    tile.pos = Vec2::new(512.0, 512.0);
-                    warn!("Adding tile!");
-                    world_events_channel.single_write(Events::AddTile(tile));
+
+                    for (cursor, position, mut previous_block) in
+                        (&cursors, &real_positions, &mut previous_block).join()
+                    {
+                        // We only add the block if the cursor isn't currently in a tile
+                        if previous_block.0.is_none() {
+                            // Set prev block to something random
+                            // previous_block.0 = Some(0);
+                            warn!("Adding tile! {}", vec_sprite_handle.len());
+                            tile.pos = position.0.clone();
+                            snap_cursor_position_to_grid_corner(&mut tile.pos);
+                            // TODO : This shouldn't be an event, it's too slow (won't work till next frame). Make a func in Level that takes all the storages as arguments.
+                            // TODO : https://book.amethyst.rs/master/concepts/system.html?highlight=create#creating-new-entities-in-a-system
+                            world_events_channel.single_write(Events::AddTile(tile.clone()));
+                        }
+                    }
                 }
                 EditorEvents::RemoveTile => {
                     for (cursor, previous_block, cursor_entity) in
@@ -327,14 +390,19 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         let mut deleted = false;
                         if target.is_some() {
                             deleted = true;
-                            warn!("Deleting tile!");
+                            warn!("Deleting tile {:?}!", target.unwrap());
                             // Get the editor entity
                             let editor_entity = entities.entity(target.unwrap());
+                            if !entities.is_alive(editor_entity) {
+                                error!("ITS DED DONT DELETE IT");
+                                break;
+                            }
 
                             // Delete the real entity using editor entity
-                            let real_ent_id = real_entity_ids
-                                .get(editor_entity)
-                                .expect("Tried to delete editor entity with no real entity.");
+                            let real_ent_id = real_entity_ids.get(editor_entity).expect(
+                                "Tried to delete editor entity with no associated real entity.",
+                            );
+                            // TODO : Entities remain alive until the end of the frame. Move their butts to a different position at least until they can be cleaned up properly.
                             if let Some(real_entity_id) = real_ent_id.0 {
                                 let real_entity = entities.entity(real_entity_id);
                                 match entities.delete(real_entity) {

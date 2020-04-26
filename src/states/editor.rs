@@ -175,7 +175,7 @@ impl<'a, 'b> Editor<'a, 'b> {
             &["editor_button_event_system"],
         );
         dispatcher_builder.add(
-            CursorPositionSystem::default(),
+            CursorPositionSystem::new(world),
             "cursor_position_system",
             &["editor_event_handling_system"],
         );

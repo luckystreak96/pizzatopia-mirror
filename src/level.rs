@@ -99,7 +99,7 @@ impl Level {
             .build();
 
         // create editor entity
-        world
+        let editor_entity = world
             .create_entity()
             .with(RealEntityId(Some(entity.id())))
             .with(EditorEntity)
@@ -111,6 +111,7 @@ impl Level {
             .with(scale.clone())
             .with(SizeForEditorGrid(tile.size.clone()))
             .build();
+        println!("New editor tile id is : {}", editor_entity.id());
     }
 
     pub(crate) fn initialize_level(world: &mut World) {

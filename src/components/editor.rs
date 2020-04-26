@@ -19,6 +19,7 @@ impl Component for EditorCursor {
     type Storage = NullStorage<Self>;
 }
 
+// Represents the cursor's position as a dot in the middle of the smallest grid unit it is truly in
 pub struct RealCursorPosition(pub Vec2);
 
 impl Component for RealCursorPosition {
