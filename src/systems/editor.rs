@@ -236,9 +236,8 @@ impl<'s> System<'s> for CursorPositionSystem {
                             pos.y += vertical * EDITOR_GRID_SIZE;
                             was_same = true;
                         }
-                    } else if prev != entity {
+                    } else {
                         new_prev = Some(entity);
-                        warn!("New prev is now: {}", entity);
                         was_same = false;
                     }
                 }
@@ -354,7 +353,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
             cursors,
             real_positions,
             real_entity_ids,
-            mut previous_block,
+            previous_block,
             entities,
             vec_sprite_handle,
         ): Self::SystemData,
@@ -366,14 +365,11 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 EditorEvents::AddTile => {
                     let mut tile = Tile::default();
 
-                    for (cursor, position, mut previous_block) in
-                        (&cursors, &real_positions, &mut previous_block).join()
+                    for (cursor, position, previous_block) in
+                        (&cursors, &real_positions, &previous_block).join()
                     {
                         // We only add the block if the cursor isn't currently in a tile
                         if previous_block.0.is_none() {
-                            // Set prev block to something random
-                            // previous_block.0 = Some(0);
-                            warn!("Adding tile! {}", vec_sprite_handle.len());
                             tile.pos = position.0.clone();
                             snap_cursor_position_to_grid_corner(&mut tile.pos);
                             // Writing an event here is fine - entities are created lazily (only at frame end)
@@ -385,12 +381,10 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 }
                 EditorEvents::RemoveTile => {
                     for (cursor, previous_block, cursor_entity) in
-                        (&cursors, &mut previous_block, &entities).join()
+                        (&cursors, &previous_block, &entities).join()
                     {
                         let target: Option<u32> = previous_block.0;
-                        let mut deleted = false;
                         if target.is_some() {
-                            deleted = true;
                             warn!("Deleting tile {:?}!", target.unwrap());
                             // Get the editor entity
                             let editor_entity = entities.entity(target.unwrap());
@@ -414,9 +408,6 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                                 Ok(val) => {}
                                 Err(e) => println!("Error deleting editor entity."),
                             }
-                        }
-                        if deleted {
-                            previous_block.0 = None;
                         }
                     }
                 }
