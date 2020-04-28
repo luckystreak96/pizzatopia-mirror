@@ -10,7 +10,7 @@ use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLi
 use amethyst::renderer::palette::Srgba;
 
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, RealCursorPosition, InstanceEntityId, SizeForEditorGrid,
+    CursorWasInThisEntity, EditorCursor, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
 };
 use crate::components::game::Health;
 use crate::components::graphics::Scale;
@@ -365,7 +365,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                     let mut tile = Tile::default();
 
                     for (cursor, position, previous_block) in
-                    (&cursors, &real_positions, &previous_block).join()
+                        (&cursors, &real_positions, &previous_block).join()
                     {
                         // We only add the block if the cursor isn't currently in a tile
                         if previous_block.0.is_none() {

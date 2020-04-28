@@ -183,8 +183,16 @@ impl<'a, 'b> Editor<'a, 'b> {
         );
 
         // The event handling is all done at the end since entities are created and deleted lazily
-        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &["cursor_position_system"]);
-        dispatcher_builder.add(EditorButtonEventSystem, "editor_button_event_system", &["cursor_position_system"]);
+        dispatcher_builder.add(
+            ConsoleInputSystem,
+            "console_input_system",
+            &["cursor_position_system"],
+        );
+        dispatcher_builder.add(
+            EditorButtonEventSystem,
+            "editor_button_event_system",
+            &["cursor_position_system"],
+        );
         dispatcher_builder.add(
             EditorEventHandlingSystem::new(world),
             "editor_event_handling_system",

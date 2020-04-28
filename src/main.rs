@@ -20,7 +20,7 @@ use amethyst::{
     ecs::{DispatcherBuilder, Read, System, World, Write},
     prelude::*,
     renderer::{
-        plugins::{RenderFlat2D, RenderToWindow, RenderDebugLines},
+        plugins::{RenderDebugLines, RenderFlat2D, RenderToWindow},
         types::DefaultBackend,
         ImageFormat, RenderingBundle, SpriteSheet, Texture,
     },

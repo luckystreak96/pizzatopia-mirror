@@ -8,6 +8,7 @@ use crate::components::physics::{
 use crate::components::player::Player;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Snap, Tiles};
 use crate::states::pizzatopia::{DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
+use crate::systems::editor::EditorButtonEventSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
@@ -28,13 +29,12 @@ use amethyst::{
     utils::application_root_dir,
 };
 use derivative::Derivative;
+use log::{error, warn};
 use serde::Deserialize;
 use serde::Serialize;
-use std::ops::Index;
-use crate::systems::editor::EditorButtonEventSystem;
 use std::fs::File;
 use std::io::Write;
-use log::{error, warn};
+use std::ops::Index;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Level {
@@ -54,28 +54,36 @@ impl From<Level> for Result<Level, Error> {
     }
 }
 
-fn default_tile_size() -> Vec2 {
-    Vec2::new(TILE_WIDTH, TILE_HEIGHT)
-}
-
-fn is_tile_size_default(size: &Vec2) -> bool {
-    *size == default_tile_size()
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Derivative)]
 #[serde(default)]
 #[derivative(Default)]
 pub struct Tile {
     pub pos: Vec2,
-    #[derivative(Default(value = "1"))]
+    #[derivative(Default(value = "Tile::default_sprite()"))]
+    #[serde(skip_serializing_if = "Tile::is_default_sprite")]
     pub sprite: usize,
-    #[derivative(Default(value = "default_tile_size()"))]
-    #[serde(skip_serializing_if = "is_tile_size_default")]
+    #[derivative(Default(value = "Tile::default_size()"))]
+    #[serde(skip_serializing_if = "Tile::is_default_size")]
     pub size: Vec2,
 }
 
 impl Component for Tile {
     type Storage = DenseVecStorage<Self>;
+}
+
+impl Tile {
+    fn default_size() -> Vec2 {
+        Vec2::new(TILE_WIDTH, TILE_HEIGHT)
+    }
+    fn is_default_size(size: &Vec2) -> bool {
+        *size == Tile::default_size()
+    }
+    fn default_sprite() -> usize {
+        0
+    }
+    fn is_default_sprite(sprite: &usize) -> bool {
+        *sprite == Tile::default_sprite()
+    }
 }
 
 impl Level {
@@ -155,7 +163,11 @@ impl Level {
         // TODO HINT : Use Resettable data to build Player and other future entities
         // Create Level struct
         let mut level = Level::default();
-        for (tile, _) in (&world.read_storage::<Tile>(), &world.read_storage::<EditorFlag>()).join()
+        for (tile, _) in (
+            &world.read_storage::<Tile>(),
+            &world.read_storage::<EditorFlag>(),
+        )
+            .join()
         {
             level.tiles.push(tile.clone());
         }
@@ -200,7 +212,7 @@ impl Level {
         {
             let entities = world.entities();
             for (editor_entity, instance_id) in
-            (&world.entities(), &world.read_storage::<InstanceEntityId>()).join()
+                (&world.entities(), &world.read_storage::<InstanceEntityId>()).join()
             {
                 if let Some(id) = instance_id.0 {
                     let instance_entity = entities.entity(id);

@@ -615,7 +615,12 @@ impl<'s> System<'s> for PlatformCollisionSystem {
 
                         // Is the block even close to us
                         if Self::within_range_x(&point_vel_pos, &platform_position, cuboid, delta) {
-                            if Self::within_range_y(&point_vel_pos, &platform_position, cuboid, delta) {
+                            if Self::within_range_y(
+                                &point_vel_pos,
+                                &platform_position,
+                                cuboid,
+                                delta,
+                            ) {
                                 // point of collision and side
                                 let point_of_collision = Self::raycast(
                                     &point_pos,
