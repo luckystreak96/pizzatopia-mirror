@@ -6,6 +6,7 @@ use crate::components::physics::{
     Sticky, Velocity,
 };
 use crate::components::player::Player;
+use crate::states::loading::{AssetsDir, LevelPath};
 use crate::states::pizzatopia::SpriteSheetType::{Character, Snap, Tiles};
 use crate::states::pizzatopia::{DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::editor::EditorButtonEventSystem;
@@ -35,6 +36,7 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Index;
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Level {
@@ -156,8 +158,10 @@ impl Level {
     // Turns all current entities into a RON file with the current date as a name
     pub(crate) fn save_level(world: &mut World) {
         // TODO : Save to correct file
-        let filename = String::from("test_level.ron");
-        warn!("Saving level {}...", filename);
+        let filename = world.read_resource::<LevelPath>().0.clone();
+        let assets_dir = world.read_resource::<AssetsDir>().0.clone();
+        let path = assets_dir.join(filename);
+        warn!("Saving level {:?}...", path);
 
         // TODO : Save player to file
         // TODO HINT : Use Resettable data to build Player and other future entities
@@ -179,7 +183,16 @@ impl Level {
             }
         };
         // Write to file
-        let mut file = File::create(filename).unwrap();
+        let mut file = match File::create(&path) {
+            Ok(file) => file,
+            Err(e) => {
+                error!(
+                    "Error saving level in file {:?} with error message:\n{}",
+                    &path, e
+                );
+                return;
+            }
+        };
         file.write_all(serialized.as_bytes()).unwrap();
     }
 

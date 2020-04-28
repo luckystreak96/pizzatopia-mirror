@@ -45,7 +45,7 @@ use crate::audio::initialise_audio;
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
-use crate::states::loading::LoadingState;
+use crate::states::loading::{LoadingState, AssetsDir};
 use crate::states::pizzatopia::MyEventReader;
 use crate::states::pizzatopia::{MyEvents, Pizzatopia};
 use crate::systems::console::ConsoleInputSystem;
@@ -62,8 +62,6 @@ fn main() -> amethyst::Result<()> {
     let binding_path = app_root.join("config").join("bindings.ron");
     let input_bundle =
         InputBundle::<StringBindings>::new().with_bindings_from_file(binding_path)?;
-
-    let world = World::new();
 
     let game_data = GameDataBuilder::default()
         .with_system_desc(PrefabLoaderSystemDesc::<PlatformCuboid>::default(), "", &[])
@@ -84,7 +82,6 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(RenderDebugLines::default()),
         )?
         .with(Processor::<Level>::new(), "", &[]);
-
     let assets_dir = app_root.join("assets");
 
     let mut game = CoreApplication::<_, MyEvents, MyEventReader>::new(

@@ -33,6 +33,10 @@ use amethyst::{
     },
     winit::Event,
 };
+use std::path::{Path, PathBuf};
+
+pub struct LevelPath(pub String);
+pub struct AssetsDir(pub PathBuf);
 
 pub struct LoadingState {
     /// Tracks loaded assets.
@@ -58,9 +62,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
         });
         world.insert(platform_size_prefab_handle.clone());
 
-        // TODO : Add a resource for the current level filename
+        world.insert(AssetsDir(application_root_dir().unwrap().join("assets")));
+
+        world.insert(LevelPath(String::from("levels/level0.ron")));
         let level_handle = world.read_resource::<Loader>().load(
-            "levels/level0.ron", // Here we load the associated ron file
+            world.read_resource::<LevelPath>().0.as_str(), // Here we load the associated ron file
             RonFormat,
             &mut self.progress_counter,
             &world.read_resource::<AssetStorage<Level>>(),
