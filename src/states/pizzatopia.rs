@@ -105,13 +105,19 @@ impl Default for Pizzatopia<'_, '_> {
 
 impl Pizzatopia<'_, '_> {
     fn initialize_level(&mut self, world: &mut World, resetting: bool) {
-        Level::reinitialize_level(world);
+        // Level::reinitialize_level(world);
 
         // add the entities for the level
         // will want to move this in the future to level.rs
-        Level::initialize_player(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world);
+        Level::initialize_player(
+            Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0),
+            true,
+            false,
+            world,
+        );
         Level::initialize_player(
             Vec2::new(CAM_WIDTH / 2.0 - (TILE_HEIGHT * 2.0), CAM_HEIGHT / 2.0),
+            false,
             false,
             world,
         );
@@ -170,7 +176,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
             match event {
                 Events::Reset => {
                     println!("Resetting map...");
-                    self.initialize_level(world, true);
+                    Level::reinitialize_level(world);
                 }
                 Events::AddTile(tile) => {
                     Level::initialize_ground(data.world, tile);

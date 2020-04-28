@@ -23,8 +23,8 @@ impl Vec2 {
 
     pub fn to_vec3(&self) -> Vec3 {
         Vec3 {
-            x : self.x,
-        y : self.y,
+            x: self.x,
+            y: self.y,
             z: 0.0,
         }
     }
@@ -38,7 +38,7 @@ impl Ord for Vec2 {
     }
 }
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
@@ -52,8 +52,8 @@ impl Vec3 {
 
     pub fn to_vec2(&self) -> Vec2 {
         Vec2 {
-            x : self.x,
-            y : self.y,
+            x: self.x,
+            y: self.y,
         }
     }
 }

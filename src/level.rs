@@ -16,7 +16,7 @@ use amethyst::{
         ProgressCounter, Source,
     },
     core::transform::Transform,
-    ecs::prelude::{Component, DenseVecStorage, NullStorage},
+    ecs::prelude::{Component, DenseVecStorage, Join, NullStorage},
     ecs::VecStorage,
     error::{format_err, Error, ResultExt},
     prelude::*,
@@ -115,59 +115,6 @@ impl Level {
         println!("New editor tile id is : {}", editor_entity.id());
     }
 
-    /// Initialises the ground using storages.
-    // pub fn create_tile(tile: &Tile, spritesheet: Fetch<Vec<Handle<SpriteSheet>>>, ) {
-    // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
-    //     let tile_size = PlatformCuboid::create(tile.size.x, tile.size.y);
-    //     let scale = Scale(Vec2::new(
-    //         tile.size.x / TILE_WIDTH,
-    //         tile.size.y / TILE_HEIGHT,
-    //     ));
-    //
-    //     let transform = Transform::default();
-    //
-    //     // Correctly position the tile.
-    //     let pos = Position(tile.pos.to_vec3().clone());
-    //
-    //     let sprite_sheet =
-    //         world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
-    //     // Assign the sprite
-    //     let sprite_render = SpriteRender {
-    //         sprite_sheet: sprite_sheet.clone(),
-    //         sprite_number: tile.sprite, // grass is the first sprite in the sprite_sheet
-    //     };
-    //
-    //     // tile_size: ReadStorage<PlatformCuboid>, position: ReadStorage<Position>,
-    //     // transform: ReadStorage<Transform>,sprite_render: ReadStorage<SpriteRender>,scale: ReadStorage<Scale>,real_entity_id: ReadStorage<RealEntityId>,
-    //     // position: ReadStorage<Position>,position: ReadStorage<Position>,position: ReadStorage<Position>,position: ReadStorage<Position>,
-    //
-    //     // Create gameplay entity
-    //     let entity = world
-    //         .create_entity()
-    //         .with(tile_size.clone())
-    //         //.with(PlatformCuboid::new())
-    //         .with(pos.clone())
-    //         .with(transform.clone())
-    //         .with(sprite_render.clone())
-    //         .with(scale.clone())
-    //         .build();
-    //
-    //     // create editor entity
-    //     let editor_entity = world
-    //         .create_entity()
-    //         .with(RealEntityId(Some(entity.id())))
-    //         .with(EditorEntity)
-    //         .with(tile.clone())
-    //         .with(transform.clone())
-    //         .with(sprite_render.clone())
-    //         .with(pos.clone())
-    //         .with(amethyst::core::Hidden)
-    //         .with(scale.clone())
-    //         .with(SizeForEditorGrid(tile.size.clone()))
-    //         .build();
-    //     println!("New editor tile id is : {}", editor_entity.id());
-    // }
-
     pub(crate) fn load_level(world: &mut World) {
         let tiles;
         {
@@ -186,28 +133,35 @@ impl Level {
     pub(crate) fn reinitialize_level(world: &mut World) {
         let mut resettables = Vec::new();
 
-        // TODO : Relink the entities
-        let entities = world.entities();
-        for (editor_entity, instance_id) in (&world.entities(), &world.read_storage::<InstanceEntityId>()).join() {
-            if let Some(id) = instance_id {
-                let instance_entity = entities.entity(id);
-                if let Some(reset) = world.read_storage::<Resettable>().get(instance_entity) {
-                    resettables.push((editor_entity, instance_entity, reset.clone()));
+        {
+            let entities = world.entities();
+            for (editor_entity, instance_id) in
+                (&world.entities(), &world.read_storage::<InstanceEntityId>()).join()
+            {
+                if let Some(id) = instance_id.0 {
+                    let instance_entity = entities.entity(id);
+                    if let Some(reset) = world.read_storage::<Resettable>().get(instance_entity) {
+                        resettables.push((editor_entity, instance_entity, reset.clone()));
+                    }
                 }
             }
         }
 
         // Re-create the entities according to their type
-        let instance_storage = &mut world.write_storage::<InstanceEntityId>();
+        let mut to_remove = Vec::new();
         for (editor_entity, instance_entity, reset_data) in resettables {
-            let new_instance_id =
-                match reset_data {
-                    Resettable::StaticTile => { panic!("Failed to reset tile - tiles are not resettable") }
-                    Resettable::Player(pos, player) => {
-                        Level::initialize_player(pos.0.to_vec2(), player.0, true, world)
-                    }
-                };
-            instance_storage.get_mut(editor_entity).unwrap().0 = Some(new_inst_id);
+            to_remove.push(instance_entity);
+            let new_instance_id = match reset_data {
+                Resettable::StaticTile => panic!("Failed to reset tile - tiles are not resettable"),
+                Resettable::Player(pos, player) => {
+                    Level::initialize_player(pos.0.to_vec2(), player.0, true, world)
+                }
+            };
+            world
+                .write_storage::<InstanceEntityId>()
+                .get_mut(editor_entity)
+                .unwrap()
+                .0 = Some(new_instance_id);
         }
 
         world
@@ -216,7 +170,12 @@ impl Level {
     }
 
     /// Initialises one tile.
-    pub fn initialize_player(pos: Vec2, player: bool, ignore_editor: bool, world: &mut World) -> u32 {
+    pub fn initialize_player(
+        pos: Vec2,
+        player: bool,
+        ignore_editor: bool,
+        world: &mut World,
+    ) -> u32 {
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
@@ -233,7 +192,7 @@ impl Level {
             sprite_number: 1,
         };
 
-        position = Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS));
+        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS));
 
         let entity;
         let builder = world
