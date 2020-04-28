@@ -126,7 +126,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         mut data: StateData<'_, GameData<'s, 's>>,
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
-        let world = &mut data.world;
+        let world = data.world;
         if let MyEvents::Window(event) = &event {
             let input = world.read_resource::<InputHandler<StringBindings>>();
             if input.action_is_down("exit").unwrap_or(false) {
@@ -143,9 +143,15 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 Events::AddTile(tile) => {
                     Level::initialize_ground(data.world, tile);
                 }
+                Events::DeleteTile(id) => {
+                    Level::delete_entity(data.world, *id);
+                }
                 _ => {}
             }
         }
+
+        // Necessary to record changes made to entities by events
+        data.world.maintain();
 
         // Escape isn't pressed, so we stay in this `State`.
         Trans::None

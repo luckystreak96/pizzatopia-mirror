@@ -31,6 +31,10 @@ use derivative::Derivative;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ops::Index;
+use crate::systems::editor::EditorButtonEventSystem;
+use std::fs::File;
+use std::io::Write;
+use log::{error, warn};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Level {
@@ -115,6 +119,7 @@ impl Level {
         println!("New editor tile id is : {}", editor_entity.id());
     }
 
+    // Turn the currently-loaded Level asset into entities
     pub(crate) fn load_level(world: &mut World) {
         let tiles;
         {
@@ -130,13 +135,54 @@ impl Level {
         }
     }
 
+    // Turns all current entities into a RON file with the current date as a name
+    pub(crate) fn save_level(world: &mut World) {
+        let mut level = Level::default();
+        for (tile, _) in (&world.read_storage::<Tile>(), &world.read_storage::<EditorFlag>()).join()
+        {
+            level.tiles.push(tile.clone());
+        }
+        let serialized = match ron::ser::to_string(&level) {
+            Ok(x) => x,
+            Err(e) => {
+                error!("Failed to serialize level for saving.");
+                return;
+            }
+        };
+        let mut file = File::create("test_level.ron").unwrap();
+        file.write_all(serialized.as_bytes()).unwrap();
+    }
+
+    // Remove an entity and its instance entity if it is an editor entity
+    pub(crate) fn delete_entity(world: &mut World, id: u32) {
+        warn!("Deleting tile {:?}!", id);
+        // Get the editor entity
+        let editor_entity = world.entities().entity(id);
+
+        // Delete the instance entity using editor entity
+        if let Some(instance_id) = world.read_storage::<InstanceEntityId>().get(editor_entity) {
+            if let Some(instance_id) = instance_id.0 {
+                let instance_entity = world.entities().entity(instance_id);
+                match world.entities().delete(instance_entity) {
+                    Ok(val) => {}
+                    Err(e) => error!("Error deleting instance entity."),
+                }
+            }
+        }
+        match world.entities().delete(editor_entity) {
+            Ok(val) => {}
+            Err(e) => error!("Error deleting editor entity."),
+        }
+    }
+
+    // Reset the entities in the level to match the editor entity states
     pub(crate) fn reinitialize_level(world: &mut World) {
         let mut resettables = Vec::new();
 
         {
             let entities = world.entities();
             for (editor_entity, instance_id) in
-                (&world.entities(), &world.read_storage::<InstanceEntityId>()).join()
+            (&world.entities(), &world.read_storage::<InstanceEntityId>()).join()
             {
                 if let Some(id) = instance_id.0 {
                     let instance_entity = entities.entity(id);
@@ -169,7 +215,7 @@ impl Level {
             .expect("Failed to delete entities for reset.");
     }
 
-    /// Initialises one tile.
+    /// Initialises a player entity
     pub fn initialize_player(
         pos: Vec2,
         player: bool,

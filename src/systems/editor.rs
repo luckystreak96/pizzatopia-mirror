@@ -32,10 +32,9 @@ use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub enum EditorEvents {
-    A,
-    B,
     AddTile,
     RemoveTile,
+    SaveLevel,
 }
 
 fn snap_cursor_position_to_grid_center(position: &mut Vec2) {
@@ -312,8 +311,8 @@ impl<'s> System<'s> for EditorButtonEventSystem {
             editor_event_writer.single_write(EditorEvents::RemoveTile);
         } else if input.action_is_down("accept").unwrap_or(false) {
             editor_event_writer.single_write(EditorEvents::AddTile);
-        } else if input.action_is_down("accept").unwrap_or(false) {
-            editor_event_writer.single_write(EditorEvents::AddTile);
+        } else if input.action_is_down("save").unwrap_or(false) {
+            editor_event_writer.single_write(EditorEvents::SaveLevel);
         }
     }
 }
@@ -362,8 +361,6 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
     ) {
         for event in editor_event_channel.read(&mut self.reader) {
             match event {
-                EditorEvents::A => {}
-                EditorEvents::B => {}
                 EditorEvents::AddTile => {
                     let mut tile = Tile::default();
 
@@ -382,36 +379,14 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                     }
                 }
                 EditorEvents::RemoveTile => {
-                    for (cursor, previous_block, cursor_entity) in
-                    (&cursors, &previous_block, &entities).join()
-                    {
-                        let target: Option<u32> = previous_block.0;
-                        if target.is_some() {
-                            warn!("Deleting tile {:?}!", target.unwrap());
-                            // Get the editor entity
-                            let editor_entity = entities.entity(target.unwrap());
-                            if !entities.is_alive(editor_entity) {
-                                error!("ITS DED DONT DELETE IT");
-                                break;
-                            }
-
-                            // Delete the real entity using editor entity
-                            let real_ent_id = real_entity_ids.get(editor_entity).expect(
-                                "Tried to delete editor entity with no associated real entity.",
-                            );
-                            if let Some(real_entity_id) = real_ent_id.0 {
-                                let real_entity = entities.entity(real_entity_id);
-                                match entities.delete(real_entity) {
-                                    Ok(val) => {}
-                                    Err(e) => println!("Error deleting real entity."),
-                                }
-                            }
-                            match entities.delete(editor_entity) {
-                                Ok(val) => {}
-                                Err(e) => println!("Error deleting editor entity."),
-                            }
+                    for (cursor, previous_block) in (&cursors, &previous_block).join() {
+                        if let Some(id) = previous_block.0 {
+                            world_events_channel.single_write(Events::DeleteTile(id));
                         }
                     }
+                }
+                EditorEvents::SaveLevel => {
+                    // TODO : Send the event
                 }
             };
         }

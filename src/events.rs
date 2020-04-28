@@ -5,6 +5,7 @@ pub enum Events {
     Warp(i32, i32),
     Reset,
     AddTile(Tile),
+    DeleteTile(u32),
 }
 
 #[derive(Debug, Clone)]
