@@ -6,6 +6,7 @@ pub enum Events {
     Reset,
     AddTile(Tile),
     DeleteTile(u32),
+    SaveLevel,
 }
 
 #[derive(Debug, Clone)]

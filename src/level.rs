@@ -54,6 +54,14 @@ impl From<Level> for Result<Level, Error> {
     }
 }
 
+fn default_tile_size() -> Vec2 {
+    Vec2::new(TILE_WIDTH, TILE_HEIGHT)
+}
+
+fn is_tile_size_default(size: &Vec2) -> bool {
+    *size == default_tile_size()
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Derivative)]
 #[serde(default)]
 #[derivative(Default)]
@@ -61,7 +69,8 @@ pub struct Tile {
     pub pos: Vec2,
     #[derivative(Default(value = "1"))]
     pub sprite: usize,
-    #[derivative(Default(value = "Vec2::new(TILE_WIDTH, TILE_HEIGHT)"))]
+    #[derivative(Default(value = "default_tile_size()"))]
+    #[serde(skip_serializing_if = "is_tile_size_default")]
     pub size: Vec2,
 }
 
@@ -130,6 +139,7 @@ impl Level {
             tiles = level.tiles.clone();
         }
 
+        // TODO : Load player from file
         for tile in tiles {
             Self::initialize_ground(world, &tile);
         }
@@ -137,6 +147,13 @@ impl Level {
 
     // Turns all current entities into a RON file with the current date as a name
     pub(crate) fn save_level(world: &mut World) {
+        // TODO : Save to correct file
+        let filename = String::from("test_level.ron");
+        warn!("Saving level {}...", filename);
+
+        // TODO : Save player to file
+        // TODO HINT : Use Resettable data to build Player and other future entities
+        // Create Level struct
         let mut level = Level::default();
         for (tile, _) in (&world.read_storage::<Tile>(), &world.read_storage::<EditorFlag>()).join()
         {
@@ -149,7 +166,8 @@ impl Level {
                 return;
             }
         };
-        let mut file = File::create("test_level.ron").unwrap();
+        // Write to file
+        let mut file = File::create(filename).unwrap();
         file.write_all(serialized.as_bytes()).unwrap();
     }
 

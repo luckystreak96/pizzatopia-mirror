@@ -123,12 +123,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
     fn handle_event(
         &mut self,
-        mut data: StateData<'_, GameData<'s, 's>>,
+        data: StateData<'_, GameData<'s, 's>>,
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
-        let world = data.world;
         if let MyEvents::Window(event) = &event {
-            let input = world.read_resource::<InputHandler<StringBindings>>();
+            let input = data.world.read_resource::<InputHandler<StringBindings>>();
             if input.action_is_down("exit").unwrap_or(false) {
                 return Trans::Quit;
             } else if input.action_is_down("editor").unwrap_or(false) {
@@ -145,6 +144,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 }
                 Events::DeleteTile(id) => {
                     Level::delete_entity(data.world, *id);
+                }
+                Events::SaveLevel => {
+                    Level::save_level(data.world);
                 }
                 _ => {}
             }

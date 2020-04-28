@@ -58,6 +58,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
         });
         world.insert(platform_size_prefab_handle.clone());
 
+        // TODO : Add a resource for the current level filename
         let level_handle = world.read_resource::<Loader>().load(
             "levels/level0.ron", // Here we load the associated ron file
             RonFormat,

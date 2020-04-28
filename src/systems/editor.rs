@@ -386,7 +386,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                     }
                 }
                 EditorEvents::SaveLevel => {
-                    // TODO : Send the event
+                    world_events_channel.single_write(Events::SaveLevel);
                 }
             };
         }
