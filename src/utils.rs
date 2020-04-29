@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::cmp::Ordering;
 use std::io;
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,

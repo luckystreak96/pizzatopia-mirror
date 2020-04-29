@@ -7,6 +7,7 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 use serde::{Deserialize, Serialize};
+use crate::level::Tile;
 
 #[derive(Debug)]
 pub enum CollisionEvent {
@@ -18,6 +19,12 @@ pub enum CollisionEvent {
 pub struct Player(pub bool);
 impl Component for Player {
     type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Resettable;
+impl Component for Resettable {
+    type Storage = NullStorage<Self>;
 }
 
 #[derive(Default)]
@@ -33,10 +40,11 @@ impl Component for Invincibility {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum Resettable {
+pub enum GameObject {
+    StaticTile(Tile),
     Player(Position, Player),
 }
 
-impl Component for Resettable {
+impl Component for GameObject {
     type Storage = DenseVecStorage<Self>;
 }

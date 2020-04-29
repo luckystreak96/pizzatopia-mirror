@@ -3,7 +3,7 @@ use crate::components::editor::{
     CursorWasInThisEntity, EditorCursor, EditorFlag, RealCursorPosition,
 };
 use crate::components::game::Player;
-use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
+use crate::components::game::{CollisionEvent, Health, Invincibility, GameObject};
 use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
