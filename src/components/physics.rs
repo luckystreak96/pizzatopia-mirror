@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
+use derivative::Derivative;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CollisionSideOfBlock {
@@ -146,7 +147,8 @@ impl Component for GravityDirection {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Derivative)]
+#[derivative(Default)]
 pub struct Position(pub Vec3);
 
 impl Component for Position {

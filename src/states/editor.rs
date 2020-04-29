@@ -60,8 +60,7 @@ use amethyst::{
     },
     winit::Event,
 };
-use log::info;
-use log::warn;
+use log::{error, info, warn};
 use std::borrow::Borrow;
 use std::io;
 use std::time::{Duration, Instant};
@@ -158,7 +157,26 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 Events::SaveLevel => {
                     Level::save_level(data.world);
                 }
-                _ => {}
+                Events::ChangeInsertionGameObject(id) => {
+                    let mod_id = id % 2;
+                    match mod_id {
+                        0 => {
+                            data.world
+                                .insert(InsertionGameObject(GameObject::default()));
+                        }
+                        1 => {
+                            data.world.insert(InsertionGameObject(GameObject::Player(
+                                Position::default(),
+                                Player::default(),
+                            )));
+                        }
+                        _ => {
+                            error!("Can't change to this GameObject: {:?}", id);
+                        }
+                    }
+                }
+                Events::Warp(_) => {}
+                Events::Reset => {}
             }
         }
 

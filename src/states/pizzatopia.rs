@@ -162,10 +162,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                     println!("Resetting map...");
                     Level::reinitialize_level(world);
                 }
-                // Events::AddGameObject(tile) => {
-                //     Level::initialize_ground(data.world, tile);
-                // }
-                _ => {}
+                Events::ChangeInsertionGameObject(_) => {}
+                Events::SaveLevel => {}
+                Events::Warp(_) => {}
+                Events::AddGameObject(_) => {}
+                Events::DeleteGameObject(_) => {}
             }
         }
 

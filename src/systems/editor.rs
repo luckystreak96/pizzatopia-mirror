@@ -33,8 +33,9 @@ use std::time::{Duration, Instant};
 #[derive(Debug)]
 pub enum EditorEvents {
     AddGameObject,
-    RemoveTile,
-    SaveLevel,
+    RemoveGameObject,
+    SaveLevelToFile,
+    ChangeInsertionGameObject(u8),
 }
 
 fn snap_cursor_position_to_grid_center(position: &mut Vec2) {
@@ -308,11 +309,15 @@ impl<'s> System<'s> for EditorButtonEventSystem {
     fn run(&mut self, (input, mut editor_event_writer): Self::SystemData) {
         // Controller input
         if input.action_is_down("cancel").unwrap_or(false) {
-            editor_event_writer.single_write(EditorEvents::RemoveTile);
+            editor_event_writer.single_write(EditorEvents::RemoveGameObject);
         } else if input.action_is_down("accept").unwrap_or(false) {
             editor_event_writer.single_write(EditorEvents::AddGameObject);
         } else if input.action_is_down("save").unwrap_or(false) {
-            editor_event_writer.single_write(EditorEvents::SaveLevel);
+            editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
+        } else if input.action_is_down("1").unwrap_or(false) {
+            editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(0));
+        } else if input.action_is_down("2").unwrap_or(false) {
+            editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(1));
         }
     }
 }
@@ -376,15 +381,18 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         }
                     }
                 }
-                EditorEvents::RemoveTile => {
+                EditorEvents::RemoveGameObject => {
                     for (cursor, previous_block) in (&cursors, &previous_block).join() {
                         if let Some(id) = previous_block.0 {
                             world_events_channel.single_write(Events::DeleteGameObject(id));
                         }
                     }
                 }
-                EditorEvents::SaveLevel => {
+                EditorEvents::SaveLevelToFile => {
                     world_events_channel.single_write(Events::SaveLevel);
+                }
+                EditorEvents::ChangeInsertionGameObject(id) => {
+                    world_events_channel.single_write(Events::ChangeInsertionGameObject(*id));
                 }
             };
         }

@@ -12,5 +12,7 @@
     "editor": [[Key(LControl)]],
     "cancel": [[Key(Z)]],
     "accept": [[Key(X)]],
+    "1": [[Key(Key1)]],
+    "2": [[Key(Key2)]],
   },
 )
