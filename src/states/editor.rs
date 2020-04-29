@@ -1,16 +1,16 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, EditorFlag, RealCursorPosition,
+    CursorWasInThisEntity, EditorCursor, EditorFlag, InsertionGameObject, RealCursorPosition,
 };
 use crate::components::game::Player;
-use crate::components::game::{CollisionEvent, Health, Invincibility, GameObject};
+use crate::components::game::{CollisionEvent, GameObject, Health, Invincibility};
 use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Sticky, Velocity,
 };
 use crate::events::Events;
-use crate::level::Level;
+use crate::level::{Level, Tile};
 use crate::states::pizzatopia;
 use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::states::pizzatopia::TILE_WIDTH;
@@ -87,6 +87,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         data.world.insert(DebugLines::new());
         data.world.insert(DebugLinesParams { line_width: 2.0 });
 
+        data.world
+            .insert(InsertionGameObject(GameObject::default()));
+
         // setup dispatcher
         let mut dispatcher = Editor::create_dispatcher(data.world);
         dispatcher.setup(data.world);
@@ -139,10 +142,17 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         if let MyEvents::App(event) = &event {
             match event {
-                Events::AddTile(tile) => {
-                    Level::initialize_ground(data.world, tile);
+                Events::AddGameObject(pos) => {
+                    let mut game_object =
+                        data.world.read_resource::<InsertionGameObject>().0.clone();
+                    Level::initialize_game_object(
+                        data.world,
+                        &mut game_object,
+                        Some(pos.clone()),
+                        false,
+                    );
                 }
-                Events::DeleteTile(id) => {
+                Events::DeleteGameObject(id) => {
                     Level::delete_entity(data.world, *id);
                 }
                 Events::SaveLevel => {

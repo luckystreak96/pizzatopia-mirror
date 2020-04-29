@@ -1,3 +1,4 @@
+use crate::components::game::GameObject;
 use crate::utils::Vec2;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
@@ -44,5 +45,12 @@ impl Component for CursorWasInThisEntity {
 pub struct InstanceEntityId(pub Option<u32>);
 
 impl Component for InstanceEntityId {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Clone, Debug, Copy)]
+pub struct InsertionGameObject(pub GameObject);
+
+impl Component for InsertionGameObject {
     type Storage = DenseVecStorage<Self>;
 }

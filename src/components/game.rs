@@ -1,4 +1,5 @@
 use crate::components::physics::{Position, Velocity};
+use crate::level::Tile;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::transform::Transform,
@@ -6,8 +7,8 @@ use amethyst::{
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
-use crate::level::Tile;
 
 #[derive(Debug)]
 pub enum CollisionEvent {
@@ -39,8 +40,10 @@ impl Component for Invincibility {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
+#[derivative(Default)]
 pub enum GameObject {
+    #[derivative(Default)]
     StaticTile(Tile),
     Player(Position, Player),
 }

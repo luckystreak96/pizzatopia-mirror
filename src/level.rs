@@ -1,6 +1,8 @@
-use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
+use crate::components::editor::{
+    EditorFlag, InsertionGameObject, InstanceEntityId, SizeForEditorGrid,
+};
+use crate::components::game::{GameObject, Health, Invincibility};
 use crate::components::game::{Player, Resettable};
-use crate::components::game::{Health, Invincibility, GameObject};
 use crate::components::graphics::{AnimationCounter, Scale};
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
@@ -90,6 +92,26 @@ impl Tile {
 }
 
 impl Level {
+    pub fn initialize_game_object(
+        world: &mut World,
+        game_object: &mut GameObject,
+        pos: Option<Vec2>,
+        ignore_editor: bool,
+    ) -> u32 {
+        match game_object {
+            GameObject::Player(position, player) => Self::initialize_player(
+                pos.unwrap_or(position.0.to_vec2()),
+                player.0,
+                ignore_editor,
+                world,
+            ),
+            GameObject::StaticTile(tile) => {
+                tile.pos = pos.unwrap_or(tile.pos);
+                Self::initialize_ground(world, &tile)
+            }
+        }
+    }
+
     /// Initialises the ground.
     pub fn initialize_ground(world: &mut World, tile: &Tile) -> u32 {
         // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
@@ -153,15 +175,8 @@ impl Level {
         }
 
         if let Some(game_objects) = game_objects {
-            for game_object in game_objects {
-                match game_object {
-                    GameObject::Player(pos, player) => {
-                        Self::initialize_player(pos.0.to_vec2(), player.0, false, world);
-                    }
-                    GameObject::StaticTile(tile) => {
-                        Self::initialize_ground(world, &tile);
-                    }
-                }
+            for mut game_object in game_objects {
+                Self::initialize_game_object(world, &mut game_object, None, false);
             }
         }
     }
@@ -258,17 +273,9 @@ impl Level {
 
         // Re-create the entities according to their type
         let mut to_remove = Vec::new();
-        for (editor_entity, instance_entity, game_object) in resettables {
+        for (editor_entity, instance_entity, mut game_object) in resettables {
             to_remove.push(instance_entity);
-            let new_instance_id = match game_object {
-                GameObject::Player(pos, player) => {
-                    Level::initialize_player(pos.0.to_vec2(), player.0, true, world)
-                }
-                GameObject::StaticTile(tile) => {
-                    error!("Resetting StaticTile, but it should not be resettable!");
-                    Level::initialize_ground(world, &tile)
-                }
-            };
+            let new_instance_id = Self::initialize_game_object(world, &mut game_object, None, true);
             world
                 .write_storage::<InstanceEntityId>()
                 .get_mut(editor_entity)

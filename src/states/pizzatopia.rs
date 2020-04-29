@@ -1,8 +1,8 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
+use crate::components::game::{CollisionEvent, GameObject, Health, Invincibility};
 use crate::components::game::{Player, Resettable};
-use crate::components::game::{CollisionEvent, Health, Invincibility, GameObject};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -113,6 +113,7 @@ impl Pizzatopia<'_, '_> {
 impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         data.world.register::<GameObject>();
+        data.world.register::<GameObject>();
         data.world.register::<Resettable>();
         data.world.register::<EditorFlag>();
         data.world.register::<Tile>();
@@ -161,9 +162,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                     println!("Resetting map...");
                     Level::reinitialize_level(world);
                 }
-                Events::AddTile(tile) => {
-                    Level::initialize_ground(data.world, tile);
-                }
+                // Events::AddGameObject(tile) => {
+                //     Level::initialize_ground(data.world, tile);
+                // }
                 _ => {}
             }
         }

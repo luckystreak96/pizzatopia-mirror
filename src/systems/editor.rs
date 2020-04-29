@@ -12,8 +12,8 @@ use amethyst::renderer::palette::Srgba;
 use crate::components::editor::{
     CursorWasInThisEntity, EditorCursor, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
 };
-use crate::components::game::Health;
 use crate::components::game::Player;
+use crate::components::game::{GameObject, Health};
 use crate::components::graphics::Scale;
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::events::Events;
@@ -32,7 +32,7 @@ use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub enum EditorEvents {
-    AddTile,
+    AddGameObject,
     RemoveTile,
     SaveLevel,
 }
@@ -310,7 +310,7 @@ impl<'s> System<'s> for EditorButtonEventSystem {
         if input.action_is_down("cancel").unwrap_or(false) {
             editor_event_writer.single_write(EditorEvents::RemoveTile);
         } else if input.action_is_down("accept").unwrap_or(false) {
-            editor_event_writer.single_write(EditorEvents::AddTile);
+            editor_event_writer.single_write(EditorEvents::AddGameObject);
         } else if input.action_is_down("save").unwrap_or(false) {
             editor_event_writer.single_write(EditorEvents::SaveLevel);
         }
@@ -361,27 +361,25 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
     ) {
         for event in editor_event_channel.read(&mut self.reader) {
             match event {
-                EditorEvents::AddTile => {
-                    let mut tile = Tile::default();
-
+                // Writing an event here is fine - entities are created lazily (only at frame end)
+                // May as well use World and save the trouble for the tile creation
+                // https://book.amethyst.rs/master/concepts/system.html?highlight=create#creating-new-entities-in-a-system
+                EditorEvents::AddGameObject => {
                     for (cursor, position, previous_block) in
                         (&cursors, &real_positions, &previous_block).join()
                     {
-                        // We only add the block if the cursor isn't currently in a tile
+                        // We only add the GameObject if the cursor isn't currently in a tile
                         if previous_block.0.is_none() {
-                            tile.pos = position.0.clone();
-                            snap_cursor_position_to_grid_corner(&mut tile.pos);
-                            // Writing an event here is fine - entities are created lazily (only at frame end)
-                            // May as well use World and save the trouble for the tile creation
-                            // https://book.amethyst.rs/master/concepts/system.html?highlight=create#creating-new-entities-in-a-system
-                            world_events_channel.single_write(Events::AddTile(tile.clone()));
+                            let mut pos = position.0.clone();
+                            snap_cursor_position_to_grid_corner(&mut pos);
+                            world_events_channel.single_write(Events::AddGameObject(pos));
                         }
                     }
                 }
                 EditorEvents::RemoveTile => {
                     for (cursor, previous_block) in (&cursors, &previous_block).join() {
                         if let Some(id) = previous_block.0 {
-                            world_events_channel.single_write(Events::DeleteTile(id));
+                            world_events_channel.single_write(Events::DeleteGameObject(id));
                         }
                     }
                 }
