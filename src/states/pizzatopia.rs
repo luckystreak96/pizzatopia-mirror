@@ -1,13 +1,13 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
+use crate::components::game::Player;
 use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Sticky, Velocity,
 };
-use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::Level;
 use crate::level::Tile;
@@ -104,27 +104,9 @@ impl Default for Pizzatopia<'_, '_> {
 }
 
 impl Pizzatopia<'_, '_> {
-    fn initialize_level(&mut self, world: &mut World, resetting: bool) {
-        // Level::reinitialize_level(world);
-
-        // add the entities for the level
-        // will want to move this in the future to level.rs
-        Level::initialize_player(
-            Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0),
-            true,
-            false,
-            world,
-        );
-        Level::initialize_player(
-            Vec2::new(CAM_WIDTH / 2.0 - (TILE_HEIGHT * 2.0), CAM_HEIGHT / 2.0),
-            false,
-            false,
-            world,
-        );
-        if !resetting {
-            Level::load_level(world);
-            initialise_camera(world);
-        }
+    fn initialize_level(&mut self, world: &mut World) {
+        Level::load_level(world);
+        initialise_camera(world);
     }
 }
 
@@ -143,7 +125,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         dispatcher.setup(data.world);
         self.dispatcher = Some(dispatcher);
 
-        self.initialize_level(data.world, false);
+        self.initialize_level(data.world);
 
         data.world.exec(|mut creator: UiCreator<'_>| {
             let mut progress = ProgressCounter::new();
@@ -235,8 +217,7 @@ fn initialise_camera(world: &mut World) {
 }
 
 pub fn get_camera_center(world: &mut World) -> Vec2 {
-    for (entity, camera, transform) in (
-        &world.entities(),
+    for (camera, transform) in (
         &world.read_storage::<Camera>(),
         &world.read_storage::<Transform>(),
     )

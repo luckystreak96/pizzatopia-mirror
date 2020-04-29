@@ -45,7 +45,7 @@ use crate::audio::initialise_audio;
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
-use crate::states::loading::{LoadingState, AssetsDir};
+use crate::states::loading::{AssetsDir, LoadingState};
 use crate::states::pizzatopia::MyEventReader;
 use crate::states::pizzatopia::{MyEvents, Pizzatopia};
 use crate::systems::console::ConsoleInputSystem;

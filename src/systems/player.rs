@@ -5,10 +5,9 @@ use amethyst::ecs::{
 };
 use amethyst::input::{InputHandler, StringBindings};
 
-// You'll have to mark TILE_HEIGHT as public in pong.rs
 use crate::components::game::Health;
+use crate::components::game::Player;
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
-use crate::components::player::Player;
 use crate::states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT};
 use crate::systems::physics::{
     gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,

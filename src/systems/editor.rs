@@ -13,9 +13,9 @@ use crate::components::editor::{
     CursorWasInThisEntity, EditorCursor, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
 };
 use crate::components::game::Health;
+use crate::components::game::Player;
 use crate::components::graphics::Scale;
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
-use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::{Level, Tile};
 use crate::states::editor::EDITOR_GRID_SIZE;

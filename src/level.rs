@@ -1,11 +1,11 @@
 use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
+use crate::components::game::Player;
 use crate::components::game::{Health, Invincibility, Resettable};
 use crate::components::graphics::{AnimationCounter, Scale};
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
     Sticky, Velocity,
 };
-use crate::components::player::Player;
 use crate::states::loading::{AssetsDir, LevelPath};
 use crate::states::pizzatopia::SpriteSheetType::{Character, Snap, Tiles};
 use crate::states::pizzatopia::{DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
@@ -38,9 +38,11 @@ use std::io::Write;
 use std::ops::Index;
 use std::path::PathBuf;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Derivative)]
+#[derivative(Default)]
 pub struct Level {
-    tiles: Vec<Tile>,
+    tiles: Option<Vec<Tile>>,
+    resettables: Option<Vec<Resettable>>,
 }
 
 impl Asset for Level {
@@ -135,46 +137,78 @@ impl Level {
             .with(scale.clone())
             .with(SizeForEditorGrid(tile.size.clone()))
             .build();
-        println!("New editor tile id is : {}", editor_entity.id());
     }
 
     // Turn the currently-loaded Level asset into entities
     pub(crate) fn load_level(world: &mut World) {
         let tiles;
+        let resettables;
         {
             let asset = &world.read_resource::<AssetStorage<Level>>();
             let level = asset
                 .get(&world.read_resource::<Handle<Level>>().clone())
                 .expect("Expected level to be loaded.");
             tiles = level.tiles.clone();
+            resettables = level.resettables.clone();
         }
 
-        // TODO : Load player from file
-        for tile in tiles {
-            Self::initialize_ground(world, &tile);
+        if let Some(tiles) = tiles {
+            for tile in tiles {
+                Self::initialize_ground(world, &tile);
+            }
+        }
+        if let Some(resets) = resettables {
+            for reset in resets {
+                match reset {
+                    Resettable::Player(pos, player) => {
+                        Self::initialize_player(pos.0.to_vec2(), player.0, false, world);
+                    }
+                }
+            }
         }
     }
 
     // Turns all current entities into a RON file with the current date as a name
     pub(crate) fn save_level(world: &mut World) {
-        // TODO : Save to correct file
         let filename = world.read_resource::<LevelPath>().0.clone();
         let assets_dir = world.read_resource::<AssetsDir>().0.clone();
         let path = assets_dir.join(filename);
         warn!("Saving level {:?}...", path);
 
-        // TODO : Save player to file
-        // TODO HINT : Use Resettable data to build Player and other future entities
         // Create Level struct
-        let mut level = Level::default();
+        let mut level: Level = Level::default();
+
+        // Add tiles to level
+        let mut tiles = Vec::new();
         for (tile, _) in (
             &world.read_storage::<Tile>(),
             &world.read_storage::<EditorFlag>(),
         )
             .join()
         {
-            level.tiles.push(tile.clone());
+            tiles.push(tile.clone());
         }
+        level.tiles = match tiles.is_empty() {
+            true => None,
+            false => Some(tiles),
+        };
+
+        // Add resettables to level
+        let mut resettables = Vec::new();
+        for (resettable, _) in (
+            &world.read_storage::<Resettable>(),
+            &world.read_storage::<EditorFlag>(),
+        )
+            .join()
+        {
+            resettables.push(resettable.clone());
+        }
+        level.resettables = match resettables.is_empty() {
+            true => None,
+            false => Some(resettables),
+        };
+
+        // Serialize
         let serialized = match ron::ser::to_string(&level) {
             Ok(x) => x,
             Err(e) => {
@@ -224,14 +258,16 @@ impl Level {
 
         {
             let entities = world.entities();
-            for (editor_entity, instance_id) in
-                (&world.entities(), &world.read_storage::<InstanceEntityId>()).join()
+            for (editor_entity, instance_id, resettable) in (
+                &world.entities(),
+                &world.read_storage::<InstanceEntityId>(),
+                &world.read_storage::<Resettable>(),
+            )
+                .join()
             {
                 if let Some(id) = instance_id.0 {
                     let instance_entity = entities.entity(id);
-                    if let Some(reset) = world.read_storage::<Resettable>().get(instance_entity) {
-                        resettables.push((editor_entity, instance_entity, reset.clone()));
-                    }
+                    resettables.push((editor_entity, instance_entity, resettable.clone()));
                 }
             }
         }
@@ -241,7 +277,6 @@ impl Level {
         for (editor_entity, instance_entity, reset_data) in resettables {
             to_remove.push(instance_entity);
             let new_instance_id = match reset_data {
-                Resettable::StaticTile => panic!("Failed to reset tile - tiles are not resettable"),
                 Resettable::Player(pos, player) => {
                     Level::initialize_player(pos.0.to_vec2(), player.0, true, world)
                 }
@@ -286,7 +321,6 @@ impl Level {
         let entity;
         let builder = world
             .create_entity()
-            .with(Resettable::Player(position.clone(), Player(player)))
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(AnimationCounter(0))
@@ -314,6 +348,7 @@ impl Level {
         if !ignore_editor {
             world
                 .create_entity()
+                .with(Resettable::Player(position.clone(), Player(player)))
                 .with(InstanceEntityId(Some(entity.id())))
                 .with(EditorFlag)
                 .with(SizeForEditorGrid(Vec2::new(TILE_WIDTH, TILE_HEIGHT)))

@@ -11,7 +11,7 @@ use amethyst::ecs::{Entities, Entity};
 use log::{debug, error, info, warn};
 
 use crate::components::game::CollisionEvent;
-use crate::components::player::Player;
+use crate::components::game::Player;
 use amethyst::{
     core::{
         bundle::SystemBundle,

@@ -2,13 +2,13 @@ use crate::audio::{initialise_audio, Sounds};
 use crate::components::editor::{
     CursorWasInThisEntity, EditorCursor, EditorFlag, RealCursorPosition,
 };
+use crate::components::game::Player;
 use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Sticky, Velocity,
 };
-use crate::components::player::Player;
 use crate::events::Events;
 use crate::level::Level;
 use crate::states::pizzatopia;
