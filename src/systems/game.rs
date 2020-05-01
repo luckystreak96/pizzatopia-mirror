@@ -1,4 +1,4 @@
-use crate::components::game::{CollisionEvent, Health, Invincibility};
+use crate::components::game::{CameraTarget, CollisionEvent, Health, Invincibility, Player};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::events::PlayerEvent;
@@ -12,9 +12,8 @@ use amethyst::ecs::{Entities, Join, Read, ReadStorage, System, SystemData, World
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
-use log::info;
-use log::warn;
-use std::cmp::min;
+use log::{error, info, warn};
+use std::cmp::{max, min};
 use std::ops::Deref;
 
 use amethyst::{
@@ -24,6 +23,8 @@ use amethyst::{
 };
 
 use crate::audio::{play_damage_sound, Sounds};
+use crate::components::editor::EditorCursor;
+use crate::utils::Vec3;
 
 pub const IFRAMES_PER_HIT: u32 = 90;
 
@@ -95,6 +96,51 @@ impl<'s> System<'s> for InvincibilitySystem {
         for (mut invinc, entity) in (&mut invincibilities, &entities).join() {
             if invinc.0 > 0 {
                 invinc.0 -= 1;
+            }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct CameraTargetSystem;
+
+impl<'s> System<'s> for CameraTargetSystem {
+    type SystemData = (
+        WriteStorage<'s, Camera>,
+        WriteStorage<'s, Position>,
+        ReadStorage<'s, CameraTarget>,
+        ReadStorage<'s, Player>,
+        ReadStorage<'s, EditorCursor>,
+        Entities<'s>,
+    );
+
+    fn run(
+        &mut self,
+        (mut cameras, mut positions, targets, players, cursors, entities): Self::SystemData,
+    ) {
+        let mut position = Vec3::default();
+        for (camera, target) in (&mut cameras, &targets).join() {
+            match target {
+                CameraTarget::Player => {
+                    for (player, player_pos) in (&players, &positions).join() {
+                        position = player_pos.0.clone();
+                    }
+                }
+                CameraTarget::Cursor => {
+                    for (cursor, cursor_pos) in (&cursors, &positions).join() {
+                        position = cursor_pos.0.clone();
+                    }
+                }
+                CameraTarget::GameObject(id) => {
+                    error!("CameraTarget::GameObject(id) is not yet implemented!");
+                }
+            };
+        }
+        for (mut pos, camera) in (&mut positions, &mut cameras).join() {
+            let cam: Camera = camera.clone();
+            if let Some(ortho) = cam.projection().as_orthographic() {
+                pos.0.x = position.x.max(ortho.right());
+                pos.0.y = position.y.max(ortho.top());
             }
         }
     }

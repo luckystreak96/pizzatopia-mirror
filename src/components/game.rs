@@ -42,6 +42,19 @@ impl Component for Invincibility {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
+pub enum CameraTarget {
+    #[derivative(Default)]
+    Player,
+    Cursor,
+    GameObject(u32),
+}
+
+impl Component for CameraTarget {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
+#[derivative(Default)]
 pub enum GameObject {
     #[derivative(Default)]
     StaticTile(Tile),

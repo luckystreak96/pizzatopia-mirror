@@ -1,7 +1,7 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
-use crate::components::game::{CollisionEvent, GameObject, Health, Invincibility};
+use crate::components::game::{CameraTarget, CollisionEvent, GameObject, Health, Invincibility};
 use crate::components::game::{Player, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
@@ -116,6 +116,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         data.world.register::<GameObject>();
         data.world.register::<Resettable>();
         data.world.register::<EditorFlag>();
+        data.world.register::<CameraTarget>();
         data.world.register::<Tile>();
         // Created in Pizzatopia and system in Editor
         data.world.register::<SizeForEditorGrid>();
@@ -210,12 +211,15 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
 fn initialise_camera(world: &mut World) {
     // Setup camera in a way that our screen covers whole arena and (0, 0) is in the bottom left.
     let mut transform = Transform::default();
-    transform.set_translation_xyz(CAM_WIDTH * 0.5, CAM_HEIGHT * 0.5, 2000.0);
+    let pos = Position(Vec3::new(CAM_WIDTH * 0.5, CAM_HEIGHT * 0.5, 2000.0));
+    transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
 
     world
         .create_entity()
         .with(Camera::standard_2d(CAM_WIDTH, CAM_HEIGHT))
         .with(transform)
+        .with(pos)
+        .with(CameraTarget::Player)
         .build();
 }
 
@@ -272,6 +276,11 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
         dispatcher_builder.add(
             systems::physics::ApplyStickySystem,
             "apply_sticky_system",
+            &["apply_velocity_system"],
+        );
+        dispatcher_builder.add(
+            systems::game::CameraTargetSystem,
+            "camera_target_system",
             &["apply_velocity_system"],
         );
         // register a bundle to the builder

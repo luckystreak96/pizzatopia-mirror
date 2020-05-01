@@ -2,7 +2,7 @@ use crate::audio::{initialise_audio, Sounds};
 use crate::components::editor::{
     CursorWasInThisEntity, EditorCursor, EditorFlag, InsertionGameObject, RealCursorPosition,
 };
-use crate::components::game::Player;
+use crate::components::game::{CameraTarget, Player};
 use crate::components::game::{CollisionEvent, GameObject, Health, Invincibility};
 use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
 use crate::components::physics::{
@@ -70,6 +70,7 @@ pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
 pub(crate) struct Editor<'a, 'b> {
     dispatcher: Option<Dispatcher<'a, 'b>>,
     time_start: Instant,
+    prev_camera_target: CameraTarget,
 }
 
 impl Default for Editor<'_, '_> {
@@ -77,6 +78,7 @@ impl Default for Editor<'_, '_> {
         Editor {
             dispatcher: None,
             time_start: Instant::now(),
+            prev_camera_target: CameraTarget::default(),
         }
     }
 }
@@ -94,6 +96,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         dispatcher.setup(data.world);
         self.dispatcher = Some(dispatcher);
 
+        self.prev_camera_target = self.change_camera_target(data.world, CameraTarget::Cursor);
+
         // data.world.insert(EventChannel::<EditorEvents>::new());
 
         self.time_start = Instant::now();
@@ -107,6 +111,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     fn on_stop(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         Self::set_instance_transparent(data.world, 1.0);
         Self::set_editor_hidden(data.world, true);
+
+        self.change_camera_target(data.world, self.prev_camera_target);
 
         // Clean up cursor
         let mut to_remove = Vec::new();
@@ -234,14 +240,34 @@ impl<'a, 'b> Editor<'a, 'b> {
             &["editor_event_handling_system"],
         );
         dispatcher_builder.add(
+            systems::game::CameraTargetSystem,
+            "camera_target_system",
+            &["editor_event_handling_system"],
+        );
+        dispatcher_builder.add(
             systems::graphics::PositionDrawUpdateSystem,
             "position_draw_update_system",
-            &["editor_event_handling_system"],
+            &["camera_target_system"],
         );
 
         dispatcher_builder
             .with_pool((*world.read_resource::<ArcThreadPool>()).clone())
             .build()
+    }
+
+    fn change_camera_target(&mut self, world: &mut World, camera_target: CameraTarget) -> CameraTarget {
+        let mut prev_target = CameraTarget::default();
+
+        for (camera, target) in (
+            &world.read_storage::<Camera>(),
+            &mut world.write_storage::<CameraTarget>(),
+        )
+            .join()
+        {
+            prev_target = *target;
+            *target = camera_target;
+        }
+        prev_target
     }
 
     fn set_instance_transparent(world: &mut World, transparency: f32) {
