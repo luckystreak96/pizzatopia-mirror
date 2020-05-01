@@ -3,7 +3,7 @@ use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
 use crate::components::game::{CameraTarget, CollisionEvent, GameObject, Health, Invincibility};
 use crate::components::game::{Player, Resettable};
-use crate::components::graphics::AnimationCounter;
+use crate::components::graphics::{AnimationCounter, Lerper};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Sticky, Velocity,
@@ -220,6 +220,7 @@ fn initialise_camera(world: &mut World) {
         .with(transform)
         .with(pos)
         .with(CameraTarget::Player)
+        .with(Lerper::default())
         .build();
 }
 
@@ -282,6 +283,11 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             systems::game::CameraTargetSystem,
             "camera_target_system",
             &["apply_velocity_system"],
+        );
+        dispatcher_builder.add(
+            systems::graphics::LerperSystem,
+            "lerper_system",
+            &["camera_target_system"],
         );
         // register a bundle to the builder
         GameLogicBundle::default()

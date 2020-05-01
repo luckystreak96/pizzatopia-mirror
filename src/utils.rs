@@ -4,7 +4,8 @@ use serde::Serialize;
 use std::cmp::Ordering;
 use std::io;
 
-#[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize, Derivative)]
+#[derivative(Default)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
@@ -15,10 +16,33 @@ impl Vec2 {
         Vec2 { x, y }
     }
 
+    pub fn is_zero(&self) -> bool {
+        self.x == 0.0 && self.y == 0.0
+    }
+
+    pub fn magnitude(&self) -> f32 {
+        (self.x.powi(2) + self.y.powi(2)).sqrt()
+    }
+
+    pub fn normalize(&self) -> Vec2 {
+        let magnitude = self.magnitude();
+        Vec2 {
+            x: self.x / magnitude,
+            y: self.y / magnitude,
+        }
+    }
+
     pub fn subtract(first: &Vec2, subtract_by: &Vec2) -> Vec2 {
         Vec2 {
             x: first.x - subtract_by.x,
             y: first.y - subtract_by.y,
+        }
+    }
+
+    pub fn add(first: &Vec2, second: &Vec2) -> Vec2 {
+        Vec2 {
+            x: first.x + second.x,
+            y: first.y + second.y,
         }
     }
 

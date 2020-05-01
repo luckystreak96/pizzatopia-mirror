@@ -1,5 +1,5 @@
 use crate::components::game::Health;
-use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
+use crate::components::graphics::{AnimationCounter, Lerper, PulseAnimation, Scale};
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
@@ -10,6 +10,21 @@ use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteSto
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
+
+#[derive(SystemDesc)]
+pub struct LerperSystem;
+
+impl<'s> System<'s> for LerperSystem {
+    type SystemData = (WriteStorage<'s, Lerper>, WriteStorage<'s, Position>);
+
+    fn run(&mut self, (mut lerpers, mut positions): Self::SystemData) {
+        for (lerper, mut position) in (&mut lerpers, &mut positions).join() {
+            let mut pos = lerper.lerp(position.0.to_vec2()).to_vec3();
+            pos.z = position.0.z;
+            position.0 = pos;
+        }
+    }
+}
 
 #[derive(SystemDesc)]
 pub struct PositionDrawUpdateSystem;

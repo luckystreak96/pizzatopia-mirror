@@ -245,9 +245,14 @@ impl<'a, 'b> Editor<'a, 'b> {
             &["editor_event_handling_system"],
         );
         dispatcher_builder.add(
+            systems::graphics::LerperSystem,
+            "lerper_system",
+            &["camera_target_system"],
+        );
+        dispatcher_builder.add(
             systems::graphics::PositionDrawUpdateSystem,
             "position_draw_update_system",
-            &["camera_target_system"],
+            &["lerper_system"],
         );
 
         dispatcher_builder
@@ -255,7 +260,11 @@ impl<'a, 'b> Editor<'a, 'b> {
             .build()
     }
 
-    fn change_camera_target(&mut self, world: &mut World, camera_target: CameraTarget) -> CameraTarget {
+    fn change_camera_target(
+        &mut self,
+        world: &mut World,
+        camera_target: CameraTarget,
+    ) -> CameraTarget {
         let mut prev_target = CameraTarget::default();
 
         for (camera, target) in (

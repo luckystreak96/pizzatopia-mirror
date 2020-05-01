@@ -1,5 +1,5 @@
 use crate::components::game::{CameraTarget, CollisionEvent, Health, Invincibility, Player};
-use crate::components::graphics::AnimationCounter;
+use crate::components::graphics::{AnimationCounter, Lerper};
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::events::PlayerEvent;
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
@@ -106,8 +106,9 @@ pub struct CameraTargetSystem;
 
 impl<'s> System<'s> for CameraTargetSystem {
     type SystemData = (
-        WriteStorage<'s, Camera>,
-        WriteStorage<'s, Position>,
+        WriteStorage<'s, Lerper>,
+        ReadStorage<'s, Camera>,
+        ReadStorage<'s, Position>,
         ReadStorage<'s, CameraTarget>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, EditorCursor>,
@@ -116,10 +117,10 @@ impl<'s> System<'s> for CameraTargetSystem {
 
     fn run(
         &mut self,
-        (mut cameras, mut positions, targets, players, cursors, entities): Self::SystemData,
+        (mut lerpers, cameras, positions, targets, players, cursors, entities): Self::SystemData,
     ) {
         let mut position = Vec3::default();
-        for (camera, target) in (&mut cameras, &targets).join() {
+        for (camera, target) in (&cameras, &targets).join() {
             match target {
                 CameraTarget::Player => {
                     for (player, player_pos) in (&players, &positions).join() {
@@ -136,11 +137,10 @@ impl<'s> System<'s> for CameraTargetSystem {
                 }
             };
         }
-        for (mut pos, camera) in (&mut positions, &mut cameras).join() {
-            let cam: Camera = camera.clone();
-            if let Some(ortho) = cam.projection().as_orthographic() {
-                pos.0.x = position.x.max(ortho.right());
-                pos.0.y = position.y.max(ortho.top());
+        for (mut lerper, camera) in (&mut lerpers, &cameras).join() {
+            if let Some(ortho) = camera.projection().as_orthographic() {
+                lerper.target.x = position.x.max(ortho.right());
+                lerper.target.y = position.y.max(ortho.top());
             }
         }
     }
