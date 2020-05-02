@@ -10,11 +10,11 @@
 - `Left Ctrl` : Change back to playing
 - `Arrow keys` : Move cursor
 - `Insert` : Save your changes
-####_Edit Mode_ controls (pink cursor mode):
+#### _Edit Mode_ controls (pink cursor mode):
 - `X` : Pick up a block (arrows to move it around + X again to put it down)
 - `Z` : Remove a block
 - `A` : Enter _Insert Mode_
-####_Insert Mode_ controls (grass cursor mode):
+#### _Insert Mode_ controls (grass cursor mode):
 - `X` : Place a new block
 - `1` : Change selected block to grass
 - `2` : Change selected block to cat (the cat is invisible due to current bug, but it's there)
