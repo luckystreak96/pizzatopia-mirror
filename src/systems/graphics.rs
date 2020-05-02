@@ -1,3 +1,5 @@
+use crate::components::editor::{EditorCursor, InsertionGameObject, EditorState};
+use crate::components::game::GameObject;
 use crate::components::game::Health;
 use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale};
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
@@ -6,7 +8,7 @@ use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDire
 use amethyst::core::math::Vector3;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
-use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
+use amethyst::ecs::{Join, Read, ReadExpect, ReadStorage, System, SystemData, World, WriteStorage};
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
@@ -91,6 +93,40 @@ impl<'s> System<'s> for PulseAnimationSystem {
             // From 1.5 to 0.5
             let sin = sin + 1.0;
             transform.set_scale(Vector3::new(sin * scale.0.x, sin * scale.0.y, 1.0));
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct CursorSpriteUpdateSystem;
+
+impl<'s> System<'s> for CursorSpriteUpdateSystem {
+    type SystemData = (
+        WriteStorage<'s, SpriteRender>,
+        ReadStorage<'s, EditorCursor>,
+        ReadExpect<'s, InsertionGameObject>,
+        ReadExpect<'s, EditorState>,
+    );
+
+    fn run(&mut self, (mut sprites, cursors, insertion_game_object, editor_state): Self::SystemData) {
+        for (sprite, _) in (&mut sprites, &cursors).join() {
+            // TODO : Change GameObjects to all have an assigned sprite
+            // TODO : Maybe the sprite should have a name that would be associated through a RON file and a map
+            match *editor_state {
+                EditorState::InsertMode | EditorState::EditGameObject => {
+                    match insertion_game_object.0 {
+                        GameObject::StaticTile(tile) => {
+                            sprite.sprite_number = tile.sprite;
+                        }
+                        _ => {
+                            sprite.sprite_number = 4;
+                        }
+                    }
+                }
+                _ => {
+                    sprite.sprite_number = 4;
+                }
+            }
         }
     }
 }

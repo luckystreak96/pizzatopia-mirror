@@ -22,7 +22,7 @@ use crate::systems::editor::{
     CursorPositionSystem, CursorSizeSystem, EditorButtonEventSystem, EditorEventHandlingSystem,
     EditorEvents,
 };
-use crate::systems::graphics::PulseAnimationSystem;
+use crate::systems::graphics::{PulseAnimationSystem, CursorSpriteUpdateSystem};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::math::Vector3;
@@ -246,14 +246,24 @@ impl<'a, 'b> Editor<'a, 'b> {
 
         // Graphics
         dispatcher_builder.add(
-            PulseAnimationSystem,
-            "pulse_animation_system",
+            systems::graphics::ScaleDrawUpdateSystem,
+            "scale_draw_update_system",
+            &["editor_event_handling_system"],
+        );
+        dispatcher_builder.add(
+            CursorSpriteUpdateSystem,
+            "cursor_sprite_update_system",
             &["editor_event_handling_system"],
         );
         dispatcher_builder.add(
             systems::game::CameraTargetSystem,
             "camera_target_system",
             &["editor_event_handling_system"],
+        );
+        dispatcher_builder.add(
+            PulseAnimationSystem,
+            "pulse_animation_system",
+            &["scale_draw_update_system"],
         );
         dispatcher_builder.add(
             systems::graphics::LerperSystem,

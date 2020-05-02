@@ -49,8 +49,8 @@ fn snap_cursor_position_to_grid_center(position: &mut Vec2) {
 }
 
 fn snap_cursor_position_to_grid_corner(position: &mut Vec2) {
-    position.x += position.x % EDITOR_GRID_SIZE;
-    position.y += position.y % EDITOR_GRID_SIZE;
+    position.x -= position.x % EDITOR_GRID_SIZE;
+    position.y -= position.y % EDITOR_GRID_SIZE;
 }
 
 //(&positions, &size_for_editor, &entities, !&cursors).join()
@@ -482,9 +482,9 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         Read<'s, EventChannel<EditorEvents>>,
         Write<'s, EventChannel<Events>>,
         Write<'s, EditorState>,
-        Write<'s, InsertionGameObject>,
+        ReadExpect<'s, InsertionGameObject>,
         ReadStorage<'s, EditorCursor>,
-        ReadStorage<'s, Position>,
+        WriteStorage<'s, Position>,
         ReadStorage<'s, RealCursorPosition>,
         ReadStorage<'s, InstanceEntityId>,
         WriteStorage<'s, CursorWasInThisEntity>,
@@ -500,9 +500,9 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
             editor_event_channel,
             mut world_events_channel,
             mut editor_state,
-            mut insertion_game_object,
+            insertion_game_object,
             cursors,
-            positions,
+            mut positions,
             real_positions,
             real_entity_ids,
             previous_block,
@@ -557,11 +557,30 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                                     let entity = entities.entity(id);
                                     // Copy old entity
                                     if let Some(go) = game_objects.get(entity) {
-                                        insertion_game_object.0 = go.clone();
+                                        world_events_channel.single_write(
+                                            Events::SetInsertionGameObject(go.clone()),
+                                        );
                                         world_events_channel
                                             .single_write(Events::DeleteGameObject(id));
                                     }
                                 }
+                            }
+                        }
+                        EditorState::InsertMode => {
+                            for (position, cursor) in (&mut positions, &cursors).join() {
+                                let mut pos: Vec2 = position.0.to_vec2();
+                                snap_cursor_position_to_grid_corner(&mut pos);
+                                let mut size = Vec2::new(TILE_WIDTH, TILE_HEIGHT);
+                                match insertion_game_object.0 {
+                                    GameObject::StaticTile(tile) => {
+                                        size = tile.size;
+                                    }
+                                    _ => {}
+                                }
+                                pos.x += size.x / 2.0;
+                                pos.y += size.y / 2.0;
+                                position.0.x = pos.x;
+                                position.0.y = pos.y;
                             }
                         }
                         _ => {}

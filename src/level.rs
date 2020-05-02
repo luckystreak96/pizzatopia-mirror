@@ -39,6 +39,7 @@ use std::fs::File;
 use std::io::Write;
 use std::ops::Index;
 use std::path::PathBuf;
+use amethyst::core::math::Vector3;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
@@ -158,10 +159,12 @@ impl Level {
             tile.size.y / TILE_HEIGHT,
         ));
 
-        let transform = Transform::default();
-
         // Correctly position the tile.
         let pos = Position(tile.pos.to_vec3().clone());
+
+        let mut transform = Transform::default();
+        transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
+        transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
 
         let sprite_sheet =
             world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
