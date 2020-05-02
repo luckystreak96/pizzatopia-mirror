@@ -19,7 +19,8 @@ use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
 use crate::systems::editor::{
-    CursorPositionSystem, EditorButtonEventSystem, EditorEventHandlingSystem, EditorEvents,
+    CursorPositionSystem, CursorSizeSystem, EditorButtonEventSystem, EditorEventHandlingSystem,
+    EditorEvents,
 };
 use crate::systems::graphics::PulseAnimationSystem;
 use crate::systems::physics::CollisionDirection;
@@ -220,17 +221,22 @@ impl<'a, 'b> Editor<'a, 'b> {
             "cursor_position_system",
             &[],
         );
+        dispatcher_builder.add(
+            CursorSizeSystem,
+            "cursor_size_system",
+            &["cursor_position_system"],
+        );
 
         // The event handling is all done at the end since entities are created and deleted lazily
         dispatcher_builder.add(
             ConsoleInputSystem,
             "console_input_system",
-            &["cursor_position_system"],
+            &["cursor_size_system"],
         );
         dispatcher_builder.add(
             EditorButtonEventSystem::new(world),
             "editor_button_event_system",
-            &["cursor_position_system"],
+            &["cursor_size_system"],
         );
         dispatcher_builder.add(
             EditorEventHandlingSystem::new(world),

@@ -56,7 +56,7 @@ impl Component for InsertionGameObject {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub enum EditorState {
     EditMode,
     EditGameObject,
