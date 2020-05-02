@@ -3,10 +3,10 @@
 ## Controls
 
 **Playing**
-- `Arrow keys`g : Move and jump
+- `Arrow keys` : Move and jump
 - `Left Ctrl` : Change to editor mode
 
-####Editor - All modes controls
+#### Editor - All modes controls
 - `Left Ctrl` : Change back to playing
 - `Arrow keys` : Move cursor
 - `Insert` : Save your changes
