@@ -1,7 +1,7 @@
 (
   axes: {
-    "vertical_move": Emulated(pos: Key(W), neg: Key(S)),
-    "horizontal_move": Emulated(pos: Key(D), neg: Key(A)),
+    "vertical_move": Emulated(pos: Key(Up), neg: Key(Down)),
+    "horizontal_move": Emulated(pos: Key(Right), neg: Key(Left)),
   },
   actions: {
     "exit": [[Key(Escape)]],
@@ -10,6 +10,7 @@
     "save": [[Key(Insert)]],
     "revive": [[Key(PageUp)]],
     "editor": [[Key(LControl)]],
+    "insert": [[Key(A)]],
     "cancel": [[Key(Z)]],
     "accept": [[Key(X)]],
     "1": [[Key(Key1)]],

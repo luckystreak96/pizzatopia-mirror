@@ -1,6 +1,7 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, EditorFlag, InsertionGameObject, RealCursorPosition,
+    CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject,
+    RealCursorPosition,
 };
 use crate::components::game::{CameraTarget, Player};
 use crate::components::game::{CollisionEvent, GameObject, Health, Invincibility};
@@ -90,6 +91,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         data.world
             .insert(InsertionGameObject(GameObject::default()));
+        data.world.insert(EditorState::EditMode);
 
         // setup dispatcher
         let mut dispatcher = Editor::create_dispatcher(data.world);
@@ -181,6 +183,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                         }
                     }
                 }
+                Events::SetInsertionGameObject(game_object) => {
+                    data.world.insert(InsertionGameObject(game_object.clone()));
+                }
                 Events::Warp(_) => {}
                 Events::Reset => {}
             }
@@ -223,7 +228,7 @@ impl<'a, 'b> Editor<'a, 'b> {
             &["cursor_position_system"],
         );
         dispatcher_builder.add(
-            EditorButtonEventSystem,
+            EditorButtonEventSystem::new(world),
             "editor_button_event_system",
             &["cursor_position_system"],
         );

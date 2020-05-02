@@ -1,3 +1,4 @@
+use crate::components::game::GameObject;
 use crate::level::Tile;
 use crate::utils::Vec2;
 
@@ -9,6 +10,7 @@ pub enum Events {
     DeleteGameObject(u32),
     SaveLevel,
     ChangeInsertionGameObject(u8),
+    SetInsertionGameObject(GameObject),
 }
 
 #[derive(Debug, Clone)]

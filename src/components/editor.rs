@@ -7,6 +7,7 @@ use amethyst::{
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
+use derivative::Derivative;
 
 #[derive(Default)]
 pub struct EditorFlag;
@@ -53,4 +54,17 @@ pub struct InsertionGameObject(pub GameObject);
 
 impl Component for InsertionGameObject {
     type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Clone, Debug, Copy)]
+pub enum EditorState {
+    EditMode,
+    EditGameObject,
+    InsertMode,
+}
+
+impl Default for EditorState {
+    fn default() -> Self {
+        EditorState::EditMode
+    }
 }

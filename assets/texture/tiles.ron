@@ -2,24 +2,28 @@ List((
     texture_width: 512,
     texture_height: 512,
     sprites: [
+        // Green grass
         (
             x: 0,
             y: 0,
             width: 128,
             height: 128,
         ),
+        // Yellow grass
         (
             x: 128,
             y: 0,
             width: 128,
             height: 128,
         ),
+        // Didi
         (
             x: 0,
             y: 128,
             width: 128,
             height: 128,
         ),
+        // Snap (white)
         (
             x: 128,
             y: 128,

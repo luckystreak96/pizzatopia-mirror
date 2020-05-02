@@ -10,7 +10,8 @@ use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLi
 use amethyst::renderer::palette::Srgba;
 
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
+    CursorWasInThisEntity, EditorCursor, EditorState, InsertionGameObject, InstanceEntityId,
+    RealCursorPosition, SizeForEditorGrid,
 };
 use crate::components::game::Player;
 use crate::components::game::{GameObject, Health};
@@ -26,8 +27,10 @@ use crate::systems::physics::{
 use crate::utils::{Vec2, Vec3};
 use amethyst::assets::Handle;
 use amethyst::ecs::prelude::ReadExpect;
+use amethyst::prelude::WorldExt;
 use amethyst::renderer::SpriteSheet;
 use log::{error, info, warn};
+use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]
@@ -36,6 +39,8 @@ pub enum EditorEvents {
     RemoveGameObject,
     SaveLevelToFile,
     ChangeInsertionGameObject(u8),
+    SetInsertionGameObject(GameObject),
+    ChangeState(EditorState),
 }
 
 fn snap_cursor_position_to_grid_center(position: &mut Vec2) {
@@ -298,26 +303,94 @@ impl<'s> System<'s> for CursorPositionSystem {
 }
 
 #[derive(SystemDesc)]
-pub struct EditorButtonEventSystem;
+pub struct EditorButtonEventSystem {
+    input_last_press: BTreeMap<String, (bool, Instant)>,
+}
+
+impl EditorButtonEventSystem {
+    fn update_input(&mut self, input: &InputHandler<StringBindings>) {
+        for action in input.bindings.actions() {
+            let elapsed = self.input_last_press.get(action).unwrap().1.elapsed();
+            if input.action_is_down(action).unwrap() && elapsed.as_millis() > 250 {
+                self.input_last_press.insert(action.clone(), (true, Instant::now()));
+            } else {
+                self.input_last_press.get_mut(action).unwrap().0 = false;
+            }
+        }
+    }
+
+    fn action_down(&self, action: &str) -> bool {
+        if let Some((pressed, time)) = self.input_last_press.get(action) {
+            *pressed
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn new(world: &World) -> Self {
+        let mut input_last_press = BTreeMap::new();
+        for action in world
+            .read_resource::<InputHandler<StringBindings>>()
+            .bindings
+            .actions()
+        {
+            input_last_press.insert(action.clone(), (false, Instant::now()));
+        }
+
+        EditorButtonEventSystem { input_last_press }
+    }
+}
 
 impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
+        ReadExpect<'s, EditorState>,
         Read<'s, InputHandler<StringBindings>>,
         Write<'s, EventChannel<EditorEvents>>,
     );
 
-    fn run(&mut self, (input, mut editor_event_writer): Self::SystemData) {
-        // Controller input
-        if input.action_is_down("cancel").unwrap_or(false) {
-            editor_event_writer.single_write(EditorEvents::RemoveGameObject);
-        } else if input.action_is_down("accept").unwrap_or(false) {
-            editor_event_writer.single_write(EditorEvents::AddGameObject);
-        } else if input.action_is_down("save").unwrap_or(false) {
+    fn run(&mut self, (state, input, mut editor_event_writer): Self::SystemData) {
+        self.update_input(&input);
+
+        if self.action_down("save") {
             editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
-        } else if input.action_is_down("1").unwrap_or(false) {
-            editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(0));
-        } else if input.action_is_down("2").unwrap_or(false) {
-            editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(1));
+        }
+
+        match *state {
+            EditorState::EditMode => {
+                // Controller input
+                if self.action_down("cancel") {
+                    editor_event_writer.single_write(EditorEvents::RemoveGameObject);
+                } else if self.action_down("accept") {
+                    editor_event_writer
+                        .single_write(EditorEvents::ChangeState(EditorState::EditGameObject));
+                } else if self.action_down("insert") {
+                    editor_event_writer
+                        .single_write(EditorEvents::ChangeState(EditorState::InsertMode));
+                }
+            }
+            EditorState::InsertMode => {
+                // Controller input
+                if self.action_down("cancel") {
+                    editor_event_writer
+                        .single_write(EditorEvents::ChangeState(EditorState::EditMode));
+                } else if self.action_down("accept") {
+                    editor_event_writer.single_write(EditorEvents::AddGameObject);
+                } else if self.action_down("1") {
+                    editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(0));
+                } else if self.action_down("2") {
+                    editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(1));
+                }
+            }
+            EditorState::EditGameObject => {
+                if self.action_down("cancel") {
+                    editor_event_writer
+                        .single_write(EditorEvents::ChangeState(EditorState::EditMode));
+                } else if self.action_down("accept") {
+                    editor_event_writer.single_write(EditorEvents::AddGameObject);
+                    editor_event_writer
+                        .single_write(EditorEvents::ChangeState(EditorState::EditMode));
+                }
+            }
         }
     }
 }
@@ -342,12 +415,15 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         Read<'s, InputHandler<StringBindings>>,
         Read<'s, EventChannel<EditorEvents>>,
         Write<'s, EventChannel<Events>>,
+        Write<'s, EditorState>,
+        Write<'s, InsertionGameObject>,
         ReadStorage<'s, EditorCursor>,
         ReadStorage<'s, RealCursorPosition>,
         ReadStorage<'s, InstanceEntityId>,
         WriteStorage<'s, CursorWasInThisEntity>,
         Entities<'s>,
         ReadExpect<'s, Vec<Handle<SpriteSheet>>>,
+        ReadStorage<'s, GameObject>,
     );
 
     fn run(
@@ -356,12 +432,15 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
             input,
             editor_event_channel,
             mut world_events_channel,
+            mut editor_state,
+            mut insertion_game_object,
             cursors,
             real_positions,
             real_entity_ids,
             previous_block,
             entities,
             vec_sprite_handle,
+            game_objects,
         ): Self::SystemData,
     ) {
         for event in editor_event_channel.read(&mut self.reader) {
@@ -393,6 +472,36 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 }
                 EditorEvents::ChangeInsertionGameObject(id) => {
                     world_events_channel.single_write(Events::ChangeInsertionGameObject(*id));
+                }
+                EditorEvents::SetInsertionGameObject(game_object) => {
+                    world_events_channel
+                        .single_write(Events::SetInsertionGameObject(game_object.clone()));
+                }
+                EditorEvents::ChangeState(new_state) => {
+                    let mut change = true;
+                    match new_state {
+                        EditorState::EditGameObject => {
+                            for (cursor, previous_block) in (&cursors, &previous_block).join() {
+                                // Change state if selecting block
+                                if previous_block.0.is_none() {
+                                    change = false;
+                                } else {
+                                    let id = previous_block.0.unwrap();
+                                    let entity = entities.entity(id);
+                                    // Copy old entity
+                                    if let Some(go) = game_objects.get(entity) {
+                                        insertion_game_object.0 = go.clone();
+                                        world_events_channel
+                                            .single_write(Events::DeleteGameObject(id));
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                    if change {
+                        *editor_state = new_state.clone();
+                    }
                 }
             };
         }

@@ -166,6 +166,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                     Level::reinitialize_level(world);
                 }
                 Events::ChangeInsertionGameObject(_) => {}
+                Events::SetInsertionGameObject(_) => {}
                 Events::SaveLevel => {}
                 Events::Warp(_) => {}
                 Events::AddGameObject(_) => {}
