@@ -3,14 +3,14 @@ use crate::components::editor::{
 };
 use crate::components::game::{GameObject, Health, Invincibility};
 use crate::components::game::{Player, Resettable};
-use crate::components::graphics::{AnimationCounter, Scale};
+use crate::components::graphics::{AnimationCounter, CameraLimit, Scale};
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
     Sticky, Velocity,
 };
 use crate::states::loading::{AssetsDir, LevelPath};
 use crate::states::pizzatopia::SpriteSheetType::{Character, Snap, Tiles};
-use crate::states::pizzatopia::{DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
+use crate::states::pizzatopia::{CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::editor::EditorButtonEventSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
@@ -112,6 +112,43 @@ impl Level {
         }
     }
 
+    pub(crate) fn calculate_camera_limits(world: &mut World) {
+        for (camera, limit) in (
+            &world.read_storage::<Camera>(),
+            &mut world.write_storage::<CameraLimit>(),
+        )
+            .join()
+        {
+            for (pos, _, _) in (
+                &world.read_storage::<Position>(),
+                &world.read_storage::<EditorFlag>(),
+                &world.read_storage::<Tile>(),
+            )
+                .join()
+            {
+                limit.left = limit.left.min(pos.0.x);
+                limit.right = limit.right.max(pos.0.x);
+                limit.bottom = limit.bottom.min(pos.0.y);
+                limit.top = limit.top.max(pos.0.y);
+            }
+
+            // Only set the right limit dynamically if there's enough space
+            limit.right = match (limit.right - limit.left).abs() >= CAM_WIDTH {
+                true => limit.right - CAM_WIDTH / 2.0,
+                false => limit.left + CAM_WIDTH,
+            };
+            limit.top = match (limit.top - limit.bottom).abs() >= CAM_HEIGHT {
+                // Don't clamp top too hard
+                true => limit.top, /* - CAM_HEIGHT / 2.0*/
+                false => limit.bottom + CAM_HEIGHT,
+            };
+
+            // Add the CAM_SIZE offset
+            limit.left += CAM_WIDTH / 2.0;
+            limit.bottom += CAM_HEIGHT / 2.0;
+        }
+    }
+
     /// Initialises the ground.
     pub fn initialize_ground(world: &mut World, tile: &Tile) -> u32 {
         // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
@@ -179,6 +216,8 @@ impl Level {
                 Self::initialize_game_object(world, &mut game_object, None, false);
             }
         }
+
+        Level::calculate_camera_limits(world);
     }
 
     // Turns all current entities into a RON file with the current date as a name

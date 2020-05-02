@@ -3,7 +3,7 @@ use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
 use crate::components::game::{CameraTarget, CollisionEvent, GameObject, Health, Invincibility};
 use crate::components::game::{Player, Resettable};
-use crate::components::graphics::{AnimationCounter, Lerper};
+use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Sticky, Velocity,
@@ -128,7 +128,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         dispatcher.setup(data.world);
         self.dispatcher = Some(dispatcher);
 
-        self.initialize_level(data.world);
+        initialise_camera(data.world);
+        Level::load_level(data.world);
 
         data.world.exec(|mut creator: UiCreator<'_>| {
             let mut progress = ProgressCounter::new();
@@ -136,8 +137,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         });
     }
 
-    fn on_resume(&mut self, _data: StateData<'_, GameData<'s, 's>>) {
+    fn on_resume(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         self.time_start = Instant::now();
+        Level::calculate_camera_limits(data.world);
     }
 
     fn handle_event(
@@ -220,6 +222,7 @@ fn initialise_camera(world: &mut World) {
         .with(transform)
         .with(pos)
         .with(CameraTarget::Player)
+        .with(CameraLimit::default())
         .with(Lerper::default())
         .build();
 }
@@ -288,6 +291,11 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             systems::graphics::LerperSystem,
             "lerper_system",
             &["camera_target_system"],
+        );
+        dispatcher_builder.add(
+            systems::graphics::CameraEdgeClampSystem,
+            "camera_edge_clamp_system",
+            &["lerper_system"],
         );
         // register a bundle to the builder
         GameLogicBundle::default()

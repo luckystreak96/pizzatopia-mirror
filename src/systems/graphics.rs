@@ -1,5 +1,5 @@
 use crate::components::game::Health;
-use crate::components::graphics::{AnimationCounter, Lerper, PulseAnimation, Scale};
+use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale};
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
@@ -10,6 +10,25 @@ use amethyst::ecs::{Join, Read, ReadStorage, System, SystemData, World, WriteSto
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
+use log::info;
+
+#[derive(SystemDesc)]
+pub struct CameraEdgeClampSystem;
+
+impl<'s> System<'s> for CameraEdgeClampSystem {
+    type SystemData = (
+        WriteStorage<'s, Position>,
+        ReadStorage<'s, Camera>,
+        ReadStorage<'s, CameraLimit>,
+    );
+
+    fn run(&mut self, (mut positions, cameras, camera_limits): Self::SystemData) {
+        for (pos, cam, limit) in (&mut positions, &cameras, &camera_limits).join() {
+            pos.0.x = pos.0.x.clamp(limit.left, limit.right);
+            pos.0.y = pos.0.y.clamp(limit.bottom, limit.top);
+        }
+    }
+}
 
 #[derive(SystemDesc)]
 pub struct LerperSystem;

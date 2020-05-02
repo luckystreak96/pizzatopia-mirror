@@ -1,5 +1,5 @@
 use crate::components::game::{CameraTarget, CollisionEvent, Health, Invincibility, Player};
-use crate::components::graphics::{AnimationCounter, Lerper};
+use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper};
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::events::PlayerEvent;
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
@@ -139,8 +139,8 @@ impl<'s> System<'s> for CameraTargetSystem {
         }
         for (mut lerper, camera) in (&mut lerpers, &cameras).join() {
             if let Some(ortho) = camera.projection().as_orthographic() {
-                lerper.target.x = position.x.max(ortho.right());
-                lerper.target.y = position.y.max(ortho.top());
+                lerper.target.x = position.x;
+                lerper.target.y = position.y;
             }
         }
     }

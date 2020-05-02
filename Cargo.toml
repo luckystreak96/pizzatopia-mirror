@@ -10,7 +10,8 @@ amethyst = "0.15"
 log = "0.4.8"
 serde = { version = "1.0", features = ["derive"] }
 derivative = "1.0.3"
-ron = "*"
+ron = "0.5.1"
+num-traits = "0.1.43"
 
 [features]
 default = ["vulkan"]
