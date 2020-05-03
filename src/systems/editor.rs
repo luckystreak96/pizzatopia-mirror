@@ -13,12 +13,12 @@ use crate::components::editor::{
     CursorWasInThisEntity, EditorCursor, EditorState, InsertionGameObject, InstanceEntityId,
     RealCursorPosition, SizeForEditorGrid,
 };
-use crate::components::game::Player;
-use crate::components::game::{GameObject, Health};
+use crate::components::game::{Health, SerializedObjectType};
+use crate::components::game::{Player, SerializedObject};
 use crate::components::graphics::Scale;
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::events::Events;
-use crate::level::{Level, Tile};
+use crate::level::Level;
 use crate::states::editor::EDITOR_GRID_SIZE;
 use crate::states::pizzatopia::{CAM_HEIGHT, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{
@@ -39,7 +39,7 @@ pub enum EditorEvents {
     RemoveGameObject,
     SaveLevelToFile,
     ChangeInsertionGameObject(u8),
-    SetInsertionGameObject(GameObject),
+    SetInsertionGameObject(SerializedObject),
     ChangeState(EditorState),
 }
 
@@ -120,7 +120,7 @@ impl<'s> System<'s> for CursorPositionSystem {
         &mut self,
         (
             editor_state,
-            insertion_game_object,
+            insertion_serialized_object,
             mut debug_lines_resource,
             editor_events,
             input,
@@ -295,6 +295,18 @@ impl<'s> System<'s> for CursorPositionSystem {
                 [real_pos.0.x - 16.0, real_pos.0.y - 16.0, DEPTH_UI].into(),
                 Srgba::new(0.1, 0.1, 0.4, 1.0),
             );
+
+            // Draw axis
+            debug_lines_resource.draw_line(
+                [-10.0, 0.0, DEPTH_UI].into(),
+                [10000.0, 0.0, DEPTH_UI].into(),
+                Srgba::new(1.0, 0.9, 0.4, 1.0),
+            );
+            debug_lines_resource.draw_line(
+                [0.0, -10.0, DEPTH_UI].into(),
+                [0.0, 10000.0, DEPTH_UI].into(),
+                Srgba::new(1.0, 0.9, 0.4, 1.0),
+            );
         }
     }
 }
@@ -317,7 +329,7 @@ impl<'s> System<'s> for CursorSizeSystem {
         &mut self,
         (
             editor_state,
-            insertion_game_object,
+            insertion_serialized_object,
             cursors,
             size_for_editor,
             previous_block,
@@ -351,16 +363,12 @@ impl<'s> System<'s> for CursorSizeSystem {
             }
             EditorState::EditGameObject | EditorState::InsertMode => {
                 for (scale, _) in (&mut scales, &cursors).join() {
-                    match insertion_game_object.0 {
-                        GameObject::StaticTile(tile) => {
-                            let scale_size =
-                                Vec2::new(tile.size.x / TILE_WIDTH, tile.size.y / TILE_HEIGHT);
-                            scale.0 = scale_size;
-                        }
-                        _ => {
-                            scale.0 = Vec2::new(1.0, 1.0);
-                        }
-                    }
+                    scale.0 = insertion_serialized_object
+                        .0
+                        .size
+                        .unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
+                    scale.0.x /= TILE_WIDTH;
+                    scale.0.y /= TILE_HEIGHT;
                 }
             }
         }
@@ -482,15 +490,13 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         Read<'s, EventChannel<EditorEvents>>,
         Write<'s, EventChannel<Events>>,
         Write<'s, EditorState>,
-        ReadExpect<'s, InsertionGameObject>,
+        Write<'s, InsertionGameObject>,
         ReadStorage<'s, EditorCursor>,
         WriteStorage<'s, Position>,
         ReadStorage<'s, RealCursorPosition>,
         ReadStorage<'s, InstanceEntityId>,
         WriteStorage<'s, CursorWasInThisEntity>,
         Entities<'s>,
-        ReadExpect<'s, Vec<Handle<SpriteSheet>>>,
-        ReadStorage<'s, GameObject>,
     );
 
     fn run(
@@ -500,15 +506,13 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
             editor_event_channel,
             mut world_events_channel,
             mut editor_state,
-            insertion_game_object,
+            mut insertion_serialized_object,
             cursors,
             mut positions,
             real_positions,
             real_entity_ids,
             previous_block,
             entities,
-            vec_sprite_handle,
-            game_objects,
         ): Self::SystemData,
     ) {
         for event in editor_event_channel.read(&mut self.reader) {
@@ -523,7 +527,8 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         // We only add the GameObject if the cursor isn't currently in a tile
                         if previous_block.0.is_none() {
                             let pos = position.0.to_vec2();
-                            world_events_channel.single_write(Events::AddGameObject(pos));
+                            insertion_serialized_object.0.pos = Some(pos);
+                            world_events_channel.single_write(Events::AddGameObject);
                         }
                     }
                 }
@@ -540,9 +545,9 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 EditorEvents::ChangeInsertionGameObject(id) => {
                     world_events_channel.single_write(Events::ChangeInsertionGameObject(*id));
                 }
-                EditorEvents::SetInsertionGameObject(game_object) => {
+                EditorEvents::SetInsertionGameObject(serialized_object) => {
                     world_events_channel
-                        .single_write(Events::SetInsertionGameObject(game_object.clone()));
+                        .single_write(Events::SetInsertionGameObject(serialized_object.clone()));
                 }
                 EditorEvents::ChangeState(new_state) => {
                     let mut change = true;
@@ -555,14 +560,9 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                                 } else {
                                     let id = previous_block.0.unwrap();
                                     let entity = entities.entity(id);
-                                    // Copy old entity
-                                    if let Some(go) = game_objects.get(entity) {
-                                        world_events_channel.single_write(
-                                            Events::SetInsertionGameObject(go.clone()),
-                                        );
-                                        world_events_channel
-                                            .single_write(Events::DeleteGameObject(id));
-                                    }
+                                    world_events_channel
+                                        .single_write(Events::EntityToInsertionGameObject(id));
+                                    world_events_channel.single_write(Events::DeleteGameObject(id));
                                 }
                             }
                         }
@@ -571,12 +571,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                                 let mut pos: Vec2 = position.0.to_vec2();
                                 snap_cursor_position_to_grid_corner(&mut pos);
                                 let mut size = Vec2::new(TILE_WIDTH, TILE_HEIGHT);
-                                match insertion_game_object.0 {
-                                    GameObject::StaticTile(tile) => {
-                                        size = tile.size;
-                                    }
-                                    _ => {}
-                                }
+                                size = insertion_serialized_object.0.size.unwrap_or(size);
                                 pos.x += size.x / 2.0;
                                 pos.y += size.y / 2.0;
                                 position.0.x = pos.x;

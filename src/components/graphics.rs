@@ -108,3 +108,17 @@ pub struct PulseAnimation(pub u32);
 impl Component for PulseAnimation {
     type Storage = DenseVecStorage<Self>;
 }
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
+#[derivative(Default)]
+pub enum SpriteSheetType {
+    #[derivative(Default)]
+    Tiles = 0,
+    Didi = 1,
+    Snap = 2,
+}
+
+impl Component for SpriteSheetType {
+    type Storage = DenseVecStorage<Self>;
+}

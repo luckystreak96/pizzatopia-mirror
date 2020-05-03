@@ -1,10 +1,13 @@
-use crate::components::editor::{EditorCursor, InsertionGameObject, EditorState};
-use crate::components::game::GameObject;
+use crate::components::editor::{EditorCursor, EditorState, InsertionGameObject};
 use crate::components::game::Health;
-use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale};
+use crate::components::game::{SerializedObjectType, SpriteRenderData};
+use crate::components::graphics::{
+    AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale, SpriteSheetType,
+};
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
+use amethyst::assets::Handle;
 use amethyst::core::math::Vector3;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
@@ -13,6 +16,7 @@ use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
 use log::info;
+use std::collections::BTreeMap;
 
 #[derive(SystemDesc)]
 pub struct CameraEdgeClampSystem;
@@ -106,24 +110,32 @@ impl<'s> System<'s> for CursorSpriteUpdateSystem {
         ReadStorage<'s, EditorCursor>,
         ReadExpect<'s, InsertionGameObject>,
         ReadExpect<'s, EditorState>,
+        ReadExpect<'s, BTreeMap<u8, Handle<SpriteSheet>>>,
     );
 
-    fn run(&mut self, (mut sprites, cursors, insertion_game_object, editor_state): Self::SystemData) {
+    fn run(
+        &mut self,
+        (mut sprites, cursors, insertion_serialized_object, editor_state, sprite_sheets): Self::SystemData,
+    ) {
         for (sprite, _) in (&mut sprites, &cursors).join() {
-            // TODO : Change GameObjects to all have an assigned sprite
-            // TODO : Maybe the sprite should have a name that would be associated through a RON file and a map
             match *editor_state {
                 EditorState::InsertMode | EditorState::EditGameObject => {
-                    match insertion_game_object.0 {
-                        GameObject::StaticTile(tile) => {
-                            sprite.sprite_number = tile.sprite;
-                        }
-                        _ => {
-                            sprite.sprite_number = 4;
-                        }
-                    }
+                    let sprite_data = insertion_serialized_object
+                        .0
+                        .sprite
+                        .unwrap_or(SpriteRenderData::new(SpriteSheetType::Tiles, 0));
+                    sprite.sprite_sheet = sprite_sheets
+                        .get(&(sprite_data.sheet as u8))
+                        .unwrap()
+                        .clone();
+                    sprite.sprite_number = sprite_data.number;
                 }
                 _ => {
+                    // Cursor sprite
+                    sprite.sprite_sheet = sprite_sheets
+                        .get(&(SpriteSheetType::Tiles as u8))
+                        .unwrap()
+                        .clone();
                     sprite.sprite_number = 4;
                 }
             }

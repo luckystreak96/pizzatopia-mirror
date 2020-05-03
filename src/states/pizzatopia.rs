@@ -1,8 +1,12 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
-use crate::components::game::{CameraTarget, CollisionEvent, GameObject, Health, Invincibility};
+use crate::components::game::{
+    CameraTarget, CollisionEvent, Health, Invincibility, SerializedObject, SerializedObjectType,
+    Tile,
+};
 use crate::components::game::{Player, Resettable};
+use crate::components::graphics::SpriteSheetType;
 use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -10,9 +14,7 @@ use crate::components::physics::{
 };
 use crate::events::Events;
 use crate::level::Level;
-use crate::level::Tile;
 use crate::states::editor::Editor;
-use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
 use crate::systems::physics::CollisionDirection;
@@ -48,8 +50,10 @@ use amethyst::{
     },
     winit::Event,
 };
+use derivative::Derivative;
 use log::info;
 use log::warn;
+use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::io;
 use std::thread::park_timeout;
@@ -70,14 +74,6 @@ pub const MAX_FALL_SPEED: f32 = 20.0;
 pub const MAX_RUN_SPEED: f32 = 20.0;
 
 pub const FRICTION: f32 = 0.90;
-
-#[repr(u8)]
-#[derive(Clone)]
-pub enum SpriteSheetType {
-    Tiles = 0,
-    Character,
-    Snap,
-}
 
 #[derive(Debug, EventReader, Clone)]
 #[reader(MyEventReader)]
@@ -112,11 +108,12 @@ impl Pizzatopia<'_, '_> {
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        data.world.register::<GameObject>();
-        data.world.register::<GameObject>();
+        data.world.register::<SerializedObjectType>();
+        data.world.register::<SerializedObject>();
         data.world.register::<Resettable>();
         data.world.register::<EditorFlag>();
         data.world.register::<CameraTarget>();
+        data.world.register::<SpriteSheetType>();
         data.world.register::<Tile>();
         // Created in Pizzatopia and system in Editor
         data.world.register::<SizeForEditorGrid>();
@@ -169,8 +166,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                 Events::SetInsertionGameObject(_) => {}
                 Events::SaveLevel => {}
                 Events::Warp(_) => {}
-                Events::AddGameObject(_) => {}
+                Events::AddGameObject => {}
                 Events::DeleteGameObject(_) => {}
+                Events::EntityToInsertionGameObject(_) => {}
             }
         }
 

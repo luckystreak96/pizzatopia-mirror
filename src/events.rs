@@ -1,16 +1,16 @@
-use crate::components::game::GameObject;
-use crate::level::Tile;
+use crate::components::game::{SerializedObject, SerializedObjectType};
 use crate::utils::Vec2;
 
 #[derive(Debug, Clone)]
 pub enum Events {
     Warp(Vec2),
     Reset,
-    AddGameObject(Vec2),
+    AddGameObject,
     DeleteGameObject(u32),
     SaveLevel,
     ChangeInsertionGameObject(u8),
-    SetInsertionGameObject(GameObject),
+    SetInsertionGameObject(SerializedObject),
+    EntityToInsertionGameObject(u32),
 }
 
 #[derive(Debug, Clone)]

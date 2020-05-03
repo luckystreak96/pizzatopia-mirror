@@ -1,4 +1,4 @@
-use crate::components::game::GameObject;
+use crate::components::game::{SerializedObject, SerializedObjectType};
 use crate::utils::Vec2;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
@@ -50,7 +50,7 @@ impl Component for InstanceEntityId {
 }
 
 #[derive(Default, Clone, Debug, Copy)]
-pub struct InsertionGameObject(pub GameObject);
+pub struct InsertionGameObject(pub SerializedObject);
 
 impl Component for InsertionGameObject {
     type Storage = DenseVecStorage<Self>;

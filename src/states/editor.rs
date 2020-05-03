@@ -3,17 +3,17 @@ use crate::components::editor::{
     CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject,
     RealCursorPosition,
 };
-use crate::components::game::{CameraTarget, Player};
-use crate::components::game::{CollisionEvent, GameObject, Health, Invincibility};
+use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
+use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
+use crate::components::graphics::SpriteSheetType;
 use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
     PlatformCuboid, Position, Sticky, Velocity,
 };
 use crate::events::Events;
-use crate::level::{Level, Tile};
+use crate::level::Level;
 use crate::states::pizzatopia;
-use crate::states::pizzatopia::SpriteSheetType::{Character, Tiles};
 use crate::states::pizzatopia::TILE_WIDTH;
 use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
 use crate::systems;
@@ -22,7 +22,7 @@ use crate::systems::editor::{
     CursorPositionSystem, CursorSizeSystem, EditorButtonEventSystem, EditorEventHandlingSystem,
     EditorEvents,
 };
-use crate::systems::graphics::{PulseAnimationSystem, CursorSpriteUpdateSystem};
+use crate::systems::graphics::{CursorSpriteUpdateSystem, PulseAnimationSystem};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::math::Vector3;
@@ -64,6 +64,7 @@ use amethyst::{
 };
 use log::{error, info, warn};
 use std::borrow::Borrow;
+use std::collections::BTreeMap;
 use std::io;
 use std::time::{Duration, Instant};
 
@@ -91,7 +92,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         data.world.insert(DebugLinesParams { line_width: 2.0 });
 
         data.world
-            .insert(InsertionGameObject(GameObject::default()));
+            .insert(InsertionGameObject(SerializedObject::default()));
         data.world.insert(EditorState::EditMode);
 
         // setup dispatcher
@@ -150,15 +151,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         if let MyEvents::App(event) = &event {
             match event {
-                Events::AddGameObject(pos) => {
-                    let mut game_object =
+                Events::AddGameObject => {
+                    let mut serialized_object =
                         data.world.read_resource::<InsertionGameObject>().0.clone();
-                    Level::initialize_game_object(
-                        data.world,
-                        &mut game_object,
-                        Some(pos.clone()),
-                        false,
-                    );
+                    Level::initialize_serialized_object(data.world, &mut serialized_object, false);
                 }
                 Events::DeleteGameObject(id) => {
                     Level::delete_entity(data.world, *id);
@@ -171,21 +167,28 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                     match mod_id {
                         0 => {
                             data.world
-                                .insert(InsertionGameObject(GameObject::default()));
+                                .insert(InsertionGameObject(SerializedObject::default()));
                         }
                         1 => {
-                            data.world.insert(InsertionGameObject(GameObject::Player(
-                                Position::default(),
-                                Player::default(),
-                            )));
+                            let mut result: SerializedObject = SerializedObject::default();
+                            result.object_type = SerializedObjectType::Player {
+                                is_player: Player(true),
+                            };
+                            result.sprite = Some(SpriteRenderData::new(SpriteSheetType::Didi, 0));
+                            data.world.insert(InsertionGameObject(result));
                         }
                         _ => {
                             error!("Can't change to this GameObject: {:?}", id);
                         }
                     }
                 }
-                Events::SetInsertionGameObject(game_object) => {
-                    data.world.insert(InsertionGameObject(game_object.clone()));
+                Events::SetInsertionGameObject(serialized_object) => {
+                    data.world
+                        .insert(InsertionGameObject(serialized_object.clone()));
+                }
+                Events::EntityToInsertionGameObject(id) => {
+                    let serialized_object = Level::entity_to_serialized_object(data.world, *id);
+                    data.world.insert(InsertionGameObject(serialized_object));
                 }
                 Events::Warp(_) => {}
                 Events::Reset => {}
@@ -357,8 +360,9 @@ impl<'a, 'b> Editor<'a, 'b> {
         pos.z = pizzatopia::DEPTH_EDITOR;
         let pos = Position(pos);
 
-        let sprite_sheet =
-            world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(SpriteSheetType::Tiles as u8)]
+            .clone();
         // Assign the sprite
         let sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),

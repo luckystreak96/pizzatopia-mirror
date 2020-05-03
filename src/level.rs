@@ -1,19 +1,22 @@
 use crate::components::editor::{
     EditorFlag, InsertionGameObject, InstanceEntityId, SizeForEditorGrid,
 };
-use crate::components::game::{GameObject, Health, Invincibility};
+use crate::components::game::{
+    Health, Invincibility, SerializedObject, SerializedObjectType, SpriteRenderData, Tile,
+};
 use crate::components::game::{Player, Resettable};
+use crate::components::graphics::SpriteSheetType;
 use crate::components::graphics::{AnimationCounter, CameraLimit, Scale};
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
     Sticky, Velocity,
 };
 use crate::states::loading::{AssetsDir, LevelPath};
-use crate::states::pizzatopia::SpriteSheetType::{Character, Snap, Tiles};
 use crate::states::pizzatopia::{CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::editor::EditorButtonEventSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
+use amethyst::core::math::Vector3;
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, ProcessingState, Processor,
@@ -32,19 +35,19 @@ use amethyst::{
     utils::application_root_dir,
 };
 use derivative::Derivative;
-use log::{error, warn};
+use log::{error, warn, info};
 use serde::Deserialize;
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Index;
 use std::path::PathBuf;
-use amethyst::core::math::Vector3;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
 pub struct Level {
-    game_objects: Option<Vec<GameObject>>,
+    serialized_objects: Option<Vec<SerializedObject>>,
 }
 
 impl Asset for Level {
@@ -60,57 +63,69 @@ impl From<Level> for Result<Level, Error> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
-#[serde(default)]
-#[derivative(Default)]
-pub struct Tile {
-    pub pos: Vec2,
-    #[derivative(Default(value = "Tile::default_sprite()"))]
-    #[serde(skip_serializing_if = "Tile::is_default_sprite")]
-    pub sprite: usize,
-    #[derivative(Default(value = "Tile::default_size()"))]
-    #[serde(skip_serializing_if = "Tile::is_default_size")]
-    pub size: Vec2,
-}
-
-impl Component for Tile {
-    type Storage = DenseVecStorage<Self>;
-}
-
-impl Tile {
-    fn default_size() -> Vec2 {
-        Vec2::new(TILE_WIDTH, TILE_HEIGHT)
-    }
-    fn is_default_size(size: &Vec2) -> bool {
-        *size == Tile::default_size()
-    }
-    fn default_sprite() -> usize {
-        0
-    }
-    fn is_default_sprite(sprite: &usize) -> bool {
-        *sprite == Tile::default_sprite()
-    }
-}
-
 impl Level {
-    pub fn initialize_game_object(
+    pub fn initialize_serialized_object(
         world: &mut World,
-        game_object: &mut GameObject,
-        pos: Option<Vec2>,
+        serialized_object: &SerializedObject,
         ignore_editor: bool,
     ) -> u32 {
-        match game_object {
-            GameObject::Player(position, player) => Self::initialize_player(
-                pos.unwrap_or(position.0.to_vec2()),
-                player.0,
-                ignore_editor,
-                world,
-            ),
-            GameObject::StaticTile(tile) => {
-                tile.pos = pos.unwrap_or(tile.pos);
-                Self::initialize_ground(world, &tile)
+        match serialized_object.object_type {
+            SerializedObjectType::Player { .. } => {
+                Self::initialize_player(world, serialized_object, ignore_editor)
             }
+            SerializedObjectType::StaticTile => Self::initialize_ground(world, serialized_object),
         }
+    }
+
+    pub fn entity_to_serialized_object(world: &mut World, id: u32) -> SerializedObject {
+        let entity = world.entities().entity(id);
+        let object_type = world
+            .read_storage::<SerializedObjectType>()
+            .get(entity)
+            .unwrap()
+            .clone();
+
+        let size = world
+            .read_storage::<SizeForEditorGrid>()
+            .get(entity)
+            .unwrap()
+            .0
+            .clone();
+        let position = world
+            .read_storage::<Position>()
+            .get(entity)
+            .unwrap()
+            .clone();
+        let sprite_render = world
+            .read_storage::<SpriteRender>()
+            .get(entity)
+            .unwrap()
+            .clone();
+        let sprite_sheet_type = world
+            .read_storage::<SpriteSheetType>()
+            .get(entity)
+            .unwrap()
+            .clone();
+
+        let mut result: SerializedObject = SerializedObject::default();
+        result.size = Some(size);
+        result.pos = Some(position.0.to_vec2());
+        result.sprite = Some(SpriteRenderData::new(
+            sprite_sheet_type.clone(),
+            sprite_render.sprite_number,
+        ));
+
+
+        match object_type {
+            SerializedObjectType::StaticTile => {
+                result.object_type = SerializedObjectType::StaticTile;
+            }
+            SerializedObjectType::Player { is_player } => {
+                let is_player = world.read_storage::<Player>().get(entity).unwrap().clone();
+                result.object_type = SerializedObjectType::Player { is_player };
+            }
+        };
+        result
     }
 
     pub(crate) fn calculate_camera_limits(world: &mut World) {
@@ -120,6 +135,7 @@ impl Level {
         )
             .join()
         {
+            *limit = CameraLimit::default();
             for (pos, _, _) in (
                 &world.read_storage::<Position>(),
                 &world.read_storage::<EditorFlag>(),
@@ -151,27 +167,28 @@ impl Level {
     }
 
     /// Initialises the ground.
-    pub fn initialize_ground(world: &mut World, tile: &Tile) -> u32 {
-        // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
-        let tile_size = PlatformCuboid::create(tile.size.x, tile.size.y);
-        let scale = Scale(Vec2::new(
-            tile.size.x / TILE_WIDTH,
-            tile.size.y / TILE_HEIGHT,
-        ));
+    pub fn initialize_ground(world: &mut World, serialized_object: &SerializedObject) -> u32 {
+        // Build tile using GameObject
+        let size = serialized_object
+            .size
+            .unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
+        let tile_size = PlatformCuboid::create(size.x, size.y);
+        let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
 
         // Correctly position the tile.
-        let pos = Position(tile.pos.to_vec3().clone());
+        let pos = Position(serialized_object.pos.unwrap().to_vec3().clone());
 
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
         transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
 
-        let sprite_sheet =
-            world.read_resource::<Vec<Handle<SpriteSheet>>>()[Tiles as usize].clone();
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(serialized_object.sprite.unwrap().sheet as u8)]
+            .clone();
         // Assign the sprite
         let sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
-            sprite_number: tile.sprite, // grass is the first sprite in the sprite_sheet
+            sprite_number: serialized_object.sprite.unwrap().number, // grass is the first sprite in the sprite_sheet
         };
 
         // Create gameplay entity
@@ -188,16 +205,17 @@ impl Level {
         // create editor entity
         let editor_entity = world
             .create_entity()
-            .with(GameObject::StaticTile(tile.clone()))
+            .with(serialized_object.object_type.clone())
+            .with(serialized_object.sprite.unwrap().sheet)
             .with(InstanceEntityId(Some(entity.id())))
             .with(EditorFlag)
-            .with(tile.clone())
+            .with(Tile)
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(pos.clone())
             .with(amethyst::core::Hidden)
             .with(scale.clone())
-            .with(SizeForEditorGrid(tile.size.clone()))
+            .with(SizeForEditorGrid(size.clone()))
             .build();
 
         return entity.id();
@@ -205,18 +223,19 @@ impl Level {
 
     // Turn the currently-loaded Level asset into entities
     pub(crate) fn load_level(world: &mut World) {
-        let game_objects;
+        let serialized_objects;
         {
             let asset = &world.read_resource::<AssetStorage<Level>>();
             let level = asset
                 .get(&world.read_resource::<Handle<Level>>().clone())
-                .expect("Expected level to be loaded.");
-            game_objects = level.game_objects.clone();
+                .unwrap_or(&Level::default())
+                .clone();
+            serialized_objects = level.serialized_objects.clone();
         }
 
-        if let Some(game_objects) = game_objects {
-            for mut game_object in game_objects {
-                Self::initialize_game_object(world, &mut game_object, None, false);
+        if let Some(serialized_objects) = serialized_objects {
+            for mut serialized_object in serialized_objects {
+                Self::initialize_serialized_object(world, &mut serialized_object, false);
             }
         }
 
@@ -233,19 +252,25 @@ impl Level {
         // Create Level struct
         let mut level: Level = Level::default();
 
-        // Add resettables to level
-        let mut game_objects = Vec::new();
-        for (game_object, _) in (
-            &world.read_storage::<GameObject>(),
+        // Add GameObjects to level
+        let mut entity_ids = Vec::new();
+        for (serialized_object_type, entity, _) in (
+            &world.read_storage::<SerializedObjectType>(),
+            &world.entities(),
             &world.read_storage::<EditorFlag>(),
         )
             .join()
         {
-            game_objects.push(game_object.clone());
+            entity_ids.push(entity.id());
         }
-        level.game_objects = match game_objects.is_empty() {
+
+        let mut serialized_objects = Vec::new();
+        for entity in entity_ids {
+            serialized_objects.push(Self::entity_to_serialized_object(world, entity));
+        }
+        level.serialized_objects = match serialized_objects.is_empty() {
             true => None,
-            false => Some(game_objects),
+            false => Some(serialized_objects),
         };
 
         // Serialize
@@ -298,26 +323,28 @@ impl Level {
 
         {
             let entities = world.entities();
-            for (editor_entity, instance_id, game_object, _) in (
+            for (editor_entity, instance_id, serialized_object_type, _) in (
                 &world.entities(),
                 &world.read_storage::<InstanceEntityId>(),
-                &world.read_storage::<GameObject>(),
+                &world.read_storage::<SerializedObjectType>(),
                 &world.read_storage::<Resettable>(),
             )
                 .join()
             {
                 if let Some(id) = instance_id.0 {
                     let instance_entity = entities.entity(id);
-                    resettables.push((editor_entity, instance_entity, game_object.clone()));
+                    resettables.push((editor_entity, instance_entity, serialized_object_type.clone()));
                 }
             }
         }
 
         // Re-create the entities according to their type
         let mut to_remove = Vec::new();
-        for (editor_entity, instance_entity, mut game_object) in resettables {
+        for (editor_entity, instance_entity, serialized_object_type) in resettables {
             to_remove.push(instance_entity);
-            let new_instance_id = Self::initialize_game_object(world, &mut game_object, None, true);
+            let serialized_object = Self::entity_to_serialized_object(world, editor_entity.id());
+            let new_instance_id =
+                Self::initialize_serialized_object(world, &serialized_object, true);
             world
                 .write_storage::<InstanceEntityId>()
                 .get_mut(editor_entity)
@@ -332,21 +359,31 @@ impl Level {
 
     /// Initialises a player entity
     pub fn initialize_player(
-        pos: Vec2,
-        player: bool,
-        ignore_editor: bool,
         world: &mut World,
+        serialized_object: &SerializedObject,
+        ignore_editor: bool,
     ) -> u32 {
+        let pos = serialized_object.pos.unwrap_or(Vec2::default());
+        let player = match serialized_object.object_type {
+            SerializedObjectType::Player { is_player } => is_player.0,
+            _ => {
+                error!(
+                    "Tried to initialize player with the following GameObjectData: {:?}",
+                    serialized_object
+                );
+                false
+            }
+        };
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
-        let sprite_sheet;
-        if player {
-            sprite_sheet =
-                world.read_resource::<Vec<Handle<SpriteSheet>>>()[Character as usize].clone();
-        } else {
-            sprite_sheet = world.read_resource::<Vec<Handle<SpriteSheet>>>()[Snap as usize].clone();
-        }
+        let sprite_sheet_type = match player {
+            true => SpriteSheetType::Didi,
+            false => SpriteSheetType::Snap,
+        };
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(sprite_sheet_type as u8)]
+            .clone();
         // Assign the sprite
         let sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
@@ -355,47 +392,42 @@ impl Level {
 
         let position = Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS));
 
-        let entity;
-        let builder = world
+        // Data common to both editor and entity
+        let entity = world
             .create_entity()
             .with(transform.clone())
+            .with(Player(player))
             .with(sprite_render.clone())
+            .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
+            .with(Transparent)
+            .with(GravityDirection(CollisionDirection::FromTop))
             .with(AnimationCounter(0))
             .with(Grounded(false))
-            .with(position.clone())
             .with(Velocity(Vec2::new(0.0, 0.0)))
-            // 2.25 to fit in 1 block holes
             .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.25))
             .with(Collidee::new())
             .with(Health(5))
             .with(Invincibility(0))
             // .with(Sticky(false))
-            // .with(GravityDirection(CollisionDirection::FromTop))
-            .with(Transparent);
-
-        entity = match player {
-            true => builder
-                .with(GravityDirection(CollisionDirection::FromTop))
-                .with(Player(player))
-                .build(),
-            false => builder.build(),
-        };
+            .build()
+        ;
 
         // create editor entity
         if !ignore_editor {
-            world
-                .create_entity()
-                .with(GameObject::Player(position.clone(), Player(player)))
+            world.create_entity()
+                .with(serialized_object.object_type.clone())
+                .with(sprite_sheet_type)
+                .with(transform.clone())
+                .with(Player(player))
+                .with(sprite_render.clone())
+                .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
+                .with(Transparent)
                 .with(Resettable)
                 .with(InstanceEntityId(Some(entity.id())))
                 .with(EditorFlag)
                 .with(SizeForEditorGrid(Vec2::new(TILE_WIDTH, TILE_HEIGHT)))
-                .with(transform.clone())
-                .with(sprite_render.clone())
-                .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
                 // .with(Tint(Srgba::new(1.0, 1.0, 1.0, 0.5).into()))
                 .with(amethyst::core::Hidden)
-                .with(Transparent)
                 .build();
         }
         return entity.id();

@@ -23,7 +23,7 @@ use amethyst::{
 };
 
 use crate::audio::{play_damage_sound, Sounds};
-use crate::components::editor::EditorCursor;
+use crate::components::editor::{EditorCursor, EditorFlag};
 use crate::utils::Vec3;
 
 pub const IFRAMES_PER_HIT: u32 = 90;
@@ -112,18 +112,19 @@ impl<'s> System<'s> for CameraTargetSystem {
         ReadStorage<'s, CameraTarget>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, EditorCursor>,
+        ReadStorage<'s, EditorFlag>,
         Entities<'s>,
     );
 
     fn run(
         &mut self,
-        (mut lerpers, cameras, positions, targets, players, cursors, entities): Self::SystemData,
+        (mut lerpers, cameras, positions, targets, players, cursors, editor_flag, entities): Self::SystemData,
     ) {
         let mut position = Vec3::default();
         for (camera, target) in (&cameras, &targets).join() {
             match target {
                 CameraTarget::Player => {
-                    for (player, player_pos) in (&players, &positions).join() {
+                    for (player, player_pos, _) in (&players, &positions, !&editor_flag).join() {
                         position = player_pos.0.clone();
                     }
                 }

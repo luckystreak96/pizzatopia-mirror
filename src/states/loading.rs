@@ -1,7 +1,10 @@
 use crate::audio::initialise_audio;
+use crate::components::graphics::SpriteSheetType;
 use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
 use crate::states::pizzatopia::{MyEvents, Pizzatopia};
+use amethyst::assets::Completion;
+use amethyst::assets::Progress;
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
@@ -33,6 +36,8 @@ use amethyst::{
     },
     winit::Event,
 };
+use log::error;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub struct LevelPath(pub String);
@@ -41,12 +46,14 @@ pub struct AssetsDir(pub PathBuf);
 pub struct LoadingState {
     /// Tracks loaded assets.
     progress_counter: ProgressCounter,
+    level_progress: ProgressCounter,
 }
 
 impl Default for LoadingState {
     fn default() -> Self {
         LoadingState {
             progress_counter: ProgressCounter::default(),
+            level_progress: ProgressCounter::default(),
         }
     }
 }
@@ -68,24 +75,29 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
         let level_handle = world.read_resource::<Loader>().load(
             world.read_resource::<LevelPath>().0.as_str(), // Here we load the associated ron file
             RonFormat,
-            &mut self.progress_counter,
+            &mut self.level_progress,
             &world.read_resource::<AssetStorage<Level>>(),
         );
         world.insert(level_handle.clone());
-        world.insert(Vec::<Handle<SpriteSheet>>::new());
+        world.insert(BTreeMap::<u8, Handle<SpriteSheet>>::new());
 
-        let tiles = load_spritesheet(String::from("texture/tiles"), world);
-        let sprites = load_spritesheet(String::from("texture/spritesheet"), world);
-        let sprites2 = load_spritesheet(String::from("texture/spritesheet2"), world);
+        let name = String::from("texture/tiles");
+        let tiles = load_spritesheet(name.clone(), world, &mut self.progress_counter);
         world
-            .write_resource::<Vec<Handle<SpriteSheet>>>()
-            .push(tiles);
+            .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            .insert(SpriteSheetType::Tiles as u8, tiles);
+
+        let name = String::from("texture/spritesheet");
+        let sprites = load_spritesheet(name.clone(), world, &mut self.progress_counter);
         world
-            .write_resource::<Vec<Handle<SpriteSheet>>>()
-            .push(sprites);
+            .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            .insert(SpriteSheetType::Didi as u8, sprites);
+
+        let name = String::from("texture/spritesheet2");
+        let sprites2 = load_spritesheet(name.clone(), world, &mut self.progress_counter);
         world
-            .write_resource::<Vec<Handle<SpriteSheet>>>()
-            .push(sprites2);
+            .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            .insert(SpriteSheetType::Snap as u8, sprites2);
     }
 
     fn update(
@@ -94,14 +106,25 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         data.data.update(&mut data.world);
         if self.progress_counter.is_complete() {
-            Trans::Switch(Box::new(Pizzatopia::default()))
+            match self.level_progress.complete() {
+                Completion::Failed => {
+                    error!("Failed to load Level asset");
+                    Trans::Switch(Box::new(Pizzatopia::default()))
+                }
+                Completion::Complete => Trans::Switch(Box::new(Pizzatopia::default())),
+                _ => Trans::None,
+            }
         } else {
             Trans::None
         }
     }
 }
 
-fn load_spritesheet(filename_without_extension: String, world: &mut World) -> Handle<SpriteSheet> {
+fn load_spritesheet(
+    filename_without_extension: String,
+    world: &mut World,
+    progress: &mut ProgressCounter,
+) -> Handle<SpriteSheet> {
     // Load the sprite sheet necessary to render the graphics.
     // The texture is the pixel data
     // `texture_handle` is a cloneable reference to the texture
@@ -121,7 +144,7 @@ fn load_spritesheet(filename_without_extension: String, world: &mut World) -> Ha
     loader.load(
         filename_without_extension.clone() + ".ron", // Here we load the associated ron file
         SpriteSheetFormat(texture_handle),
-        (),
+        progress,
         &sprite_sheet_store,
     )
 }
