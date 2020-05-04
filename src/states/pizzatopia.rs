@@ -145,7 +145,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         let world = &mut data.world;
-        if let MyEvents::Window(event) = &event {
+        if let MyEvents::Window(_) = &event {
             let input = world.read_resource::<InputHandler<StringBindings>>();
             if input.action_is_down("exit").unwrap_or(false) {
                 return Trans::Quit;
@@ -172,7 +172,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
             }
         }
 
-        if let MyEvents::Ui(event) = &event {
+        if let MyEvents::Ui(_) = &event {
             println!("Ui event triggered!");
         }
 
@@ -227,7 +227,7 @@ fn initialise_camera(world: &mut World) {
 }
 
 pub fn get_camera_center(world: &mut World) -> Vec2 {
-    for (camera, transform) in (
+    for (_, transform) in (
         &world.read_storage::<Camera>(),
         &world.read_storage::<Transform>(),
     )

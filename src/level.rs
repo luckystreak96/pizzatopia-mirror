@@ -35,7 +35,7 @@ use amethyst::{
     utils::application_root_dir,
 };
 use derivative::Derivative;
-use log::{error, warn, info};
+use log::{error, info, warn};
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -115,12 +115,11 @@ impl Level {
             sprite_render.sprite_number,
         ));
 
-
         match object_type {
             SerializedObjectType::StaticTile => {
                 result.object_type = SerializedObjectType::StaticTile;
             }
-            SerializedObjectType::Player { is_player } => {
+            SerializedObjectType::Player { is_player: _ } => {
                 let is_player = world.read_storage::<Player>().get(entity).unwrap().clone();
                 result.object_type = SerializedObjectType::Player { is_player };
             }
@@ -129,7 +128,7 @@ impl Level {
     }
 
     pub(crate) fn calculate_camera_limits(world: &mut World) {
-        for (camera, limit) in (
+        for (_camera, limit) in (
             &world.read_storage::<Camera>(),
             &mut world.write_storage::<CameraLimit>(),
         )
@@ -203,7 +202,7 @@ impl Level {
             .build();
 
         // create editor entity
-        let editor_entity = world
+        world
             .create_entity()
             .with(serialized_object.object_type.clone())
             .with(serialized_object.sprite.unwrap().sheet)
@@ -254,7 +253,7 @@ impl Level {
 
         // Add GameObjects to level
         let mut entity_ids = Vec::new();
-        for (serialized_object_type, entity, _) in (
+        for (_, entity, _) in (
             &world.read_storage::<SerializedObjectType>(),
             &world.entities(),
             &world.read_storage::<EditorFlag>(),
@@ -277,7 +276,7 @@ impl Level {
         let serialized = match ron::ser::to_string(&level) {
             Ok(x) => x,
             Err(e) => {
-                error!("Failed to serialize level for saving.");
+                error!("Failed to serialize level for saving: {:?}", e);
                 return;
             }
         };
@@ -306,14 +305,14 @@ impl Level {
             if let Some(instance_id) = instance_id.0 {
                 let instance_entity = world.entities().entity(instance_id);
                 match world.entities().delete(instance_entity) {
-                    Ok(val) => {}
-                    Err(e) => error!("Error deleting instance entity."),
+                    Ok(_) => {}
+                    Err(_) => error!("Error deleting instance entity."),
                 }
             }
         }
         match world.entities().delete(editor_entity) {
-            Ok(val) => {}
-            Err(e) => error!("Error deleting editor entity."),
+            Ok(_) => {}
+            Err(_) => error!("Error deleting editor entity."),
         }
     }
 
@@ -333,14 +332,18 @@ impl Level {
             {
                 if let Some(id) = instance_id.0 {
                     let instance_entity = entities.entity(id);
-                    resettables.push((editor_entity, instance_entity, serialized_object_type.clone()));
+                    resettables.push((
+                        editor_entity,
+                        instance_entity,
+                        serialized_object_type.clone(),
+                    ));
                 }
             }
         }
 
         // Re-create the entities according to their type
         let mut to_remove = Vec::new();
-        for (editor_entity, instance_entity, serialized_object_type) in resettables {
+        for (editor_entity, instance_entity, _) in resettables {
             to_remove.push(instance_entity);
             let serialized_object = Self::entity_to_serialized_object(world, editor_entity.id());
             let new_instance_id =
@@ -398,7 +401,7 @@ impl Level {
             .with(transform.clone())
             .with(Player(player))
             .with(sprite_render.clone())
-            .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
+            .with(position.clone())
             .with(Transparent)
             .with(GravityDirection(CollisionDirection::FromTop))
             .with(AnimationCounter(0))
@@ -409,18 +412,18 @@ impl Level {
             .with(Health(5))
             .with(Invincibility(0))
             // .with(Sticky(false))
-            .build()
-        ;
+            .build();
 
         // create editor entity
         if !ignore_editor {
-            world.create_entity()
+            world
+                .create_entity()
                 .with(serialized_object.object_type.clone())
                 .with(sprite_sheet_type)
                 .with(transform.clone())
                 .with(Player(player))
                 .with(sprite_render.clone())
-                .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
+                .with(position.clone())
                 .with(Transparent)
                 .with(Resettable)
                 .with(InstanceEntityId(Some(entity.id())))

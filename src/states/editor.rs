@@ -108,19 +108,19 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         Self::initialize_cursor(data.world);
 
-        Self::set_instance_transparent(data.world, 0.5);
-        Self::set_editor_hidden(data.world, false);
+        Self::set_instance_entities_transparency(data.world, 0.5);
+        Self::set_editor_entities_hidden_flag(data.world, false);
     }
 
     fn on_stop(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        Self::set_instance_transparent(data.world, 1.0);
-        Self::set_editor_hidden(data.world, true);
+        Self::set_instance_entities_transparency(data.world, 1.0);
+        Self::set_editor_entities_hidden_flag(data.world, true);
 
         self.change_camera_target(data.world, self.prev_camera_target);
 
         // Clean up cursor
         let mut to_remove = Vec::new();
-        for (entity, reset) in (
+        for (entity, _) in (
             &data.world.entities(),
             &data.world.read_storage::<EditorCursor>(),
         )
@@ -138,7 +138,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         data: StateData<'_, GameData<'s, 's>>,
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
-        if let MyEvents::Window(event) = &event {
+        if let MyEvents::Window(_) = &event {
             let input = data.world.read_resource::<InputHandler<StringBindings>>();
             if input.action_is_down("exit").unwrap_or(false) {
                 return Trans::Quit;
@@ -291,7 +291,7 @@ impl<'a, 'b> Editor<'a, 'b> {
     ) -> CameraTarget {
         let mut prev_target = CameraTarget::default();
 
-        for (camera, target) in (
+        for (_, target) in (
             &world.read_storage::<Camera>(),
             &mut world.write_storage::<CameraTarget>(),
         )
@@ -303,12 +303,11 @@ impl<'a, 'b> Editor<'a, 'b> {
         prev_target
     }
 
-    fn set_instance_transparent(world: &mut World, transparency: f32) {
+    fn set_instance_entities_transparency(world: &mut World, transparency: f32) {
         // make entities transparent
-        for (entity, transform, pos, editor) in (
+        for (entity, _, _) in (
             &world.entities(),
-            &world.read_storage::<Transform>(),
-            &world.read_storage::<Position>(),
+            &world.read_storage::<SpriteRender>(),
             !&world.read_storage::<EditorFlag>(),
         )
             .join()
@@ -320,12 +319,11 @@ impl<'a, 'b> Editor<'a, 'b> {
         }
     }
 
-    fn set_editor_hidden(world: &mut World, hide: bool) {
+    fn set_editor_entities_hidden_flag(world: &mut World, hide: bool) {
         if hide {
-            for (entity, transform, pos, editor) in (
+            for (entity, _, _) in (
                 &world.entities(),
-                &world.read_storage::<Transform>(),
-                &world.read_storage::<Position>(),
+                &world.read_storage::<SpriteRender>(),
                 &world.read_storage::<EditorFlag>(),
             )
                 .join()
@@ -336,10 +334,9 @@ impl<'a, 'b> Editor<'a, 'b> {
                     .expect("Error inserting Hidden to entity in editor mode");
             }
         } else {
-            for (entity, transform, pos, editor) in (
+            for (entity, _, _) in (
                 &world.entities(),
-                &world.read_storage::<Transform>(),
-                &world.read_storage::<Position>(),
+                &world.read_storage::<SpriteRender>(),
                 &world.read_storage::<EditorFlag>(),
             )
                 .join()

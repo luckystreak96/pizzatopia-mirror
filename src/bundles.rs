@@ -53,7 +53,7 @@ impl Default for GraphicsBundle {
 impl<'a, 'b> SystemBundle<'a, 'b> for GraphicsBundle {
     fn build(
         self,
-        world: &mut World,
+        _world: &mut World,
         builder: &mut DispatcherBuilder<'a, 'b>,
     ) -> Result<(), Error> {
         builder.add(

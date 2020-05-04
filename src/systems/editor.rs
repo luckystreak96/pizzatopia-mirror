@@ -148,7 +148,7 @@ impl<'s> System<'s> for CursorPositionSystem {
         let mut vertical = v_move.unwrap_or(0.0).round();
         let mut horizontal = h_move.unwrap_or(0.0).round();
 
-        for (position, cursor, mut real_pos, previous_block) in (
+        for (position, _cursor, mut real_pos, previous_block) in (
             &mut positions,
             &cursors,
             &mut real_positions,
@@ -188,7 +188,7 @@ impl<'s> System<'s> for CursorPositionSystem {
             }
 
             // need to check again after possible changes
-            for event in editor_events.read(&mut self.reader) {
+            for _event in editor_events.read(&mut self.reader) {
                 should_update_cursor = true;
             }
             no_movement = horizontal == 0.0 && vertical == 0.0;

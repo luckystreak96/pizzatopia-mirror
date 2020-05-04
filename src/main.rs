@@ -1,6 +1,5 @@
 #![feature(clamp)]
 #![allow(dead_code)]
-#![allow(unused_variables)]
 #![allow(unused_imports)]
 use amethyst::audio::AudioBundle;
 use amethyst::input::{InputBundle, StringBindings};

@@ -17,3 +17,4 @@ num-traits = "0.1.43"
 default = ["vulkan"]
 vulkan = ["amethyst/vulkan"]
 metal = ["amethyst/metal"]
+profiler = ["amethyst/profiler"]
