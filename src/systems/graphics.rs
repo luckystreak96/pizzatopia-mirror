@@ -1,4 +1,6 @@
-use crate::components::editor::{EditorCursor, EditorState, InsertionGameObject};
+use crate::components::editor::{
+    EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
+};
 use crate::components::game::Health;
 use crate::components::game::{SerializedObjectType, SpriteRenderData};
 use crate::components::graphics::{
@@ -13,7 +15,8 @@ use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{Join, Read, ReadExpect, ReadStorage, System, SystemData, World, WriteStorage};
 use amethyst::renderer::{
-    Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
+    palette::Srgba, resources::Tint, Camera, ImageFormat, SpriteRender, SpriteSheet,
+    SpriteSheetFormat, Texture,
 };
 use log::info;
 use std::collections::BTreeMap;
@@ -97,6 +100,26 @@ impl<'s> System<'s> for PulseAnimationSystem {
             // From 1.5 to 0.5
             let sin = sin + 1.0;
             transform.set_scale(Vector3::new(sin * scale.0.x, sin * scale.0.y, 1.0));
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct CursorColorUpdateSystem;
+
+impl<'s> System<'s> for CursorColorUpdateSystem {
+    type SystemData = (WriteStorage<'s, Tint>, ReadStorage<'s, EditorCursor>);
+
+    fn run(&mut self, (mut tint, cursors): Self::SystemData) {
+        for (tint, cursor) in (&mut tint, &cursors).join() {
+            match cursor.state {
+                EditorCursorState::Normal => {
+                    tint.0 = Srgba::new(1.0, 1.0, 1.0, 0.95).into();
+                }
+                EditorCursorState::Error => {
+                    tint.0 = Srgba::new(1.0, 0.0, 0.0, 0.95).into();
+                }
+            }
         }
     }
 }

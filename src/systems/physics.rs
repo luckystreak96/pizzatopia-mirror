@@ -310,33 +310,20 @@ impl ActorCollisionSystem {
         )
     }
 
-    fn cuboid_intersection(
+    pub fn cuboid_intersection(
         top_left1: &Vec2,
         bottom_right1: &Vec2,
         top_left2: &Vec2,
         bottom_right2: &Vec2,
     ) -> bool {
-        // Check if the x axis of both squares ever intersect
-        let halfway_point = bottom_right2.x + (top_left1.x - bottom_right2.x) / 2.0;
-        //info!("Halfway point X: {:?}", halfway_point);
-        if !(halfway_point > top_left1.x
-            && halfway_point < bottom_right1.x
-            && halfway_point > top_left2.x
-            && halfway_point < bottom_right2.x)
-        {
-            // no intersects
+        // Two conditions to know if rectangles don't overlap:
+        // 1: One of them is above the other
+        if top_left1.y <= bottom_right2.y || bottom_right1.y >= top_left2.y {
             return false;
         }
 
-        // Check if the y axis of both squares ever intersect
-        let halfway_point = top_left2.y + (bottom_right1.y - top_left2.y) / 2.0;
-        //info!("Halfway point Y: {:?}", halfway_point);
-        if !(halfway_point < top_left1.y
-            && halfway_point > bottom_right1.y
-            && halfway_point < top_left2.y
-            && halfway_point > bottom_right2.y)
-        {
-            // no intersects
+        // 2: One of them is to the left of the other
+        if top_left1.x >= bottom_right2.x || bottom_right1.x <= top_left2.x {
             return false;
         }
 

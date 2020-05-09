@@ -15,10 +15,22 @@ impl Component for EditorFlag {
     type Storage = NullStorage<Self>;
 }
 
-#[derive(Default)]
-pub struct EditorCursor;
+#[derive(Derivative, Clone, Copy)]
+#[derivative(Default)]
+pub enum EditorCursorState {
+    #[derivative(Default)]
+    Normal,
+    Error,
+}
+
+#[derive(Derivative)]
+#[derivative(Default)]
+pub struct EditorCursor {
+    pub state: EditorCursorState,
+}
+
 impl Component for EditorCursor {
-    type Storage = NullStorage<Self>;
+    type Storage = DenseVecStorage<Self>;
 }
 
 // Represents the cursor's position as a dot in the middle of the smallest grid unit it is truly in

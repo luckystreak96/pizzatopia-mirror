@@ -1,8 +1,5 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject,
-    RealCursorPosition,
-};
+use crate::components::editor::{CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject, RealCursorPosition, SizeForEditorGrid};
 use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
 use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
 use crate::components::graphics::SpriteSheetType;
@@ -14,15 +11,17 @@ use crate::components::physics::{
 use crate::events::Events;
 use crate::level::Level;
 use crate::states::pizzatopia;
-use crate::states::pizzatopia::TILE_WIDTH;
+use crate::states::pizzatopia::{TILE_WIDTH, TILE_HEIGHT};
 use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
 use crate::systems::editor::{
-    CursorPositionSystem, CursorSizeSystem, EditorButtonEventSystem, EditorEventHandlingSystem,
-    EditorEvents,
+    CursorPositionSystem, CursorSizeSystem, CursorStateSystem, EditorButtonEventSystem,
+    EditorEventHandlingSystem, EditorEvents,
 };
-use crate::systems::graphics::{CursorSpriteUpdateSystem, PulseAnimationSystem};
+use crate::systems::graphics::{
+    CursorColorUpdateSystem, CursorSpriteUpdateSystem, PulseAnimationSystem,
+};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::math::Vector3;
@@ -172,9 +171,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                         1 => {
                             let mut result: SerializedObject = SerializedObject::default();
                             result.object_type = SerializedObjectType::Player {
-                                is_player: Player(true),
+                                is_player: Player(false),
                             };
-                            result.sprite = Some(SpriteRenderData::new(SpriteSheetType::Didi, 0));
+                            result.sprite = Some(SpriteRenderData::new(SpriteSheetType::Snap, 0));
                             data.world.insert(InsertionGameObject(result));
                         }
                         _ => {
@@ -229,17 +228,22 @@ impl<'a, 'b> Editor<'a, 'b> {
             "cursor_size_system",
             &["cursor_position_system"],
         );
+        dispatcher_builder.add(
+            CursorStateSystem,
+            "cursor_state_system",
+            &["cursor_size_system"],
+        );
 
         // The event handling is all done at the end since entities are created and deleted lazily
         dispatcher_builder.add(
             ConsoleInputSystem,
             "console_input_system",
-            &["cursor_size_system"],
+            &["cursor_state_system"],
         );
         dispatcher_builder.add(
             EditorButtonEventSystem::new(world),
             "editor_button_event_system",
-            &["cursor_size_system"],
+            &["cursor_state_system"],
         );
         dispatcher_builder.add(
             EditorEventHandlingSystem::new(world),
@@ -256,6 +260,11 @@ impl<'a, 'b> Editor<'a, 'b> {
         dispatcher_builder.add(
             CursorSpriteUpdateSystem,
             "cursor_sprite_update_system",
+            &["editor_event_handling_system"],
+        );
+        dispatcher_builder.add(
+            CursorColorUpdateSystem,
+            "cursor_color_update_system",
             &["editor_event_handling_system"],
         );
         dispatcher_builder.add(
@@ -370,10 +379,12 @@ impl<'a, 'b> Editor<'a, 'b> {
         world
             .create_entity()
             .with(EditorFlag)
-            .with(EditorCursor)
+            .with(EditorCursor::default())
+            .with(Tint(Srgba::new(1.0, 1.0, 1.0, 1.0).into()))
             .with(RealCursorPosition(pos.0.to_vec2()))
             .with(PulseAnimation::default())
             .with(Scale(Vec2::new(scale.x, scale.y)))
+            .with(SizeForEditorGrid(Vec2::new(scale.x * TILE_WIDTH, scale.y * TILE_HEIGHT)))
             .with(CursorWasInThisEntity(None))
             .with(transform.clone())
             .with(sprite_render.clone())

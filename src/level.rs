@@ -396,10 +396,9 @@ impl Level {
         let position = Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS));
 
         // Data common to both editor and entity
-        let entity = world
+        let mut builder = world
             .create_entity()
             .with(transform.clone())
-            .with(Player(player))
             .with(sprite_render.clone())
             .with(position.clone())
             .with(Transparent)
@@ -410,9 +409,12 @@ impl Level {
             .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.25))
             .with(Collidee::new())
             .with(Health(5))
-            .with(Invincibility(0))
-            // .with(Sticky(false))
-            .build();
+            .with(Invincibility(0));
+        // .with(Sticky(false))
+        if player {
+            builder = builder.with(Player(player));
+        }
+        let entity = builder.build();
 
         // create editor entity
         if !ignore_editor {

@@ -10,8 +10,8 @@ use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLi
 use amethyst::renderer::palette::Srgba;
 
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, EditorState, InsertionGameObject, InstanceEntityId,
-    RealCursorPosition, SizeForEditorGrid,
+    CursorWasInThisEntity, EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
+    InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
 };
 use crate::components::game::{Health, SerializedObjectType};
 use crate::components::game::{Player, SerializedObject};
@@ -22,7 +22,7 @@ use crate::level::Level;
 use crate::states::editor::EDITOR_GRID_SIZE;
 use crate::states::pizzatopia::{CAM_HEIGHT, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{
-    gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
+    gravitationally_adapted_velocity, gravitationally_de_adapted_velocity, ActorCollisionSystem,
 };
 use crate::utils::{Vec2, Vec3};
 use amethyst::assets::Handle;
@@ -132,14 +132,13 @@ impl<'s> System<'s> for CursorPositionSystem {
             entities,
         ): Self::SystemData,
     ) {
-        // presence of events that need the cursor to change
-        let mut should_update_cursor = false;
         // cursor moved
         let mut no_movement = true;
         let mut pos = Vec2::new(0.0, 0.0);
         let mut prev_block: Option<u32> = None;
 
         // Controller input
+        // TODO : Create a resource to manage input repeat etc
         let v_move = input.axis_value("vertical_move");
         let h_move = input.axis_value("horizontal_move");
         let some_action = input.buttons_that_are_down().count() > 0
@@ -187,10 +186,6 @@ impl<'s> System<'s> for CursorPositionSystem {
                 horizontal = 0.0;
             }
 
-            // need to check again after possible changes
-            for _event in editor_events.read(&mut self.reader) {
-                should_update_cursor = true;
-            }
             no_movement = horizontal == 0.0 && vertical == 0.0;
 
             // Set ready to false after you start moving
@@ -221,36 +216,34 @@ impl<'s> System<'s> for CursorPositionSystem {
         let mut new_position = None;
         let mut new_prev = prev_block.clone();
         // look for a block on us if we moved
-        if !no_movement || should_update_cursor {
-            let mut was_same = true;
-            // Loop until you exit the block
-            while was_same {
-                was_same = false;
-                new_prev = None;
-                new_position = None;
-                // if the block exists, snap to it
-                let tile =
-                    get_tile_at_position(&pos, &positions, &size_for_editor, &cursors, &entities);
+        let mut was_same = true;
+        // Loop until you exit the block
+        while was_same {
+            was_same = false;
+            new_prev = None;
+            new_position = None;
+            // if the block exists, snap to it
+            let tile =
+                get_tile_at_position(&pos, &positions, &size_for_editor, &cursors, &entities);
 
-                if tile.is_some() {
-                    let (position, size, entity) = tile.unwrap();
+            if tile.is_some() {
+                let (position, size, entity) = tile.unwrap();
 
-                    // Update the cursor characteristics
-                    new_position = Some(position.clone());
+                // Update the cursor characteristics
+                new_position = Some(position.clone());
 
-                    let prev = prev_block.unwrap_or(9999999);
-                    if prev == entity && !no_movement {
-                        // If we moved, we try to find the next block
-                        if !no_movement {
-                            // Move the cursor one more grid size
-                            pos.x += horizontal * EDITOR_GRID_SIZE;
-                            pos.y += vertical * EDITOR_GRID_SIZE;
-                            was_same = true;
-                        }
-                    } else {
-                        new_prev = Some(entity);
-                        was_same = false;
+                let prev = prev_block.unwrap_or(9999999);
+                if prev == entity && !no_movement {
+                    // If we moved, we try to find the next block
+                    if !no_movement {
+                        // Move the cursor one more grid size
+                        pos.x += horizontal * EDITOR_GRID_SIZE;
+                        pos.y += vertical * EDITOR_GRID_SIZE;
+                        was_same = true;
                     }
+                } else {
+                    new_prev = Some(entity);
+                    was_same = false;
                 }
             }
         }
@@ -284,6 +277,7 @@ impl<'s> System<'s> for CursorPositionSystem {
 
             previous.0 = new_prev.clone();
 
+            // TODO : Draw debug lines in separate system
             debug_lines_resource.draw_line(
                 [real_pos.0.x - 16.0, real_pos.0.y + 16.0, DEPTH_UI].into(),
                 [real_pos.0.x + 16.0, real_pos.0.y - 16.0, DEPTH_UI].into(),
@@ -312,6 +306,56 @@ impl<'s> System<'s> for CursorPositionSystem {
 }
 
 #[derive(SystemDesc)]
+pub struct CursorStateSystem;
+
+impl<'s> System<'s> for CursorStateSystem {
+    type SystemData = (
+        ReadExpect<'s, EditorState>,
+        WriteStorage<'s, EditorCursor>,
+        ReadStorage<'s, SizeForEditorGrid>,
+        ReadStorage<'s, Position>,
+    );
+
+    fn run(&mut self, (editor_state, mut cursors, size_for_editor, positions): Self::SystemData) {
+        let state: EditorState = editor_state.clone();
+        let mut cursor_pos = Vec2::default();
+        let mut cursor_size = Vec2::default();
+        let mut cursor_state = EditorCursorState::Normal;
+        // Get cursor stats
+        for (pos, size, cursor) in (&positions, &size_for_editor, &cursors).join() {
+            cursor_pos = pos.0.to_vec2();
+            cursor_size = size.0.clone();
+        }
+        let half_size = Vec2::new(cursor_size.x / 2.0, cursor_size.y / 2.0);
+        let tl1 = Vec2::new(cursor_pos.x - half_size.x, cursor_pos.y + half_size.y);
+        let br1 = Vec2::new(cursor_pos.x + half_size.x, cursor_pos.y - half_size.y);
+        // Figure out the cursor state
+        match state {
+            EditorState::EditMode => {
+                // change the cursor state to NOT_OVERLAPPING
+                cursor_state = EditorCursorState::Normal;
+            }
+            EditorState::EditGameObject | EditorState::InsertMode => {
+                // change the cursor state to overlap if it overlaps
+                for (pos, size, _) in (&positions, &size_for_editor, !&cursors).join() {
+                    let half_size = Vec2::new(size.0.x / 2.0, size.0.y / 2.0);
+                    let tl2 = Vec2::new(pos.0.x - half_size.x, pos.0.y + half_size.y);
+                    let br2 = Vec2::new(pos.0.x + half_size.x, pos.0.y - half_size.y);
+                    if ActorCollisionSystem::cuboid_intersection(&tl1, &br1, &tl2, &br2) {
+                        cursor_state = EditorCursorState::Error;
+                        break;
+                    }
+                }
+            }
+        }
+        // update cursor state
+        for (cursor, _) in (&mut cursors, &positions).join() {
+            cursor.state = cursor_state;
+        }
+    }
+}
+
+#[derive(SystemDesc)]
 pub struct CursorSizeSystem;
 
 impl<'s> System<'s> for CursorSizeSystem {
@@ -319,7 +363,7 @@ impl<'s> System<'s> for CursorSizeSystem {
         ReadExpect<'s, EditorState>,
         ReadExpect<'s, InsertionGameObject>,
         ReadStorage<'s, EditorCursor>,
-        ReadStorage<'s, SizeForEditorGrid>,
+        WriteStorage<'s, SizeForEditorGrid>,
         ReadStorage<'s, CursorWasInThisEntity>,
         WriteStorage<'s, Scale>,
         Entities<'s>,
@@ -331,7 +375,7 @@ impl<'s> System<'s> for CursorSizeSystem {
             editor_state,
             insertion_serialized_object,
             cursors,
-            size_for_editor,
+            mut size_for_editor,
             previous_block,
             mut scales,
             entities,
@@ -362,11 +406,13 @@ impl<'s> System<'s> for CursorSizeSystem {
                 }
             }
             EditorState::EditGameObject | EditorState::InsertMode => {
-                for (scale, _) in (&mut scales, &cursors).join() {
-                    scale.0 = insertion_serialized_object
+                for (scale, size, _) in (&mut scales, &mut size_for_editor, &cursors).join() {
+                    let ser_size = insertion_serialized_object
                         .0
                         .size
                         .unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
+                    size.0 = ser_size.clone();
+                    scale.0 = ser_size.clone();
                     scale.0.x /= TILE_WIDTH;
                     scale.0.y /= TILE_HEIGHT;
                 }
@@ -525,10 +571,13 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         (&cursors, &positions, &previous_block).join()
                     {
                         // We only add the GameObject if the cursor isn't currently in a tile
-                        if previous_block.0.is_none() {
-                            let pos = position.0.to_vec2();
-                            insertion_serialized_object.0.pos = Some(pos);
-                            world_events_channel.single_write(Events::AddGameObject);
+                        match cursor.state {
+                            EditorCursorState::Normal => {
+                                let pos = position.0.to_vec2();
+                                insertion_serialized_object.0.pos = Some(pos);
+                                world_events_channel.single_write(Events::AddGameObject);
+                            }
+                            EditorCursorState::Error => {}
                         }
                     }
                 }
