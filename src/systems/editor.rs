@@ -10,8 +10,8 @@ use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLi
 use amethyst::renderer::palette::Srgba;
 
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
-    InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
+    CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorCursorState,
+    EditorState, InsertionGameObject, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
 };
 use crate::components::game::{Health, SerializedObjectType};
 use crate::components::game::{Player, SerializedObject};
@@ -30,6 +30,7 @@ use amethyst::ecs::prelude::ReadExpect;
 use amethyst::prelude::WorldExt;
 use amethyst::renderer::SpriteSheet;
 use log::{error, info, warn};
+use num_traits::Zero;
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
@@ -41,16 +42,17 @@ pub enum EditorEvents {
     ChangeInsertionGameObject(u8),
     SetInsertionGameObject(SerializedObject),
     ChangeState(EditorState),
+    UiClick(EditorButton),
 }
 
 fn snap_cursor_position_to_grid_center(position: &mut Vec2) {
-    position.x -= (position.x % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
-    position.y -= (position.y % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
+    position.x -= (position.x.abs() % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
+    position.y -= (position.y.abs() % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
 }
 
 fn snap_cursor_position_to_grid_corner(position: &mut Vec2) {
-    position.x -= position.x % EDITOR_GRID_SIZE;
-    position.y -= position.y % EDITOR_GRID_SIZE;
+    position.x -= position.x.abs() % EDITOR_GRID_SIZE;
+    position.y -= position.y.abs() % EDITOR_GRID_SIZE;
 }
 
 //(&positions, &size_for_editor, &entities, !&cursors).join()
@@ -561,7 +563,13 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
             entities,
         ): Self::SystemData,
     ) {
+        // If an event in the queue gets cancelled, interrupt events that go after it
+        // this is used for error-adding a tile in EditGameObject mode
+        let mut cancel_others = false;
         for event in editor_event_channel.read(&mut self.reader) {
+            if cancel_others {
+                continue;
+            }
             match event {
                 // Writing an event here is fine - entities are created lazily (only at frame end)
                 // May as well use World and save the trouble for the tile creation
@@ -577,7 +585,9 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                                 insertion_serialized_object.0.pos = Some(pos);
                                 world_events_channel.single_write(Events::AddGameObject);
                             }
-                            EditorCursorState::Error => {}
+                            EditorCursorState::Error => {
+                                cancel_others = true;
+                            }
                         }
                     }
                 }
@@ -631,6 +641,44 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                     }
                     if change {
                         *editor_state = new_state.clone();
+                    }
+                }
+                EditorEvents::UiClick(button_info) => {
+                    let start_id = 3;
+                    match button_info.id {
+                        0..=2 => {
+                            if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
+                                sprite.number = match button_info.editor_button_type {
+                                    EditorButtonType::Label => sprite.number,
+                                    EditorButtonType::RightArrow => {
+                                        error!("Adding 1");
+                                        sprite.number + 1
+                                    }
+                                    EditorButtonType::LeftArrow => {
+                                        if !sprite.number.is_zero() {
+                                            sprite.number - 1
+                                        } else {
+                                            sprite.number
+                                        }
+                                    }
+                                };
+                            }
+                        }
+                        _ => {}
+                    }
+                    warn!("{:?}", button_info);
+                    match insertion_serialized_object.0.object_type {
+                        SerializedObjectType::StaticTile => {}
+                        SerializedObjectType::Player { ref mut is_player } => {
+                            if button_info.id == start_id {
+                                match button_info.editor_button_type {
+                                    EditorButtonType::Label => {}
+                                    EditorButtonType::RightArrow | EditorButtonType::LeftArrow => {
+                                        is_player.0 = !is_player.0;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             };

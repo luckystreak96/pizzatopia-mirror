@@ -1,5 +1,8 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::editor::{CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject, RealCursorPosition, SizeForEditorGrid};
+use crate::components::editor::{
+    CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorFlag, EditorState,
+    InsertionGameObject, RealCursorPosition, SizeForEditorGrid,
+};
 use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
 use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
 use crate::components::graphics::SpriteSheetType;
@@ -11,8 +14,8 @@ use crate::components::physics::{
 use crate::events::Events;
 use crate::level::Level;
 use crate::states::pizzatopia;
-use crate::states::pizzatopia::{TILE_WIDTH, TILE_HEIGHT};
 use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
+use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
 use crate::systems::editor::{
@@ -54,7 +57,10 @@ use amethyst::{
         resources::Tint,
         Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture, Transparent,
     },
-    ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
+    ui::{
+        Anchor, RenderUi, TextEditing, TtfFormat, UiBundle, UiCreator, UiEvent, UiEventType,
+        UiFinder, UiText, UiTransform,
+    },
     utils::{
         application_root_dir,
         fps_counter::{FpsCounter, FpsCounterBundle},
@@ -62,6 +68,7 @@ use amethyst::{
     winit::Event,
 };
 use log::{error, info, warn};
+use num_traits::AsPrimitive;
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::io;
@@ -70,6 +77,7 @@ use std::time::{Duration, Instant};
 pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
 
 pub(crate) struct Editor<'a, 'b> {
+    test_text: Option<Entity>,
     dispatcher: Option<Dispatcher<'a, 'b>>,
     time_start: Instant,
     prev_camera_target: CameraTarget,
@@ -78,6 +86,7 @@ pub(crate) struct Editor<'a, 'b> {
 impl Default for Editor<'_, '_> {
     fn default() -> Self {
         Editor {
+            test_text: None,
             dispatcher: None,
             time_start: Instant::now(),
             prev_camera_target: CameraTarget::default(),
@@ -90,8 +99,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         data.world.insert(DebugLines::new());
         data.world.insert(DebugLinesParams { line_width: 2.0 });
 
-        data.world
-            .insert(InsertionGameObject(SerializedObject::default()));
+        if data.world.try_fetch::<InsertionGameObject>().is_none() {
+            data.world
+                .insert(InsertionGameObject(SerializedObject::default()));
+        }
         data.world.insert(EditorState::EditMode);
 
         // setup dispatcher
@@ -109,6 +120,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         Self::set_instance_entities_transparency(data.world, 0.5);
         Self::set_editor_entities_hidden_flag(data.world, false);
+        self.initialize_ui(data.world);
     }
 
     fn on_stop(&mut self, data: StateData<'_, GameData<'s, 's>>) {
@@ -145,6 +157,21 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 if self.time_start.elapsed().as_millis() > 250 {
                     return Trans::Pop;
                 }
+            }
+        }
+
+        if let MyEvents::Ui(event) = &event {
+            match &event.event_type {
+                UiEventType::Click => {
+                    if let Some(button_info) =
+                        data.world.read_storage::<EditorButton>().get(event.target)
+                    {
+                        data.world
+                            .write_resource::<EventChannel<EditorEvents>>()
+                            .single_write(EditorEvents::UiClick(button_info.clone()));
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -384,12 +411,93 @@ impl<'a, 'b> Editor<'a, 'b> {
             .with(RealCursorPosition(pos.0.to_vec2()))
             .with(PulseAnimation::default())
             .with(Scale(Vec2::new(scale.x, scale.y)))
-            .with(SizeForEditorGrid(Vec2::new(scale.x * TILE_WIDTH, scale.y * TILE_HEIGHT)))
+            .with(SizeForEditorGrid(Vec2::new(
+                scale.x * TILE_WIDTH,
+                scale.y * TILE_HEIGHT,
+            )))
             .with(CursorWasInThisEntity(None))
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(pos.clone())
             .with(Transparent)
             .build();
+    }
+
+    fn initialize_ui(&mut self, world: &mut World) {
+        let font = world.read_resource::<Loader>().load(
+            "font/LibreBaskerville-Bold.ttf",
+            TtfFormat,
+            (),
+            &world.read_resource(),
+        );
+
+        let width = 150.0;
+        let font_size = 15.;
+
+        for i in 0..10 {
+            let height = -30. + -50. * i as f32;
+
+            // Label
+            let transform = UiTransform::new(
+                format!("Label{}", i).to_string(),
+                Anchor::TopLeft,
+                Anchor::Middle,
+                width / 2.0 + font_size * 3.0,
+                height,
+                1.,
+                width,
+                25.,
+            );
+            let text = UiText::new(
+                font.clone(),
+                format!("Player-controlled: {}", transform.opaque).to_string(),
+                [1., 1., 1., 1.],
+                font_size,
+            );
+            let entity = world
+                .create_entity()
+                .with(transform)
+                .with(text)
+                .with(EditorButton::new(EditorButtonType::Label, i))
+                .build();
+
+            // Right Arrow
+            let transform2 = UiTransform::new(
+                format!("ArrowR{}", i).to_string(),
+                Anchor::TopLeft,
+                Anchor::Middle,
+                width + font_size * 5.0,
+                height,
+                1.,
+                font_size * 2.0,
+                25.,
+            );
+            let text2 = UiText::new(font.clone(), ">>".to_string(), [1., 1., 1., 1.], font_size);
+            let entity = world
+                .create_entity()
+                .with(transform2)
+                .with(text2)
+                .with(EditorButton::new(EditorButtonType::RightArrow, i))
+                .build();
+
+            // Left Arrow
+            let transform2 = UiTransform::new(
+                format!("ArrowL{}", i).to_string(),
+                Anchor::TopLeft,
+                Anchor::Middle,
+                font_size,
+                height,
+                1.,
+                font_size * 2.0,
+                25.,
+            );
+            let text2 = UiText::new(font.clone(), "<<".to_string(), [1., 1., 1., 1.], font_size);
+            let entity = world
+                .create_entity()
+                .with(transform2)
+                .with(text2)
+                .with(EditorButton::new(EditorButtonType::LeftArrow, i))
+                .build();
+        }
     }
 }

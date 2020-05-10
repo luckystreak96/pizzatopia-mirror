@@ -9,11 +9,13 @@ use crate::components::graphics::{
 use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
-use amethyst::assets::Handle;
+use amethyst::assets::{AssetStorage, Handle};
 use amethyst::core::math::Vector3;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
-use amethyst::ecs::{Join, Read, ReadExpect, ReadStorage, System, SystemData, World, WriteStorage};
+use amethyst::ecs::{
+    Join, Read, ReadExpect, ReadStorage, System, SystemData, World, Write, WriteStorage,
+};
 use amethyst::renderer::{
     palette::Srgba, resources::Tint, Camera, ImageFormat, SpriteRender, SpriteSheet,
     SpriteSheetFormat, Texture,
@@ -131,27 +133,39 @@ impl<'s> System<'s> for CursorSpriteUpdateSystem {
     type SystemData = (
         WriteStorage<'s, SpriteRender>,
         ReadStorage<'s, EditorCursor>,
-        ReadExpect<'s, InsertionGameObject>,
+        Write<'s, InsertionGameObject>,
         ReadExpect<'s, EditorState>,
         ReadExpect<'s, BTreeMap<u8, Handle<SpriteSheet>>>,
+        Read<'s, AssetStorage<SpriteSheet>>,
     );
 
     fn run(
         &mut self,
-        (mut sprites, cursors, insertion_serialized_object, editor_state, sprite_sheets): Self::SystemData,
+        (
+            mut sprites,
+            cursors,
+            mut insertion_serialized_object,
+            editor_state,
+            sprite_sheets,
+            sheets,
+        ): Self::SystemData,
     ) {
         for (sprite, _) in (&mut sprites, &cursors).join() {
             match *editor_state {
                 EditorState::InsertMode | EditorState::EditGameObject => {
-                    let sprite_data = insertion_serialized_object
-                        .0
-                        .sprite
-                        .unwrap_or(SpriteRenderData::new(SpriteSheetType::Tiles, 0));
-                    sprite.sprite_sheet = sprite_sheets
-                        .get(&(sprite_data.sheet as u8))
-                        .unwrap()
-                        .clone();
-                    sprite.sprite_number = sprite_data.number;
+                    if insertion_serialized_object.0.sprite.is_none() {
+                        insertion_serialized_object.0.sprite =
+                            Some(SpriteRenderData::new(SpriteSheetType::Tiles, 0));
+                    }
+                    if let Some(ref mut sprite_data) = insertion_serialized_object.0.sprite {
+                        let sheet = sprite_sheets.get(&(sprite_data.sheet as u8)).unwrap();
+                        sprite.sprite_sheet = sheet.clone();
+                        if let Some(sheet) = sheets.get(sheet) {
+                            sprite_data.number =
+                                sprite_data.number.clamp(0, sheet.sprites.len() - 1);
+                            sprite.sprite_number = sprite_data.number.clamp(0, sprite_data.number);
+                        }
+                    }
                 }
                 _ => {
                     // Cursor sprite

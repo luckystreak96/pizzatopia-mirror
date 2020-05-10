@@ -33,6 +33,35 @@ impl Component for EditorCursor {
     type Storage = DenseVecStorage<Self>;
 }
 
+#[derive(Derivative, Clone, Copy, Debug)]
+#[derivative(Default)]
+pub enum EditorButtonType {
+    #[derivative(Default)]
+    Label,
+    RightArrow,
+    LeftArrow,
+}
+
+#[derive(Derivative, Copy, Clone, Debug)]
+#[derivative(Default)]
+pub struct EditorButton {
+    pub editor_button_type: EditorButtonType,
+    pub id: u32,
+}
+
+impl Component for EditorButton {
+    type Storage = DenseVecStorage<Self>;
+}
+
+impl EditorButton {
+    pub(crate) fn new(editor_button_type: EditorButtonType, id: u32) -> EditorButton {
+        EditorButton {
+            editor_button_type,
+            id,
+        }
+    }
+}
+
 // Represents the cursor's position as a dot in the middle of the smallest grid unit it is truly in
 pub struct RealCursorPosition(pub Vec2);
 
