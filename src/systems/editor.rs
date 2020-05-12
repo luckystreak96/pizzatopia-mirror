@@ -646,6 +646,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 EditorEvents::UiClick(button_info) => {
                     let start_id = 3;
                     match button_info.id {
+                        // inclusive range
                         0..=2 => {
                             if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
                                 sprite.number = match button_info.editor_button_type {

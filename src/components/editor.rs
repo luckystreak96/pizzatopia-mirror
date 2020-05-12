@@ -2,8 +2,8 @@ use crate::components::game::{SerializedObject, SerializedObjectType};
 use crate::utils::Vec2;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
-    core::transform::Transform,
-    ecs::prelude::{Component, DenseVecStorage, NullStorage},
+    core::{transform::{Transform}, HiddenPropagate},
+    ecs::prelude::{Component, DenseVecStorage, NullStorage, Entity},
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
@@ -21,6 +21,38 @@ pub enum EditorCursorState {
     #[derivative(Default)]
     Normal,
     Error,
+}
+
+#[derive(Derivative)]
+#[derivative(Default)]
+pub struct EditorFieldUiComponents {
+    pub labels: Vec<Entity>,
+    pub left_arrows: Vec<Entity>,
+    pub right_arrows: Vec<Entity>,
+}
+
+impl EditorFieldUiComponents {
+    pub fn hide_components(&mut self, world: &World, first: usize, last: usize) {
+        for i in first..=last {
+            let comp = self.labels[i];
+            world.write_storage::<HiddenPropagate>().insert(comp.clone(), HiddenPropagate::new());
+            let comp = self.left_arrows[i];
+            world.write_storage::<HiddenPropagate>().insert(comp.clone(), HiddenPropagate::new());
+            let comp = self.right_arrows[i];
+            world.write_storage::<HiddenPropagate>().insert(comp.clone(), HiddenPropagate::new());
+        }
+    }
+
+    pub fn show_components(&mut self, world: &World, first: usize, last: usize) {
+        for i in first..=last {
+            let comp = self.labels[i];
+            world.write_storage::<HiddenPropagate>().remove(comp.clone());
+            let comp = self.left_arrows[i];
+            world.write_storage::<HiddenPropagate>().remove(comp.clone());
+            let comp = self.right_arrows[i];
+            world.write_storage::<HiddenPropagate>().remove(comp.clone());
+        }
+    }
 }
 
 #[derive(Derivative)]

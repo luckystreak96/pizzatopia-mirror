@@ -1,8 +1,5 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::editor::{
-    CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorFlag, EditorState,
-    InsertionGameObject, RealCursorPosition, SizeForEditorGrid,
-};
+use crate::components::editor::{CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorFlag, EditorState, InsertionGameObject, RealCursorPosition, SizeForEditorGrid, EditorFieldUiComponents};
 use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
 use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
 use crate::components::graphics::SpriteSheetType;
@@ -39,7 +36,7 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
-        ArcThreadPool, EventReader, Hidden, SystemDesc, Time,
+        ArcThreadPool, EventReader, Hidden, SystemDesc, Time, HiddenPropagate,
     },
     derive::EventReader,
     ecs::prelude::{
@@ -96,6 +93,8 @@ impl Default for Editor<'_, '_> {
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
+        data.world.register::<HiddenPropagate>();
+
         data.world.insert(DebugLines::new());
         data.world.insert(DebugLinesParams { line_width: 2.0 });
 
@@ -236,6 +235,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         if let Some(dispatcher) = self.dispatcher.as_mut() {
             dispatcher.dispatch(&data.world);
         }
+        Self::update_ui(data.world);
 
         Trans::None
     }
@@ -423,6 +423,41 @@ impl<'a, 'b> Editor<'a, 'b> {
             .build();
     }
 
+    fn update_ui(world: &mut World) {
+        let mut ui = world.write_resource::<EditorFieldUiComponents>();
+        let state = world.read_resource::<EditorState>();
+        let insertion = world.read_resource::<InsertionGameObject>();
+        match *state {
+            EditorState::EditMode => {
+                ui.hide_components(world, 0, 9);
+            },
+            EditorState::EditGameObject | EditorState::InsertMode => {
+                ui.show_components(world, 0, 9);
+                let mut counter = 3;
+                let mut ui_text_storage = world.write_storage::<UiText>();
+
+                // General properties
+                if let Some(text) = ui_text_storage.get_mut(ui.labels[2]) {
+                    if let Some(sprite) = insertion.0.sprite {
+                        text.text = format!("Sprite number: {}", sprite.number);
+                    }
+                }
+
+                // Object-specific properties
+                match insertion.0.object_type {
+                    SerializedObjectType::StaticTile => {},
+                    SerializedObjectType::Player { is_player } => {
+                        if let Some(text) = ui_text_storage.get_mut(ui.labels[counter]) {
+                            text.text = format!("Player-controlled: {}", is_player.0);
+                            counter += 1;
+                        }
+                    },
+                }
+                ui.hide_components(world, counter, 9);
+            },
+        }
+    }
+
     fn initialize_ui(&mut self, world: &mut World) {
         let font = world.read_resource::<Loader>().load(
             "font/LibreBaskerville-Bold.ttf",
@@ -434,6 +469,7 @@ impl<'a, 'b> Editor<'a, 'b> {
         let width = 150.0;
         let font_size = 15.;
 
+        let mut result: EditorFieldUiComponents = EditorFieldUiComponents::default();
         for i in 0..10 {
             let height = -30. + -50. * i as f32;
 
@@ -459,7 +495,9 @@ impl<'a, 'b> Editor<'a, 'b> {
                 .with(transform)
                 .with(text)
                 .with(EditorButton::new(EditorButtonType::Label, i))
+                .with(HiddenPropagate::new())
                 .build();
+            result.labels.push(entity);
 
             // Right Arrow
             let transform2 = UiTransform::new(
@@ -478,7 +516,9 @@ impl<'a, 'b> Editor<'a, 'b> {
                 .with(transform2)
                 .with(text2)
                 .with(EditorButton::new(EditorButtonType::RightArrow, i))
+                .with(HiddenPropagate::new())
                 .build();
+            result.right_arrows.push(entity);
 
             // Left Arrow
             let transform2 = UiTransform::new(
@@ -497,7 +537,10 @@ impl<'a, 'b> Editor<'a, 'b> {
                 .with(transform2)
                 .with(text2)
                 .with(EditorButton::new(EditorButtonType::LeftArrow, i))
+                .with(HiddenPropagate::new())
                 .build();
+            result.left_arrows.push(entity);
         }
+        world.insert(result);
     }
 }
