@@ -17,6 +17,7 @@ use crate::utils::{Vec2, Vec3};
 use derivative::Derivative;
 use log::info;
 use num_traits::identities::Zero;
+use std::ops::Add;
 
 #[derive(Derivative)]
 #[derivative(Default)]
@@ -114,9 +115,35 @@ impl Component for PulseAnimation {
 #[derivative(Default)]
 pub enum SpriteSheetType {
     #[derivative(Default)]
-    Tiles = 0,
-    Didi = 1,
-    Snap = 2,
+    Tiles,
+    Didi,
+    Snap,
+}
+
+impl SpriteSheetType {
+    pub fn next(&self) -> Self {
+        let x = *self as u8;
+        Self::from(x + 1)
+    }
+
+    pub fn prev(&self) -> Self {
+        let x = *self as u8;
+        match x.is_zero() {
+            false => Self::from(x - 1),
+            true => Self::from(x),
+        }
+    }
+}
+
+impl From<u8> for SpriteSheetType {
+    fn from(x: u8) -> Self {
+        match x {
+            x if x == SpriteSheetType::Tiles as u8 => { SpriteSheetType::Tiles }
+            x if x == SpriteSheetType::Didi as u8 => { SpriteSheetType::Didi }
+            x if x == SpriteSheetType::Snap as u8 => { SpriteSheetType::Snap }
+            _ => SpriteSheetType::Snap
+        }
+    }
 }
 
 impl Component for SpriteSheetType {

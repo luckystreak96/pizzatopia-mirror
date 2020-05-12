@@ -380,10 +380,8 @@ impl Level {
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
-        let sprite_sheet_type = match player {
-            true => SpriteSheetType::Didi,
-            false => SpriteSheetType::Snap,
-        };
+        let sprite_sheet_type = serialized_object.sprite.and_then(|sprite| Some(sprite.sheet));
+        let sprite_sheet_type = sprite_sheet_type.unwrap_or(SpriteSheetType::Didi);
         let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             [&(sprite_sheet_type as u8)]
             .clone();

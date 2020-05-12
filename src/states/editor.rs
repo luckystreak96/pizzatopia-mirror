@@ -1,5 +1,8 @@
 use crate::audio::{initialise_audio, Sounds};
-use crate::components::editor::{CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorFlag, EditorState, InsertionGameObject, RealCursorPosition, SizeForEditorGrid, EditorFieldUiComponents};
+use crate::components::editor::{
+    CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorFieldUiComponents,
+    EditorFlag, EditorState, InsertionGameObject, RealCursorPosition, SizeForEditorGrid,
+};
 use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
 use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
 use crate::components::graphics::SpriteSheetType;
@@ -36,7 +39,7 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
-        ArcThreadPool, EventReader, Hidden, SystemDesc, Time, HiddenPropagate,
+        ArcThreadPool, EventReader, Hidden, HiddenPropagate, SystemDesc, Time,
     },
     derive::EventReader,
     ecs::prelude::{
@@ -133,6 +136,14 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         for (entity, _) in (
             &data.world.entities(),
             &data.world.read_storage::<EditorCursor>(),
+        )
+            .join()
+        {
+            to_remove.push(entity);
+        }
+        for (entity, _) in (
+            &data.world.entities(),
+            &data.world.read_storage::<EditorButton>(),
         )
             .join()
         {
@@ -430,31 +441,36 @@ impl<'a, 'b> Editor<'a, 'b> {
         match *state {
             EditorState::EditMode => {
                 ui.hide_components(world, 0, 9);
-            },
+            }
             EditorState::EditGameObject | EditorState::InsertMode => {
                 ui.show_components(world, 0, 9);
-                let mut counter = 3;
+                let mut counter = 4;
                 let mut ui_text_storage = world.write_storage::<UiText>();
 
                 // General properties
-                if let Some(text) = ui_text_storage.get_mut(ui.labels[2]) {
+                if let Some(text) = ui_text_storage.get_mut(ui.labels[3]) {
                     if let Some(sprite) = insertion.0.sprite {
                         text.text = format!("Sprite number: {}", sprite.number);
+                    }
+                }
+                if let Some(text) = ui_text_storage.get_mut(ui.labels[2]) {
+                    if let Some(sprite) = insertion.0.sprite {
+                        text.text = format!("Sprite sheet: {:?}", sprite.sheet);
                     }
                 }
 
                 // Object-specific properties
                 match insertion.0.object_type {
-                    SerializedObjectType::StaticTile => {},
+                    SerializedObjectType::StaticTile => {}
                     SerializedObjectType::Player { is_player } => {
                         if let Some(text) = ui_text_storage.get_mut(ui.labels[counter]) {
                             text.text = format!("Player-controlled: {}", is_player.0);
                             counter += 1;
                         }
-                    },
+                    }
                 }
                 ui.hide_components(world, counter, 9);
-            },
+            }
         }
     }
 

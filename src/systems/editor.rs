@@ -15,7 +15,7 @@ use crate::components::editor::{
 };
 use crate::components::game::{Health, SerializedObjectType};
 use crate::components::game::{Player, SerializedObject};
-use crate::components::graphics::Scale;
+use crate::components::graphics::{Scale, SpriteSheetType};
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::events::Events;
 use crate::level::Level;
@@ -576,7 +576,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 // https://book.amethyst.rs/master/concepts/system.html?highlight=create#creating-new-entities-in-a-system
                 EditorEvents::AddGameObject => {
                     for (cursor, position, previous_block) in
-                        (&cursors, &positions, &previous_block).join()
+                    (&cursors, &positions, &previous_block).join()
                     {
                         // We only add the GameObject if the cursor isn't currently in a tile
                         match cursor.state {
@@ -644,15 +644,26 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                     }
                 }
                 EditorEvents::UiClick(button_info) => {
-                    let start_id = 3;
+                    let start_id = 4;
                     match button_info.id {
-                        // inclusive range
                         0..=2 => {
+                            if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
+                                sprite.sheet = match button_info.editor_button_type {
+                                    EditorButtonType::Label => sprite.sheet,
+                                    EditorButtonType::RightArrow => {
+                                        sprite.sheet.next()
+                                    }
+                                    EditorButtonType::LeftArrow => {
+                                        sprite.sheet.prev()
+                                    }
+                                };
+                            }
+                        }
+                        3 => {
                             if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
                                 sprite.number = match button_info.editor_button_type {
                                     EditorButtonType::Label => sprite.number,
                                     EditorButtonType::RightArrow => {
-                                        error!("Adding 1");
                                         sprite.number + 1
                                     }
                                     EditorButtonType::LeftArrow => {
