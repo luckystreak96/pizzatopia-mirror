@@ -395,18 +395,25 @@ impl Level {
 
         let position = Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS));
 
+        let size = serialized_object
+            .size
+            .unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
+        let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
+        let collision_points = PlatformCollisionPoints::rectangle(size.x / 2.25, size.y / 2.25);
+
         // Data common to both editor and entity
         let mut builder = world
             .create_entity()
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(position.clone())
+            .with(scale.clone())
             .with(Transparent)
             .with(GravityDirection(CollisionDirection::FromTop))
             .with(AnimationCounter(0))
             .with(Grounded(false))
             .with(Velocity(Vec2::new(0.0, 0.0)))
-            .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.25))
+            .with(collision_points)
             .with(Collidee::new())
             .with(Health(5))
             .with(Invincibility(0));
@@ -426,11 +433,12 @@ impl Level {
                 .with(Player(player))
                 .with(sprite_render.clone())
                 .with(position.clone())
+                .with(scale.clone())
                 .with(Transparent)
                 .with(Resettable)
                 .with(InstanceEntityId(Some(entity.id())))
                 .with(EditorFlag)
-                .with(SizeForEditorGrid(Vec2::new(TILE_WIDTH, TILE_HEIGHT)))
+                .with(SizeForEditorGrid(Vec2::new(size.x, size.y)))
                 // .with(Tint(Srgba::new(1.0, 1.0, 1.0, 0.5).into()))
                 .with(amethyst::core::Hidden)
                 .build();

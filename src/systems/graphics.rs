@@ -216,18 +216,20 @@ impl<'s> System<'s> for SpriteUpdateSystem {
         WriteStorage<'s, Transform>,
         WriteStorage<'s, SpriteRender>,
         WriteStorage<'s, AnimationCounter>,
+        WriteStorage<'s, Scale>,
         ReadStorage<'s, Velocity>,
         ReadStorage<'s, GravityDirection>,
     );
 
     fn run(
         &mut self,
-        (mut transforms, mut sprites, mut counters, velocities, gravities): Self::SystemData,
+        (mut transforms, mut sprites, mut counters, mut scales, velocities, gravities): Self::SystemData,
     ) {
-        for (transform, sprite, counter, velocity, gravity) in (
+        for (transform, sprite, counter, scale, velocity, gravity) in (
             &mut transforms,
             &mut sprites,
             &mut counters,
+            &mut scales,
             &velocities,
             (&gravities).maybe(),
         )
@@ -248,15 +250,13 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     sprite_number = (sprite_number + 1) % 2;
                     counter.0 = 0;
                 }
-                let mut cur_scale = transform.scale().clone();
+                let mut cur_scale = &mut scale.0;
                 match grav_vel.x < 0.0 {
                     true => {
                         cur_scale.x = -1.0 * cur_scale.x.abs();
-                        transform.set_scale(cur_scale);
                     }
                     false => {
                         cur_scale.x = cur_scale.x.abs();
-                        transform.set_scale(cur_scale);
                     }
                 };
             } else {

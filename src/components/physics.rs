@@ -179,11 +179,15 @@ impl PlatformCollisionPoints {
     }
 
     pub fn square(half_height: f32) -> PlatformCollisionPoints {
+        Self::rectangle(half_height, half_height)
+    }
+
+    pub fn rectangle(half_width: f32, half_height: f32) -> PlatformCollisionPoints {
         let mut vec = Vec::new();
-        vec.push(Vec2::new(-half_height, -half_height));
-        vec.push(Vec2::new(-half_height, half_height));
-        vec.push(Vec2::new(half_height, -half_height));
-        vec.push(Vec2::new(half_height, half_height));
+        vec.push(Vec2::new(-half_width, -half_height));
+        vec.push(Vec2::new(-half_width, half_height));
+        vec.push(Vec2::new(half_width, -half_height));
+        vec.push(Vec2::new(half_width, half_height));
         PlatformCollisionPoints(vec)
     }
 }
