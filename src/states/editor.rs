@@ -58,8 +58,8 @@ use amethyst::{
         Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture, Transparent,
     },
     ui::{
-        Anchor, RenderUi, TextEditing, TtfFormat, UiBundle, UiCreator, UiEvent, UiEventType,
-        UiFinder, UiText, UiTransform,
+        Anchor, FontAsset, RenderUi, TextEditing, TtfFormat, UiBundle, UiCreator, UiEvent,
+        UiEventType, UiFinder, UiText, UiTransform,
     },
     utils::{
         application_root_dir,
@@ -475,88 +475,88 @@ impl<'a, 'b> Editor<'a, 'b> {
     }
 
     fn initialize_ui(&mut self, world: &mut World) {
-        let font = world.read_resource::<Loader>().load(
+        let font: Handle<FontAsset> = world.read_resource::<Loader>().load(
             "font/LibreBaskerville-Bold.ttf",
             TtfFormat,
             (),
             &world.read_resource(),
         );
 
-        let width = 150.0;
-        let font_size = 15.;
+        let width = 200.0;
+        let font_size = 18.;
+        let arrow_font_size = font_size * 1.5;
 
         let mut result: EditorFieldUiComponents = EditorFieldUiComponents::default();
         for i in 0..10 {
-            let height = -30. + -50. * i as f32;
+            let y = -50. + -50. * i as f32;
+            let height = 25.0;
 
             // Label
-            let transform = UiTransform::new(
-                format!("Label{}", i).to_string(),
-                Anchor::TopLeft,
-                Anchor::Middle,
-                width / 2.0 + font_size * 3.0,
-                height,
-                1.,
-                width,
-                25.,
-            );
-            let text = UiText::new(
-                font.clone(),
-                format!("Player-controlled: {}", transform.opaque).to_string(),
-                [1., 1., 1., 1.],
-                font_size,
-            );
-            let entity = world
-                .create_entity()
-                .with(transform)
-                .with(text)
-                .with(EditorButton::new(EditorButtonType::Label, i))
-                .with(HiddenPropagate::new())
-                .build();
+            let x = width / 2.0 + font_size * 3.0;
+            let transform =
+                Self::create_ui_transform(String::from("Label"), x, y, width, height, i);
+            let text = Self::create_ui_text(String::from("DEFAULT TEXT"), font_size, &font);
+            let entity = Self::create_ui_entity(world, i, transform, text);
             result.labels.push(entity);
 
             // Right Arrow
-            let transform2 = UiTransform::new(
-                format!("ArrowR{}", i).to_string(),
-                Anchor::TopLeft,
-                Anchor::Middle,
-                width + font_size * 5.0,
-                height,
-                1.,
-                font_size * 2.0,
-                25.,
-            );
-            let text2 = UiText::new(font.clone(), ">>".to_string(), [1., 1., 1., 1.], font_size);
-            let entity = world
-                .create_entity()
-                .with(transform2)
-                .with(text2)
-                .with(EditorButton::new(EditorButtonType::RightArrow, i))
-                .with(HiddenPropagate::new())
-                .build();
+            let x = width + font_size * 5.0;
+            let transform =
+                Self::create_ui_transform(String::from("ArrowR"), x, y, font_size * 2.0, height, i);
+            let text = Self::create_ui_text(String::from(">>"), arrow_font_size, &font);
+            let entity = Self::create_ui_entity(world, i, transform, text);
             result.right_arrows.push(entity);
 
             // Left Arrow
-            let transform2 = UiTransform::new(
-                format!("ArrowL{}", i).to_string(),
-                Anchor::TopLeft,
-                Anchor::Middle,
-                font_size,
-                height,
-                1.,
-                font_size * 2.0,
-                25.,
-            );
-            let text2 = UiText::new(font.clone(), "<<".to_string(), [1., 1., 1., 1.], font_size);
-            let entity = world
-                .create_entity()
-                .with(transform2)
-                .with(text2)
-                .with(EditorButton::new(EditorButtonType::LeftArrow, i))
-                .with(HiddenPropagate::new())
-                .build();
+            let x = font_size;
+            let transform =
+                Self::create_ui_transform(String::from("ArrowL"), x, y, font_size * 2.0, height, i);
+            let text = Self::create_ui_text(String::from("<<"), arrow_font_size, &font);
+            let entity = Self::create_ui_entity(world, i, transform, text);
             result.left_arrows.push(entity);
         }
         world.insert(result);
+    }
+
+    fn create_ui_text(text: String, font_size: f32, font: &Handle<FontAsset>) -> UiText {
+        let text = UiText::new(
+            font.clone(),
+            format!("{}", text).to_string(),
+            [1., 1., 1., 1.],
+            font_size,
+        );
+        text
+    }
+
+    fn create_ui_transform(
+        id: String,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        i: u32,
+    ) -> UiTransform {
+        let transform = UiTransform::new(
+            format!("{}{}", id, i).to_string(),
+            Anchor::TopLeft,
+            Anchor::Middle,
+            x,
+            y,
+            1.,
+            width,
+            height,
+        );
+        transform
+    }
+
+    fn create_ui_entity(world: &mut World, i: u32, transform: UiTransform, text: UiText) -> Entity {
+        let entity = world
+            .create_entity()
+            .with(transform)
+            .with(text)
+            .with(EditorButton::new(EditorButtonType::Label, i))
+            .with(HiddenPropagate::new())
+            .build();
+        entity
     }
 }
