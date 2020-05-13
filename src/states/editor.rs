@@ -43,7 +43,8 @@ use amethyst::{
     },
     derive::EventReader,
     ecs::prelude::{
-        Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join, WriteStorage,
+        Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join, Storage,
+        WriteStorage,
     },
     input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
@@ -57,6 +58,7 @@ use amethyst::{
         resources::Tint,
         Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture, Transparent,
     },
+    shred::{Fetch, FetchMut},
     ui::{
         Anchor, FontAsset, RenderUi, TextEditing, TtfFormat, UiBundle, UiCreator, UiEvent,
         UiEventType, UiFinder, UiText, UiTransform,
@@ -435,41 +437,61 @@ impl<'a, 'b> Editor<'a, 'b> {
     }
 
     fn update_ui(world: &mut World) {
-        let mut ui = world.write_resource::<EditorFieldUiComponents>();
-        let state = world.read_resource::<EditorState>();
-        let insertion = world.read_resource::<InsertionGameObject>();
-        match *state {
+        let state = (*world.read_resource::<EditorState>()).clone();
+        match state {
             EditorState::EditMode => {
+                let mut ui = world.write_resource::<EditorFieldUiComponents>();
                 ui.hide_components(world, 0, 9);
             }
             EditorState::EditGameObject | EditorState::InsertMode => {
-                ui.show_components(world, 0, 9);
-                let mut counter = 4;
-                let mut ui_text_storage = world.write_storage::<UiText>();
+                Self::update_ui_text_general_properties(world);
+                Self::update_ui_text_object_specific_properties(world);
+            }
+        }
+    }
 
-                // General properties
-                if let Some(text) = ui_text_storage.get_mut(ui.labels[3]) {
-                    if let Some(sprite) = insertion.0.sprite {
-                        text.text = format!("Sprite number: {}", sprite.number);
-                    }
-                }
-                if let Some(text) = ui_text_storage.get_mut(ui.labels[2]) {
-                    if let Some(sprite) = insertion.0.sprite {
-                        text.text = format!("Sprite sheet: {:?}", sprite.sheet);
-                    }
-                }
+    fn update_ui_text_object_specific_properties(world: &mut World) {
+        let insertion = *world.read_resource::<InsertionGameObject>().clone();
+        let mut ui = world.write_resource::<EditorFieldUiComponents>();
+        let mut ui_text_storage = world.write_storage::<UiText>();
+        ui.show_components(world, 0, 9);
+        let mut counter = 4;
 
-                // Object-specific properties
-                match insertion.0.object_type {
-                    SerializedObjectType::StaticTile => {}
-                    SerializedObjectType::Player { is_player } => {
-                        if let Some(text) = ui_text_storage.get_mut(ui.labels[counter]) {
-                            text.text = format!("Player-controlled: {}", is_player.0);
-                            counter += 1;
-                        }
-                    }
+        // Object-specific properties
+        match insertion.0.object_type {
+            SerializedObjectType::StaticTile => {}
+            SerializedObjectType::Player { is_player } => {
+                if let Some(text) = ui_text_storage.get_mut(ui.labels[counter]) {
+                    text.text = format!("Player-controlled: {}", is_player.0);
+                    counter += 1;
                 }
-                ui.hide_components(world, counter, 9);
+            }
+        }
+        ui.hide_components(world, counter, 9);
+    }
+
+    fn update_ui_text_general_properties(world: &mut World) {
+        let insertion = world.read_resource::<InsertionGameObject>();
+        let mut ui = world.write_resource::<EditorFieldUiComponents>();
+        let mut ui_text_storage = world.write_storage::<UiText>();
+        if let Some(text) = ui_text_storage.get_mut(ui.labels[0]) {
+            if let Some(size) = insertion.0.size {
+                text.text = format!("Width: {:?}", size.x / TILE_HEIGHT);
+            }
+        }
+        if let Some(text) = ui_text_storage.get_mut(ui.labels[1]) {
+            if let Some(size) = insertion.0.size {
+                text.text = format!("Height: {:?}", size.y / TILE_HEIGHT);
+            }
+        }
+        if let Some(text) = ui_text_storage.get_mut(ui.labels[2]) {
+            if let Some(sprite) = insertion.0.sprite {
+                text.text = format!("Sprite sheet: {:?}", sprite.sheet);
+            }
+        }
+        if let Some(text) = ui_text_storage.get_mut(ui.labels[3]) {
+            if let Some(sprite) = insertion.0.sprite {
+                text.text = format!("Sprite number: {}", sprite.number);
             }
         }
     }
@@ -485,6 +507,7 @@ impl<'a, 'b> Editor<'a, 'b> {
         let width = 200.0;
         let font_size = 18.;
         let arrow_font_size = font_size * 1.5;
+        let arrow_width = arrow_font_size * 2.0;
 
         let mut result: EditorFieldUiComponents = EditorFieldUiComponents::default();
         for i in 0..10 {
@@ -492,27 +515,29 @@ impl<'a, 'b> Editor<'a, 'b> {
             let height = 25.0;
 
             // Label
-            let x = width / 2.0 + font_size * 3.0;
+            let x = width / 2.0 + arrow_width;
             let transform =
                 Self::create_ui_transform(String::from("Label"), x, y, width, height, i);
             let text = Self::create_ui_text(String::from("DEFAULT TEXT"), font_size, &font);
-            let entity = Self::create_ui_entity(world, i, transform, text);
+            let entity = Self::create_ui_entity(world, i, transform, text, EditorButtonType::Label);
             result.labels.push(entity);
 
             // Right Arrow
-            let x = width + font_size * 5.0;
+            let x = width + arrow_width * 1.5;
             let transform =
-                Self::create_ui_transform(String::from("ArrowR"), x, y, font_size * 2.0, height, i);
+                Self::create_ui_transform(String::from("ArrowR"), x, y, arrow_width, height, i);
             let text = Self::create_ui_text(String::from(">>"), arrow_font_size, &font);
-            let entity = Self::create_ui_entity(world, i, transform, text);
+            let entity =
+                Self::create_ui_entity(world, i, transform, text, EditorButtonType::RightArrow);
             result.right_arrows.push(entity);
 
             // Left Arrow
             let x = font_size;
             let transform =
-                Self::create_ui_transform(String::from("ArrowL"), x, y, font_size * 2.0, height, i);
+                Self::create_ui_transform(String::from("ArrowL"), x, y, arrow_width, height, i);
             let text = Self::create_ui_text(String::from("<<"), arrow_font_size, &font);
-            let entity = Self::create_ui_entity(world, i, transform, text);
+            let entity =
+                Self::create_ui_entity(world, i, transform, text, EditorButtonType::LeftArrow);
             result.left_arrows.push(entity);
         }
         world.insert(result);
@@ -549,12 +574,18 @@ impl<'a, 'b> Editor<'a, 'b> {
         transform
     }
 
-    fn create_ui_entity(world: &mut World, i: u32, transform: UiTransform, text: UiText) -> Entity {
+    fn create_ui_entity(
+        world: &mut World,
+        i: u32,
+        transform: UiTransform,
+        text: UiText,
+        editor_button_type: EditorButtonType,
+    ) -> Entity {
         let entity = world
             .create_entity()
             .with(transform)
             .with(text)
-            .with(EditorButton::new(EditorButtonType::Label, i))
+            .with(EditorButton::new(editor_button_type, i))
             .with(HiddenPropagate::new())
             .build();
         entity
