@@ -90,18 +90,31 @@ impl<'s> System<'s> for PulseAnimationSystem {
         WriteStorage<'s, Transform>,
         WriteStorage<'s, PulseAnimation>,
         WriteStorage<'s, Scale>,
+        WriteStorage<'s, Tint>,
     );
 
-    fn run(&mut self, (mut transforms, mut pulses, mut scales): Self::SystemData) {
-        for (transform, pulse, scale) in (&mut transforms, &mut pulses, &mut scales).join() {
+    fn run(&mut self, (mut transforms, mut pulses, mut scales, mut tints): Self::SystemData) {
+        for (transform, pulse, scale, tint) in
+            (&mut transforms, &mut pulses, &mut scales, &mut tints).join()
+        {
             pulse.0 += 1;
             // sin() swaps ever 3.14, so this will swap ~1x/sec
             let cf = pulse.0 as f32 / 20.0;
             // We want the amplitude to be 0.125
-            let sin = cf.sin() / 8.0;
+            let amplitude = cf.sin() / 100.0;
             // From 1.5 to 0.5
-            let sin = sin + 1.0;
-            transform.set_scale(Vector3::new(sin * scale.0.x, sin * scale.0.y, 1.0));
+            let scale_sin = amplitude + 1.0;
+            transform.set_scale(Vector3::new(
+                scale_sin * scale.0.x,
+                scale_sin * scale.0.y,
+                1.0,
+            ));
+
+            let amplitude = cf.sin() / 2.0;
+            let tint_sin = amplitude + 1.25;
+            tint.0.red *= tint_sin;
+            tint.0.green *= tint_sin;
+            tint.0.blue *= tint_sin;
         }
     }
 }
@@ -116,10 +129,10 @@ impl<'s> System<'s> for CursorColorUpdateSystem {
         for (tint, cursor) in (&mut tint, &cursors).join() {
             match cursor.state {
                 EditorCursorState::Normal => {
-                    tint.0 = Srgba::new(1.0, 1.0, 1.0, 0.95).into();
+                    tint.0 = Srgba::new(1.0, 1.0, 1.0, 0.85).into();
                 }
                 EditorCursorState::Error => {
-                    tint.0 = Srgba::new(1.0, 0.0, 0.0, 0.95).into();
+                    tint.0 = Srgba::new(1.0, 0.0, 0.0, 0.85).into();
                 }
             }
         }

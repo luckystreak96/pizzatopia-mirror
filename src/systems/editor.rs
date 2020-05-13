@@ -45,6 +45,28 @@ pub enum EditorEvents {
     UiClick(EditorButton),
 }
 
+pub fn align_cursor_position_with_grid(position: &mut Vec2, size: &Vec2) {
+    let offset_x = (position.x.abs() + (size.x / 2.0)) % EDITOR_GRID_SIZE;
+    let offset_y = (position.y.abs() + (size.y / 2.0)) % EDITOR_GRID_SIZE;
+    if offset_x != 0.0 || offset_y != 0.0 {
+        let backup = position.clone();
+        if size.x % TILE_WIDTH == 0.0 {
+            snap_cursor_position_to_grid_corner(position);
+        } else {
+            snap_cursor_position_to_grid_center(position);
+        }
+        position.y = backup.y;
+
+        let backup = position.clone();
+        if size.y % TILE_HEIGHT == 0.0 {
+            snap_cursor_position_to_grid_corner(position);
+        } else {
+            snap_cursor_position_to_grid_center(position);
+        }
+        position.x = backup.x;
+    }
+}
+
 fn snap_cursor_position_to_grid_center(position: &mut Vec2) {
     position.x -= (position.x.abs() % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
     position.y -= (position.y.abs() % EDITOR_GRID_SIZE) - EDITOR_GRID_SIZE / 2.0;
@@ -576,7 +598,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 // https://book.amethyst.rs/master/concepts/system.html?highlight=create#creating-new-entities-in-a-system
                 EditorEvents::AddGameObject => {
                     for (cursor, position, previous_block) in
-                    (&cursors, &positions, &previous_block).join()
+                        (&cursors, &positions, &previous_block).join()
                     {
                         // We only add the GameObject if the cursor isn't currently in a tile
                         match cursor.state {
@@ -646,16 +668,33 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 EditorEvents::UiClick(button_info) => {
                     let start_id = 4;
                     match button_info.id {
-                        0..=2 => {
+                        0..=1 => {
+                            let is_x_axis = button_info.id == 0;
+                            for (pos, _, _) in (&mut positions, &entities, &cursors).join() {
+                                let mut position = pos.0.to_vec2();
+                                match button_info.editor_button_type {
+                                    EditorButtonType::RightArrow => {
+                                        insertion_serialized_object
+                                            .0
+                                            .next_size(&mut position, is_x_axis);
+                                    }
+                                    EditorButtonType::LeftArrow => {
+                                        insertion_serialized_object
+                                            .0
+                                            .prev_size(&mut position, is_x_axis);
+                                    }
+                                    EditorButtonType::Label => {}
+                                }
+                                pos.0.x = position.x;
+                                pos.0.y = position.y;
+                            }
+                        }
+                        2 => {
                             if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
                                 sprite.sheet = match button_info.editor_button_type {
                                     EditorButtonType::Label => sprite.sheet,
-                                    EditorButtonType::RightArrow => {
-                                        sprite.sheet.next()
-                                    }
-                                    EditorButtonType::LeftArrow => {
-                                        sprite.sheet.prev()
-                                    }
+                                    EditorButtonType::RightArrow => sprite.sheet.next(),
+                                    EditorButtonType::LeftArrow => sprite.sheet.prev(),
                                 };
                             }
                         }
@@ -663,9 +702,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                             if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
                                 sprite.number = match button_info.editor_button_type {
                                     EditorButtonType::Label => sprite.number,
-                                    EditorButtonType::RightArrow => {
-                                        sprite.number + 1
-                                    }
+                                    EditorButtonType::RightArrow => sprite.number + 1,
                                     EditorButtonType::LeftArrow => {
                                         if !sprite.number.is_zero() {
                                             sprite.number - 1

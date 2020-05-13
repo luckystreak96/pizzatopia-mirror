@@ -1,5 +1,9 @@
+use crate::components::editor::EditorButtonType;
 use crate::components::graphics::SpriteSheetType;
 use crate::components::physics::{Position, Velocity};
+use crate::states::editor::EDITOR_GRID_SIZE;
+use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
+use crate::systems::editor::align_cursor_position_with_grid;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
@@ -9,6 +13,7 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 use derivative::Derivative;
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -83,6 +88,32 @@ pub struct SerializedObject {
     pub(crate) size: Option<Vec2>,
     #[derivative(Default(value = "Some(SpriteRenderData::default())"))]
     pub(crate) sprite: Option<SpriteRenderData>,
+}
+
+impl SerializedObject {
+    pub fn next_size(&mut self, position: &mut Vec2, x_axis: bool) {
+        let mut size = self.size.unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
+        let change = EDITOR_GRID_SIZE;
+        match x_axis {
+            true => size.x += change,
+            false => size.y += change,
+        }
+        align_cursor_position_with_grid(position, &size);
+        self.size = Some(size);
+    }
+
+    pub fn prev_size(&mut self, position: &mut Vec2, x_axis: bool) {
+        let mut size = self.size.unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
+        let change = -EDITOR_GRID_SIZE;
+        match x_axis {
+            true => size.x += change,
+            false => size.y += change,
+        }
+        if size.x > 0.0 && size.y > 0.0 {
+            align_cursor_position_with_grid(position, &size);
+            self.size = Some(size);
+        }
+    }
 }
 
 impl Component for SerializedObject {

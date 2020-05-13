@@ -2,8 +2,8 @@ use crate::components::game::{SerializedObject, SerializedObjectType};
 use crate::utils::Vec2;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
-    core::{transform::{Transform}, HiddenPropagate},
-    ecs::prelude::{Component, DenseVecStorage, NullStorage, Entity},
+    core::{transform::Transform, HiddenPropagate},
+    ecs::prelude::{Component, DenseVecStorage, Entity, NullStorage},
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
@@ -35,22 +35,34 @@ impl EditorFieldUiComponents {
     pub fn hide_components(&mut self, world: &World, first: usize, last: usize) {
         for i in first..=last {
             let comp = self.labels[i];
-            world.write_storage::<HiddenPropagate>().insert(comp.clone(), HiddenPropagate::new());
+            world
+                .write_storage::<HiddenPropagate>()
+                .insert(comp.clone(), HiddenPropagate::new());
             let comp = self.left_arrows[i];
-            world.write_storage::<HiddenPropagate>().insert(comp.clone(), HiddenPropagate::new());
+            world
+                .write_storage::<HiddenPropagate>()
+                .insert(comp.clone(), HiddenPropagate::new());
             let comp = self.right_arrows[i];
-            world.write_storage::<HiddenPropagate>().insert(comp.clone(), HiddenPropagate::new());
+            world
+                .write_storage::<HiddenPropagate>()
+                .insert(comp.clone(), HiddenPropagate::new());
         }
     }
 
     pub fn show_components(&mut self, world: &World, first: usize, last: usize) {
         for i in first..=last {
             let comp = self.labels[i];
-            world.write_storage::<HiddenPropagate>().remove(comp.clone());
+            world
+                .write_storage::<HiddenPropagate>()
+                .remove(comp.clone());
             let comp = self.left_arrows[i];
-            world.write_storage::<HiddenPropagate>().remove(comp.clone());
+            world
+                .write_storage::<HiddenPropagate>()
+                .remove(comp.clone());
             let comp = self.right_arrows[i];
-            world.write_storage::<HiddenPropagate>().remove(comp.clone());
+            world
+                .write_storage::<HiddenPropagate>()
+                .remove(comp.clone());
         }
     }
 }

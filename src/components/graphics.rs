@@ -138,10 +138,10 @@ impl SpriteSheetType {
 impl From<u8> for SpriteSheetType {
     fn from(x: u8) -> Self {
         match x {
-            x if x == SpriteSheetType::Tiles as u8 => { SpriteSheetType::Tiles }
-            x if x == SpriteSheetType::Didi as u8 => { SpriteSheetType::Didi }
-            x if x == SpriteSheetType::Snap as u8 => { SpriteSheetType::Snap }
-            _ => SpriteSheetType::Snap
+            x if x == SpriteSheetType::Tiles as u8 => SpriteSheetType::Tiles,
+            x if x == SpriteSheetType::Didi as u8 => SpriteSheetType::Didi,
+            x if x == SpriteSheetType::Snap as u8 => SpriteSheetType::Snap,
+            _ => SpriteSheetType::Snap,
         }
     }
 }

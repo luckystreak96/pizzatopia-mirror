@@ -157,7 +157,7 @@ fn get_image_texure_config() -> ImageTextureConfig {
         repr: Repr::Srgb,
         // Two-dimensional texture
         kind: TextureKind::D2,
-        sampler_info: SamplerInfo::new(Filter::Linear, WrapMode::Clamp),
+        sampler_info: SamplerInfo::new(Filter::Nearest, WrapMode::Clamp),
         // Don't generate mipmaps for this image
         generate_mips: false,
         premultiply_alpha: true,
