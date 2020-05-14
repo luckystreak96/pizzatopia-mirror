@@ -39,6 +39,7 @@ use amethyst::{
 use log::error;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use crate::systems::input::InputManager;
 
 pub struct LevelPath(pub String);
 pub struct AssetsDir(pub PathBuf);
@@ -98,6 +99,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
         world
             .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             .insert(SpriteSheetType::Snap as u8, sprites2);
+
+        world.insert(InputManager::new(world));
     }
 
     fn update(

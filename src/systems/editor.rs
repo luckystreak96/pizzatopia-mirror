@@ -199,14 +199,10 @@ impl<'s> System<'s> for CursorPositionSystem {
             }
 
             // Not ready or timer too short => don't move
-            if !self.ready_v
-                && (self.repeat_delay_v.elapsed().as_millis() < 250 || self.counter % 2 == 0)
-            {
+            if !self.ready_v && (self.repeat_delay_v.elapsed().as_millis() < 250) {
                 vertical = 0.0;
             }
-            if !self.ready_h
-                && (self.repeat_delay_h.elapsed().as_millis() < 250 || self.counter % 2 == 0)
-            {
+            if !self.ready_h && (self.repeat_delay_h.elapsed().as_millis() < 250) {
                 horizontal = 0.0;
             }
 

@@ -59,8 +59,8 @@ use std::io;
 use std::thread::park_timeout;
 use std::time::Instant;
 
-pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 12.0;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
+pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 9.0;
 
 pub const DEPTH_TILES: f32 = 1.0;
 pub const DEPTH_ACTORS: f32 = DEPTH_TILES + 1.0;

@@ -1,4 +1,4 @@
 (
   title: "Pizzatopia",
-  dimensions: Some((1024, 768)),
+  dimensions: Some((1536, 864)),
 )
