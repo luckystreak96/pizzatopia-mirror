@@ -3,6 +3,7 @@ use crate::components::graphics::SpriteSheetType;
 use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
 use crate::states::pizzatopia::{MyEvents, Pizzatopia};
+use crate::systems::input::InputManager;
 use amethyst::assets::Completion;
 use amethyst::assets::Progress;
 use amethyst::{
@@ -39,7 +40,6 @@ use amethyst::{
 use log::error;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use crate::systems::input::InputManager;
 
 pub struct LevelPath(pub String);
 pub struct AssetsDir(pub PathBuf);

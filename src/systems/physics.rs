@@ -387,8 +387,8 @@ impl PlatformCollisionSystem {
         cuboid_pos: &Vec2,
         cuboid: &PlatformCuboid,
     ) -> Option<(Vec2, CollisionSideOfBlock)> {
-        let x_intersects = Self::intersect_x(point, cuboid_pos, cuboid);
-        let y_intersects = Self::intersect_y(point, cuboid_pos, cuboid);
+        let x_intersects = cuboid.intersect_x(point, cuboid_pos);
+        let y_intersects = cuboid.intersect_y(point, cuboid_pos);
 
         // The point must be outside the tile
         if x_intersects && y_intersects {
@@ -505,38 +505,10 @@ impl PlatformCollisionSystem {
         );
         debug!("Values = {:?}", result);
 
-        match Self::intersect_x(&result, &cuboid_pos, cuboid)
-            && Self::intersect_y(&result, &cuboid_pos, cuboid)
-        {
+        match cuboid.intersect_x(&result, &cuboid_pos) && cuboid.intersect_y(&result, &cuboid_pos) {
             true => Some((result, side)),
             false => None,
         }
-    }
-
-    fn intersect_x(point: &Vec2, pos: &Vec2, cuboid: &PlatformCuboid) -> bool {
-        Self::within_range_x(point, pos, cuboid, 0.0)
-    }
-
-    fn intersect_y(point: &Vec2, pos: &Vec2, cuboid: &PlatformCuboid) -> bool {
-        Self::within_range_y(point, pos, cuboid, 0.0)
-    }
-
-    fn within_range_x(point: &Vec2, pos: &Vec2, cuboid: &PlatformCuboid, delta: f32) -> bool {
-        if point.x <= pos.x + cuboid.half_width + delta
-            && point.x >= pos.x - cuboid.half_width - delta
-        {
-            return true;
-        }
-        return false;
-    }
-
-    fn within_range_y(point: &Vec2, pos: &Vec2, cuboid: &PlatformCuboid, delta: f32) -> bool {
-        if point.y <= pos.y + cuboid.half_height + delta
-            && point.y >= pos.y - cuboid.half_height - delta
-        {
-            return true;
-        }
-        return false;
     }
 }
 
@@ -547,21 +519,14 @@ impl<'s> System<'s> for PlatformCollisionSystem {
         ReadStorage<'s, Position>,
         ReadStorage<'s, PlatformCuboid>,
         ReadStorage<'s, PlatformCollisionPoints>,
-        ReadStorage<'s, GravityDirection>,
     );
 
     fn run(
         &mut self,
-        (mut velocities, mut collidees, positions, cuboids, coll_points, gravities): Self::SystemData,
+        (mut velocities, mut collidees, positions, cuboids, coll_points): Self::SystemData,
     ) {
-        for (velocity, collidee, ent_pos, coll_point, gravity) in (
-            &mut velocities,
-            &mut collidees,
-            &positions,
-            &coll_points,
-            (&gravities).maybe(),
-        )
-            .join()
+        for (velocity, collidee, ent_pos, coll_point) in
+            (&mut velocities, &mut collidees, &positions, &coll_points).join()
         {
             // Reset collidees here they can be used for the rest of the frame
             std::mem::swap(&mut collidee.prev_horizontal, &mut collidee.horizontal);
@@ -601,13 +566,8 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                         );
 
                         // Is the block even close to us
-                        if Self::within_range_x(&point_vel_pos, &platform_position, cuboid, delta) {
-                            if Self::within_range_y(
-                                &point_vel_pos,
-                                &platform_position,
-                                cuboid,
-                                delta,
-                            ) {
+                        if cuboid.within_range_x(&point_vel_pos, &platform_position, delta) {
+                            if cuboid.within_range_y(&point_vel_pos, &platform_position, delta) {
                                 // point of collision and side
                                 let point_of_collision = Self::raycast(
                                     &point_pos,

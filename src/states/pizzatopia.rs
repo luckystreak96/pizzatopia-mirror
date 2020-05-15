@@ -17,6 +17,7 @@ use crate::level::Level;
 use crate::states::editor::Editor;
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
+use crate::systems::input::InputManagementSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
@@ -242,7 +243,12 @@ pub fn get_camera_center(world: &mut World) -> Vec2 {
 impl<'a, 'b> Pizzatopia<'a, 'b> {
     fn create_pizzatopia_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
-        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
+        dispatcher_builder.add(InputManagementSystem, "input_management_system", &[]);
+        dispatcher_builder.add(
+            ConsoleInputSystem,
+            "console_input_system",
+            &["input_management_system"],
+        );
         dispatcher_builder.add(
             systems::PlayerInputSystem,
             "player_input_system",

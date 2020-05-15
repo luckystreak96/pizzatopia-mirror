@@ -25,6 +25,7 @@ use crate::systems::editor::{
 use crate::systems::graphics::{
     CursorColorUpdateSystem, CursorSpriteUpdateSystem, PulseAnimationSystem,
 };
+use crate::systems::input::InputManagementSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::math::Vector3;
@@ -258,10 +259,11 @@ impl<'a, 'b> Editor<'a, 'b> {
     fn create_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         // Main logic
         let mut dispatcher_builder = DispatcherBuilder::new();
+        dispatcher_builder.add(InputManagementSystem, "input_management_system", &[]);
         dispatcher_builder.add(
-            CursorPositionSystem::new(world),
+            CursorPositionSystem,
             "cursor_position_system",
-            &[],
+            &["input_management_system"],
         );
         dispatcher_builder.add(
             CursorSizeSystem,
@@ -472,7 +474,7 @@ impl<'a, 'b> Editor<'a, 'b> {
 
     fn update_ui_text_general_properties(world: &mut World) {
         let insertion = world.read_resource::<InsertionGameObject>();
-        let mut ui = world.write_resource::<EditorFieldUiComponents>();
+        let ui = world.write_resource::<EditorFieldUiComponents>();
         let mut ui_text_storage = world.write_storage::<UiText>();
         if let Some(text) = ui_text_storage.get_mut(ui.labels[0]) {
             if let Some(size) = insertion.0.size {

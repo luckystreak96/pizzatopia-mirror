@@ -34,7 +34,7 @@ impl<'s> System<'s> for CameraEdgeClampSystem {
     );
 
     fn run(&mut self, (mut positions, cameras, camera_limits): Self::SystemData) {
-        for (pos, cam, limit) in (&mut positions, &cameras, &camera_limits).join() {
+        for (pos, _cam, limit) in (&mut positions, &cameras, &camera_limits).join() {
             pos.0.x = pos.0.x.clamp(limit.left, limit.right);
             pos.0.y = pos.0.y.clamp(limit.bottom, limit.top);
         }

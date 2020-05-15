@@ -214,6 +214,35 @@ impl PlatformCuboid {
             half_height: tile_size_y / 2.0,
         }
     }
+
+    pub fn intersects_point(&self, point: &Vec2, pos: &Vec2) -> bool {
+        self.intersect_x(point, pos) && self.intersect_y(point, pos)
+    }
+
+    pub(crate) fn intersect_x(&self, point: &Vec2, pos: &Vec2) -> bool {
+        self.within_range_x(point, pos, 0.0)
+    }
+
+    pub(crate) fn intersect_y(&self, point: &Vec2, pos: &Vec2) -> bool {
+        self.within_range_y(point, pos, 0.0)
+    }
+
+    pub(crate) fn within_range_x(&self, point: &Vec2, pos: &Vec2, delta: f32) -> bool {
+        if point.x <= pos.x + self.half_width + delta && point.x >= pos.x - self.half_width - delta
+        {
+            return true;
+        }
+        return false;
+    }
+
+    pub(crate) fn within_range_y(&self, point: &Vec2, pos: &Vec2, delta: f32) -> bool {
+        if point.y <= pos.y + self.half_height + delta
+            && point.y >= pos.y - self.half_height - delta
+        {
+            return true;
+        }
+        return false;
+    }
 }
 
 impl Component for PlatformCuboid {

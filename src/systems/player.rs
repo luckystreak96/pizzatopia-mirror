@@ -30,7 +30,7 @@ impl<'s> System<'s> for PlayerInputSystem {
         &mut self,
         (mut velocities, input, players, healths, grounded, gravities): Self::SystemData,
     ) {
-        for (velocity, player, health, ground, gravity) in (
+        for (velocity, _player, health, ground, gravity) in (
             &mut velocities,
             &players,
             &healths,

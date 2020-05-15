@@ -93,7 +93,7 @@ impl<'s> System<'s> for InvincibilitySystem {
     type SystemData = (WriteStorage<'s, Invincibility>, Entities<'s>);
 
     fn run(&mut self, (mut invincibilities, entities): Self::SystemData) {
-        for (mut invinc, entity) in (&mut invincibilities, &entities).join() {
+        for (mut invinc, _entity) in (&mut invincibilities, &entities).join() {
             if invinc.0 > 0 {
                 invinc.0 -= 1;
             }
@@ -113,36 +113,33 @@ impl<'s> System<'s> for CameraTargetSystem {
         ReadStorage<'s, Player>,
         ReadStorage<'s, EditorCursor>,
         ReadStorage<'s, EditorFlag>,
-        Entities<'s>,
     );
 
     fn run(
         &mut self,
-        (mut lerpers, cameras, positions, targets, players, cursors, editor_flag, entities): Self::SystemData,
+        (mut lerpers, cameras, positions, targets, players, cursors, editor_flag): Self::SystemData,
     ) {
         let mut position = Vec3::default();
-        for (camera, target) in (&cameras, &targets).join() {
+        for (_camera, target) in (&cameras, &targets).join() {
             match target {
                 CameraTarget::Player => {
-                    for (player, player_pos, _) in (&players, &positions, !&editor_flag).join() {
+                    for (_player, player_pos, _) in (&players, &positions, !&editor_flag).join() {
                         position = player_pos.0.clone();
                     }
                 }
                 CameraTarget::Cursor => {
-                    for (cursor, cursor_pos) in (&cursors, &positions).join() {
+                    for (_cursor, cursor_pos) in (&cursors, &positions).join() {
                         position = cursor_pos.0.clone();
                     }
                 }
-                CameraTarget::GameObject(id) => {
+                CameraTarget::GameObject(_) => {
                     error!("CameraTarget::GameObject(id) is not yet implemented!");
                 }
             };
         }
-        for (mut lerper, camera) in (&mut lerpers, &cameras).join() {
-            if let Some(ortho) = camera.projection().as_orthographic() {
-                lerper.target.x = position.x;
-                lerper.target.y = position.y;
-            }
+        for (mut lerper, _camera) in (&mut lerpers, &cameras).join() {
+            lerper.target.x = position.x;
+            lerper.target.y = position.y;
         }
     }
 }
@@ -164,18 +161,12 @@ impl<'s> System<'s> for PlayerEventsSystem {
     type SystemData = (
         WriteStorage<'s, Health>,
         WriteStorage<'s, Invincibility>,
-        Entities<'s>,
         Read<'s, EventChannel<PlayerEvent>>,
     );
 
-    fn run(
-        &mut self,
-        (mut healths, mut invincibilities, entities, event_channel): Self::SystemData,
-    ) {
+    fn run(&mut self, (mut healths, mut invincibilities, event_channel): Self::SystemData) {
         for event in event_channel.read(&mut self.reader) {
-            for (mut health, mut invincibility, entity) in
-                (&mut healths, &mut invincibilities, &entities).join()
-            {
+            for (mut health, mut invincibility) in (&mut healths, &mut invincibilities).join() {
                 match event {
                     PlayerEvent::Revive(new_health) => {
                         if health.0 == 0 {

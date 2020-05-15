@@ -37,15 +37,18 @@ impl EditorFieldUiComponents {
             let comp = self.labels[i];
             world
                 .write_storage::<HiddenPropagate>()
-                .insert(comp.clone(), HiddenPropagate::new());
+                .insert(comp.clone(), HiddenPropagate::new())
+                .unwrap();
             let comp = self.left_arrows[i];
             world
                 .write_storage::<HiddenPropagate>()
-                .insert(comp.clone(), HiddenPropagate::new());
+                .insert(comp.clone(), HiddenPropagate::new())
+                .unwrap();
             let comp = self.right_arrows[i];
             world
                 .write_storage::<HiddenPropagate>()
-                .insert(comp.clone(), HiddenPropagate::new());
+                .insert(comp.clone(), HiddenPropagate::new())
+                .unwrap();
         }
     }
 
