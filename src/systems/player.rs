@@ -44,8 +44,8 @@ impl<'s> System<'s> for PlayerInputSystem {
                 continue;
             }
             // Controller input
-            let v_move = input.axis_value("vertical_move");
-            let h_move = input.axis_value("horizontal_move");
+            let v_move = input.action_status("vertical_move").axis;
+            let h_move = input.action_status("horizontal_move").axis;
 
             // Get the grounded status to use auto-complete :)
             let ground: Option<&Grounded> = ground;

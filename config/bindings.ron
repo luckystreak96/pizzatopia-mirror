@@ -15,5 +15,7 @@
     "accept": [[Key(X)]],
     "1": [[Key(Key1)]],
     "2": [[Key(Key2)]],
+    "modifier1": [[Key(LShift)]],
+    "modifier2": [[Key(LAlt)]],
   },
 )

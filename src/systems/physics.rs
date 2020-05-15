@@ -249,7 +249,7 @@ impl<'s> System<'s> for ApplyGravitySystem {
             // Apply friction and slow down
             if let Some(ground) = grounded {
                 if ground.0 {
-                    let horizontal_movement = input.axis_value("horizontal_move");
+                    let horizontal_movement = input.action_status("horizontal_move").axis;
                     // Not moving or trying to move in opposite direction
                     if horizontal_movement == 0.0 || horizontal_movement * grav_vel.x < 0.0 {
                         if grav_vel.x.abs() <= 0.1 {

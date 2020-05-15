@@ -146,9 +146,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         let world = &mut data.world;
         if let MyEvents::Window(_) = &event {
             let input = world.read_resource::<InputManager>();
-            if input.is_action_down("exit") {
+            if input.action_status("exit").is_down {
                 return Trans::Quit;
-            } else if input.is_action_single_press("editor") {
+            } else if input.action_single_press("editor").is_down {
                 return Trans::Push(Box::new(Editor::default()));
             }
         }
