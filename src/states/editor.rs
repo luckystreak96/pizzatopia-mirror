@@ -1,7 +1,7 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::components::editor::{
     CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorFieldUiComponents,
-    EditorFlag, EditorState, InsertionGameObject, RealCursorPosition, SizeForEditorGrid,
+    EditorFlag, EditorState, InsertionGameObject, RealCursorPosition, SizeForEditorGrid, UiIndex,
 };
 use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
 use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
@@ -107,6 +107,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 .insert(InsertionGameObject(SerializedObject::default()));
         }
         data.world.insert(EditorState::EditMode);
+        data.world.insert(UiIndex::default());
 
         // setup dispatcher
         let mut dispatcher = Editor::create_dispatcher(data.world);
@@ -464,6 +465,8 @@ impl<'a, 'b> Editor<'a, 'b> {
             }
         }
         ui.hide_components(world, counter, 9);
+        let index = world.read_resource::<UiIndex>().index;
+        world.write_resource::<UiIndex>().index = index.clamp(0, counter - 1);
     }
 
     fn update_ui_text_general_properties(world: &mut World) {
@@ -555,7 +558,7 @@ impl<'a, 'b> Editor<'a, 'b> {
         y: f32,
         width: f32,
         height: f32,
-        i: u32,
+        i: usize,
     ) -> UiTransform {
         let transform = UiTransform::new(
             format!("{}{}", id, i).to_string(),
@@ -572,7 +575,7 @@ impl<'a, 'b> Editor<'a, 'b> {
 
     fn create_ui_entity(
         world: &mut World,
-        i: u32,
+        i: usize,
         transform: UiTransform,
         text: UiText,
         editor_button_type: EditorButtonType,

@@ -12,6 +12,7 @@ use amethyst::renderer::palette::Srgba;
 use crate::components::editor::{
     CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorCursorState,
     EditorState, InsertionGameObject, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
+    UiIndex,
 };
 use crate::components::game::{Health, SerializedObjectType};
 use crate::components::game::{Player, SerializedObject};
@@ -350,10 +351,11 @@ impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
         ReadExpect<'s, EditorState>,
         Read<'s, InputManager>,
+        Write<'s, UiIndex>,
         Write<'s, EventChannel<EditorEvents>>,
     );
 
-    fn run(&mut self, (state, input, mut editor_event_writer): Self::SystemData) {
+    fn run(&mut self, (state, input, mut ui_index, mut editor_event_writer): Self::SystemData) {
         if input.action_single_press("save").is_down {
             editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
         }
@@ -361,39 +363,112 @@ impl<'s> System<'s> for EditorButtonEventSystem {
         match *state {
             EditorState::EditMode => {
                 // Controller input
-                if input.action_single_press("cancel".excluding_modifiers(EDITOR_MODIFIERS_ALL)).is_down {
+                if input
+                    .action_single_press("cancel")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer.single_write(EditorEvents::RemoveGameObject);
-                } else if input.action_single_press("accept".excluding_modifiers(EDITOR_MODIFIERS_ALL)).is_down {
+                } else if input
+                    .action_single_press("accept")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::EditGameObject));
-                } else if input.action_single_press("insert".excluding_modifiers(EDITOR_MODIFIERS_ALL)).is_down {
+                } else if input
+                    .action_single_press("insert")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::InsertMode));
                 }
             }
             EditorState::InsertMode => {
                 // Controller input
-                if input.action_single_press("cancel").excluding_modifiers(EDITOR_MODIFIERS_ALL).is_down {
+                if input
+                    .action_single_press("cancel")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::EditMode));
-                } else if input.action_single_press("accept".excluding_modifiers(EDITOR_MODIFIERS_ALL)).is_down {
+                } else if input
+                    .action_single_press("accept")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer.single_write(EditorEvents::AddGameObject);
-                } else if input.action_single_press("1".excluding_modifiers(EDITOR_MODIFIERS_ALL)).is_down {
+                } else if input
+                    .action_single_press("1")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(0));
-                } else if input.action_single_press("2".excluding_modifiers(EDITOR_MODIFIERS_ALL)).is_down {
+                } else if input
+                    .action_single_press("2")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(1));
                 }
             }
             EditorState::EditGameObject => {
-                if input.action_single_press("cancel".excluding_modifiers(EDITOR_MODIFIERS_ALL)).is_down {
+                if input
+                    .action_single_press("cancel")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::EditMode));
-                } else if input.action_single_press("accept".excluding_modifiers(EDITOR_MODIFIERS_ALL)).is_down {
+                } else if input
+                    .action_single_press("accept")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
                     editor_event_writer.single_write(EditorEvents::AddGameObject);
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::EditMode));
                 }
             }
+        }
+        match *state {
+            EditorState::EditGameObject | EditorState::InsertMode => {
+                let horizontal = input
+                    .action_single_press("horizontal_move")
+                    .including_modifiers(EDITOR_MODIFIERS_UI)
+                    .axis;
+                let vertical = input
+                    .action_single_press("vertical_move")
+                    .including_modifiers(EDITOR_MODIFIERS_UI)
+                    .axis;
+                if input.action_status("modifier1").is_down {
+                    ui_index.active = true;
+                    if vertical > 0.0 && ui_index.index > 0 {
+                        ui_index.index -= 1;
+                    } else if vertical < 0.0 {
+                        ui_index.index += 1;
+                    }
+
+                    let mut arrow_direction = EditorButtonType::Label;
+                    if horizontal > 0.0 {
+                        arrow_direction = EditorButtonType::RightArrow;
+                    } else if horizontal < 0.0 {
+                        arrow_direction = EditorButtonType::LeftArrow;
+                    }
+                    match arrow_direction {
+                        EditorButtonType::RightArrow | EditorButtonType::LeftArrow => {
+                            let button_action = EditorButton::new(arrow_direction, ui_index.index);
+                            editor_event_writer.single_write(EditorEvents::UiClick(button_action));
+                        }
+                        _ => {}
+                    }
+                } else {
+                    ui_index.active = false;
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -565,7 +640,6 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         }
                         _ => {}
                     }
-                    warn!("{:?}", button_info);
                     match insertion_serialized_object.0.object_type {
                         SerializedObjectType::StaticTile => {}
                         SerializedObjectType::Player { ref mut is_player } => {

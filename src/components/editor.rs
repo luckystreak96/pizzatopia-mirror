@@ -93,7 +93,7 @@ pub enum EditorButtonType {
 #[derivative(Default)]
 pub struct EditorButton {
     pub editor_button_type: EditorButtonType,
-    pub id: u32,
+    pub id: usize,
 }
 
 impl Component for EditorButton {
@@ -101,7 +101,7 @@ impl Component for EditorButton {
 }
 
 impl EditorButton {
-    pub(crate) fn new(editor_button_type: EditorButtonType, id: u32) -> EditorButton {
+    pub(crate) fn new(editor_button_type: EditorButtonType, id: usize) -> EditorButton {
         EditorButton {
             editor_button_type,
             id,
@@ -155,4 +155,11 @@ impl Default for EditorState {
     fn default() -> Self {
         EditorState::EditMode
     }
+}
+
+#[derive(Derivative, Copy, Clone)]
+#[derivative(Default)]
+pub struct UiIndex {
+    pub index: usize,
+    pub active: bool,
 }

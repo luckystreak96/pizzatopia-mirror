@@ -5,11 +5,11 @@ use amethyst::ecs::{
 use amethyst::input::{InputHandler, StringBindings};
 use amethyst::prelude::WorldExt;
 use derivative::Derivative;
-use log::warn;
+use log::{error, warn};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-#[derive(Derivative)]
+#[derive(Derivative, Debug)]
 #[derivative(Default)]
 struct InputStatistics {
     #[derivative(Default(value = "Instant::now()"))]
@@ -96,12 +96,17 @@ impl InputManager {
         if let Some(input) = self.statistics.get(action) {
             // 2 cases: the button was JUST pressed (elapsed = 0), or enough time passed
             let elapsed = input.press_length_millis.elapsed().as_millis();
+            if action == "horizontal" {
+                warn!("Elapsed: {:?}, Stats: {:?}", elapsed, input);
+            }
             if input.action_is_down
                 && (input.action_down_frame_count == 1
                     || (elapsed >= repeat_delay && self.frame_counter % repeat_every_x_frames == 0))
             {
                 return InputResult::new(input, self.modifier_keys_down.clone());
             }
+        } else {
+            error!("Action {} not registered!", action);
         }
         return InputResult::default();
     }
@@ -169,6 +174,7 @@ impl<'s> System<'s> for InputManagementSystem {
                     stats.time_since_last_press_millis = Instant::now();
                 }
                 stats.action_is_down = false;
+                stats.action_axis_value = 0.0;
                 stats.action_down_frame_count = 0;
             }
         }
