@@ -9,6 +9,7 @@ use crate::components::game::Health;
 use crate::components::game::Player;
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT};
+use crate::systems::input::InputManager;
 use crate::systems::physics::{
     gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
 };
@@ -19,7 +20,7 @@ pub struct PlayerInputSystem;
 impl<'s> System<'s> for PlayerInputSystem {
     type SystemData = (
         WriteStorage<'s, Velocity>,
-        Read<'s, InputHandler<StringBindings>>,
+        Read<'s, InputManager>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, Health>,
         ReadStorage<'s, Grounded>,
@@ -58,25 +59,22 @@ impl<'s> System<'s> for PlayerInputSystem {
             }
 
             // Do the move logic
-            if let Some(mv_amount) = v_move {
-                if mv_amount > 0.0 {
-                    if on_ground {
-                        let jump_velocity = 13.0;
-                        grav_vel.y += jump_velocity;
-                    }
-                }
-                // letting go of `up` will stop your jump
-                else if grav_vel.y > 0.0 {
-                    grav_vel.y *= 0.85;
-                }
-            }
-            if let Some(mv_amount) = h_move {
-                let mut scaled_amount = 0.30 * mv_amount as f32;
+            if v_move > 0.0 {
                 if on_ground {
-                    scaled_amount += (grav_vel.x * 0.025).abs() * mv_amount;
+                    let jump_velocity = 13.0;
+                    grav_vel.y += jump_velocity;
                 }
-                grav_vel.x += scaled_amount;
             }
+            // letting go of `up` will stop your jump
+            else if grav_vel.y > 0.0 {
+                grav_vel.y *= 0.85;
+            }
+
+            let mut scaled_amount = 0.30 * h_move as f32;
+            if on_ground {
+                scaled_amount += (grav_vel.x * 0.025).abs() * h_move;
+            }
+            grav_vel.x += scaled_amount;
 
             if let Some(grav) = gravity {
                 velocity.0 = gravitationally_adapted_velocity(&grav_vel, &grav);

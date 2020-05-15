@@ -17,7 +17,7 @@ use crate::level::Level;
 use crate::states::editor::Editor;
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
-use crate::systems::input::InputManagementSystem;
+use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
@@ -87,7 +87,6 @@ pub enum MyEvents {
 pub(crate) struct Pizzatopia<'a, 'b> {
     fps_display: Option<Entity>,
     dispatcher: Option<Dispatcher<'a, 'b>>,
-    time_start: Instant,
 }
 
 impl Default for Pizzatopia<'_, '_> {
@@ -95,7 +94,6 @@ impl Default for Pizzatopia<'_, '_> {
         Pizzatopia {
             fps_display: None,
             dispatcher: None,
-            time_start: Instant::now(),
         }
     }
 }
@@ -137,7 +135,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     }
 
     fn on_resume(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        self.time_start = Instant::now();
         Level::calculate_camera_limits(data.world);
     }
 
@@ -148,13 +145,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         let world = &mut data.world;
         if let MyEvents::Window(_) = &event {
-            let input = world.read_resource::<InputHandler<StringBindings>>();
-            if input.action_is_down("exit").unwrap_or(false) {
+            let input = world.read_resource::<InputManager>();
+            if input.is_action_down("exit") {
                 return Trans::Quit;
-            } else if input.action_is_down("editor").unwrap_or(false) {
-                if self.time_start.elapsed().as_millis() > 250 {
-                    return Trans::Push(Box::new(Editor::default()));
-                }
+            } else if input.is_action_single_press("editor") {
+                return Trans::Push(Box::new(Editor::default()));
             }
         }
 

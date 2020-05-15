@@ -335,90 +335,51 @@ impl<'s> System<'s> for CursorSizeSystem {
 }
 
 #[derive(SystemDesc)]
-pub struct EditorButtonEventSystem {
-    input_last_press: BTreeMap<String, (bool, Instant)>,
-}
-
-impl EditorButtonEventSystem {
-    fn update_input(&mut self, input: &InputHandler<StringBindings>) {
-        for action in input.bindings.actions() {
-            let elapsed = self.input_last_press.get(action).unwrap().1.elapsed();
-            if input.action_is_down(action).unwrap() && elapsed.as_millis() > 250 {
-                self.input_last_press
-                    .insert(action.clone(), (true, Instant::now()));
-            } else {
-                self.input_last_press.get_mut(action).unwrap().0 = false;
-            }
-        }
-    }
-
-    fn action_down(&self, action: &str) -> bool {
-        if let Some((pressed, _time)) = self.input_last_press.get(action) {
-            *pressed
-        } else {
-            false
-        }
-    }
-
-    pub(crate) fn new(world: &World) -> Self {
-        let mut input_last_press = BTreeMap::new();
-        for action in world
-            .read_resource::<InputHandler<StringBindings>>()
-            .bindings
-            .actions()
-        {
-            input_last_press.insert(action.clone(), (false, Instant::now()));
-        }
-
-        EditorButtonEventSystem { input_last_press }
-    }
-}
+pub struct EditorButtonEventSystem;
 
 impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
         ReadExpect<'s, EditorState>,
-        Read<'s, InputHandler<StringBindings>>,
+        Read<'s, InputManager>,
         Write<'s, EventChannel<EditorEvents>>,
     );
 
     fn run(&mut self, (state, input, mut editor_event_writer): Self::SystemData) {
-        self.update_input(&input);
-
-        if self.action_down("save") {
+        if input.is_action_single_press("save") {
             editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
         }
 
         match *state {
             EditorState::EditMode => {
                 // Controller input
-                if self.action_down("cancel") {
+                if input.is_action_single_press("cancel") {
                     editor_event_writer.single_write(EditorEvents::RemoveGameObject);
-                } else if self.action_down("accept") {
+                } else if input.is_action_single_press("accept") {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::EditGameObject));
-                } else if self.action_down("insert") {
+                } else if input.is_action_single_press("insert") {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::InsertMode));
                 }
             }
             EditorState::InsertMode => {
                 // Controller input
-                if self.action_down("cancel") {
+                if input.is_action_single_press("cancel") {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::EditMode));
-                } else if self.action_down("accept") {
+                } else if input.is_action_single_press("accept") {
                     editor_event_writer.single_write(EditorEvents::AddGameObject);
-                } else if self.action_down("1") {
+                } else if input.is_action_single_press("1") {
                     editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(0));
-                } else if self.action_down("2") {
+                } else if input.is_action_single_press("2") {
                     editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(1));
                 }
             }
             EditorState::EditGameObject => {
-                if self.action_down("cancel") {
+                if input.is_action_single_press("cancel") {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::EditMode));
-                } else if self.action_down("accept") {
+                } else if input.is_action_single_press("accept") {
                     editor_event_writer.single_write(EditorEvents::AddGameObject);
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::EditMode));

@@ -17,6 +17,7 @@ struct InputStatistics {
     press_length_millis: Instant,
     #[derivative(Default(value = "false"))]
     action_is_down: bool,
+    action_down_frame_count: u32,
     action_axis_value: f32,
 }
 
@@ -55,7 +56,7 @@ impl InputManager {
             }
             // 2 cases: the button was JUST pressed (elapsed = 0), or enough time passed
             let elapsed = input.press_length_millis.elapsed().as_millis();
-            if elapsed == 0
+            if input.action_down_frame_count == 1
                 || (elapsed >= repeat_delay && self.frame_counter % repeat_every_x_frames == 0)
             {
                 return true;
@@ -86,6 +87,10 @@ impl InputManager {
             return input.press_length_millis.elapsed().as_millis() >= cooldown_millis;
         }
         false
+    }
+
+    pub fn is_action_single_press(&self, action: &str) -> bool {
+        return self.is_valid_repeat_press(action, 5000, 5000);
     }
 
     pub fn is_action_down(&self, action: &str) -> bool {
@@ -133,11 +138,13 @@ impl<'s> System<'s> for InputManagementSystem {
                     stats.press_length_millis = Instant::now();
                 }
                 stats.action_is_down = true;
+                stats.action_down_frame_count += 1;
             } else {
                 if stats.action_is_down {
                     stats.time_since_last_press_millis = Instant::now();
                 }
                 stats.action_is_down = false;
+                stats.action_down_frame_count = 0;
             }
         }
     }

@@ -12,6 +12,7 @@ use log::{debug, error, info, warn};
 
 use crate::components::game::CollisionEvent;
 use crate::components::game::Player;
+use crate::systems::input::InputManager;
 use amethyst::{
     core::{
         bundle::SystemBundle,
@@ -230,7 +231,7 @@ impl<'s> System<'s> for ApplyGravitySystem {
         WriteStorage<'s, Velocity>,
         ReadStorage<'s, Grounded>,
         ReadStorage<'s, GravityDirection>,
-        Read<'s, InputHandler<StringBindings>>,
+        Read<'s, InputManager>,
     );
 
     fn run(&mut self, (mut velocities, grounded, gravities, input): Self::SystemData) {
@@ -248,20 +249,19 @@ impl<'s> System<'s> for ApplyGravitySystem {
             // Apply friction and slow down
             if let Some(ground) = grounded {
                 if ground.0 {
-                    if let Some(horizontal_movement) = input.axis_value("horizontal_move") {
-                        // Not moving or trying to move in opposite direction
-                        if horizontal_movement == 0.0 || horizontal_movement * grav_vel.x < 0.0 {
-                            if grav_vel.x.abs() <= 0.1 {
-                                grav_vel.x = 0.0;
-                            } else {
-                                // Slow in opposite direction
-                                grav_vel.x *= FRICTION;
-                            }
-                            velocity.0 = gravitationally_adapted_velocity(
-                                &grav_vel,
-                                &GravityDirection(grav_dir),
-                            );
+                    let horizontal_movement = input.axis_value("horizontal_move");
+                    // Not moving or trying to move in opposite direction
+                    if horizontal_movement == 0.0 || horizontal_movement * grav_vel.x < 0.0 {
+                        if grav_vel.x.abs() <= 0.1 {
+                            grav_vel.x = 0.0;
+                        } else {
+                            // Slow in opposite direction
+                            grav_vel.x *= FRICTION;
                         }
+                        velocity.0 = gravitationally_adapted_velocity(
+                            &grav_vel,
+                            &GravityDirection(grav_dir),
+                        );
                     }
                 }
             }

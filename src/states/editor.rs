@@ -25,7 +25,7 @@ use crate::systems::editor::{
 use crate::systems::graphics::{
     CursorColorUpdateSystem, CursorSpriteUpdateSystem, PulseAnimationSystem,
 };
-use crate::systems::input::InputManagementSystem;
+use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::math::Vector3;
@@ -82,7 +82,6 @@ pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
 pub(crate) struct Editor<'a, 'b> {
     test_text: Option<Entity>,
     dispatcher: Option<Dispatcher<'a, 'b>>,
-    time_start: Instant,
     prev_camera_target: CameraTarget,
 }
 
@@ -91,7 +90,6 @@ impl Default for Editor<'_, '_> {
         Editor {
             test_text: None,
             dispatcher: None,
-            time_start: Instant::now(),
             prev_camera_target: CameraTarget::default(),
         }
     }
@@ -118,8 +116,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         self.prev_camera_target = self.change_camera_target(data.world, CameraTarget::Cursor);
 
         // data.world.insert(EventChannel::<EditorEvents>::new());
-
-        self.time_start = Instant::now();
 
         Self::initialize_cursor(data.world);
 
@@ -163,13 +159,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         if let MyEvents::Window(_) = &event {
-            let input = data.world.read_resource::<InputHandler<StringBindings>>();
-            if input.action_is_down("exit").unwrap_or(false) {
+            let input = data.world.read_resource::<InputManager>();
+            if input.is_action_down("exit") {
                 return Trans::Quit;
-            } else if input.action_is_down("editor").unwrap_or(false) {
-                if self.time_start.elapsed().as_millis() > 250 {
-                    return Trans::Pop;
-                }
+            } else if input.is_action_single_press("editor") {
+                return Trans::Pop;
             }
         }
 
@@ -283,7 +277,7 @@ impl<'a, 'b> Editor<'a, 'b> {
             &["cursor_state_system"],
         );
         dispatcher_builder.add(
-            EditorButtonEventSystem::new(world),
+            EditorButtonEventSystem,
             "editor_button_event_system",
             &["cursor_state_system"],
         );
