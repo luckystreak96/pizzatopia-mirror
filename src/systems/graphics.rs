@@ -1,5 +1,6 @@
 use crate::components::editor::{
-    EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
+    EditorCursor, EditorCursorState, EditorFieldUiComponents, EditorState, InsertionGameObject,
+    UiIndex,
 };
 use crate::components::game::Health;
 use crate::components::game::{SerializedObjectType, SpriteRenderData};
@@ -10,6 +11,7 @@ use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Vel
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
 use amethyst::assets::{AssetStorage, Handle};
+use amethyst::ui::UiText;
 use amethyst::core::math::Vector3;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
@@ -133,6 +135,28 @@ impl<'s> System<'s> for CursorColorUpdateSystem {
                 }
                 EditorCursorState::Error => {
                     tint.0 = Srgba::new(1.0, 0.0, 0.0, 0.85).into();
+                }
+            }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct UiColorUpdateSystem;
+
+impl<'s> System<'s> for UiColorUpdateSystem {
+    type SystemData = (Read<'s, EditorFieldUiComponents>, Read<'s, UiIndex>, WriteStorage<'s, UiText>);
+
+    fn run(&mut self, (ui, ui_index, mut ui_texts): Self::SystemData) {
+        for i in 0..ui.labels.len() {
+            let color = match i == ui_index.index && ui_index.active {
+                true => [1., 0., 0., 1.],
+                false => [0.75, 0.75, 0.75, 0.75],
+            };
+            let entities = [ui.labels[i], ui.left_arrows[i], ui.right_arrows[i]];
+            for entity in entities.iter() {
+                if let Some(ui_text) = ui_texts.get_mut(*entity) {
+                    ui_text.color = color;
                 }
             }
         }

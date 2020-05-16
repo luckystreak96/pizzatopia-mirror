@@ -179,6 +179,17 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                             .single_write(EditorEvents::UiClick(button_info.clone()));
                     }
                 }
+                UiEventType::HoverStart => {
+                    data.world.write_resource::<UiIndex>().active = true;
+                    if let Some(button_info) =
+                    data.world.read_storage::<EditorButton>().get(event.target)
+                    {
+                        data.world.write_resource::<UiIndex>().index = button_info.id;
+                    }
+                }
+                UiEventType::HoverStop => {
+                    data.world.write_resource::<UiIndex>().active = false;
+                }
                 _ => {}
             }
         }
@@ -289,6 +300,11 @@ impl<'a, 'b> Editor<'a, 'b> {
         );
 
         // Graphics
+        dispatcher_builder.add(
+            systems::graphics::UiColorUpdateSystem,
+            "ui_color_update_system",
+            &["editor_event_handling_system"],
+        );
         dispatcher_builder.add(
             systems::graphics::ScaleDrawUpdateSystem,
             "scale_draw_update_system",

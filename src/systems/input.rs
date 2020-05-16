@@ -18,7 +18,7 @@ struct InputStatistics {
     press_length_millis: Instant,
     #[derivative(Default(value = "false"))]
     action_is_down: bool,
-    action_down_frame_count: u32,
+    same_action_frame_count: u32,
     action_axis_value: f32,
 }
 
@@ -100,7 +100,7 @@ impl InputManager {
                 warn!("Elapsed: {:?}, Stats: {:?}", elapsed, input);
             }
             if input.action_is_down
-                && (input.action_down_frame_count == 1
+                && (input.same_action_frame_count == 1
                     || (elapsed >= repeat_delay && self.frame_counter % repeat_every_x_frames == 0))
             {
                 return InputResult::new(input, self.modifier_keys_down.clone());
@@ -124,6 +124,15 @@ impl InputManager {
 
     pub fn action_single_press(&self, action: &str) -> InputResult {
         return self.is_valid_repeat_press(action, 5000, 5000);
+    }
+
+    pub fn action_just_released(&self, action: &str) -> bool {
+        if let Some(stats) = self.statistics.get(action) {
+            if stats.same_action_frame_count == 1 && !stats.action_is_down {
+                return true;
+            }
+        }
+        return false;
     }
 
     pub fn action_status(&self, action: &str) -> InputResult {
@@ -163,19 +172,21 @@ impl<'s> System<'s> for InputManagementSystem {
             if action_is_down {
                 if !stats.action_is_down {
                     stats.press_length_millis = Instant::now();
+                    stats.same_action_frame_count = 0;
                 }
+                stats.same_action_frame_count += 1;
                 stats.action_is_down = true;
-                stats.action_down_frame_count += 1;
                 if action.contains("modifier") {
                     input_manager.modifier_keys_down.push(action.clone());
                 }
             } else {
                 if stats.action_is_down {
                     stats.time_since_last_press_millis = Instant::now();
+                    stats.same_action_frame_count = 0;
                 }
                 stats.action_is_down = false;
                 stats.action_axis_value = 0.0;
-                stats.action_down_frame_count = 0;
+                stats.same_action_frame_count += 1;
             }
         }
     }

@@ -464,7 +464,7 @@ impl<'s> System<'s> for EditorButtonEventSystem {
                         }
                         _ => {}
                     }
-                } else {
+                } else if input.action_just_released("modifier1") {
                     ui_index.active = false;
                 }
             }
@@ -494,6 +494,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         Write<'s, EventChannel<Events>>,
         Write<'s, EditorState>,
         Write<'s, InsertionGameObject>,
+        Write<'s, UiIndex>,
         ReadStorage<'s, EditorCursor>,
         WriteStorage<'s, Position>,
         WriteStorage<'s, CursorWasInThisEntity>,
@@ -507,6 +508,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
             mut world_events_channel,
             mut editor_state,
             mut insertion_serialized_object,
+            mut ui_index,
             cursors,
             mut positions,
             previous_block,
@@ -591,6 +593,8 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                     }
                 }
                 EditorEvents::UiClick(button_info) => {
+                    ui_index.index = button_info.id;
+                    ui_index.active = true;
                     let start_id = 4;
                     match button_info.id {
                         0..=1 => {
