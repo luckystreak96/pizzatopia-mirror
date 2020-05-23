@@ -170,7 +170,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         }
 
         if let MyEvents::Ui(event) = &event {
-            data.world.write_resource::<UiStack>().top().handle_ui_events(data.world, event.clone());
+            data.world.write_resource::<UiStack>().handle_ui_events(data.world, event);
         }
 
         if let MyEvents::App(event) = &event {

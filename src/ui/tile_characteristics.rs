@@ -25,6 +25,7 @@ pub struct EditorFieldUiComponents {
     pub left_arrows: Vec<Entity>,
     pub right_arrows: Vec<Entity>,
     ui_index: UiIndex,
+    font_handle: Option<Handle<FontAsset>>,
 }
 
 impl UiComponent for EditorFieldUiComponents {
@@ -61,6 +62,14 @@ impl UiComponent for EditorFieldUiComponents {
                 self.ui_index.active = false;
             }
             _ => {}
+        }
+    }
+
+    fn should_capture_input(&self, world: &World) -> bool {
+        let state = world.read_resource::<EditorState>();
+        match *state {
+            EditorState::EditGameObject | EditorState::InsertMode => true,
+            EditorState::EditMode => false,
         }
     }
 }
@@ -137,6 +146,7 @@ impl EditorFieldUiComponents {
         let arrow_width = arrow_font_size * 2.0;
 
         let mut result: EditorFieldUiComponents = EditorFieldUiComponents::default();
+        result.font_handle = Some(font.clone());
         for i in 0..10 {
             let y = -50. + -50. * i as f32;
             let height = 25.0;
