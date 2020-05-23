@@ -157,7 +157,7 @@ impl InputManagementSystem {
                 .get(*key)
                 .unwrap_or(&InputStatistics::default())
                 .clone();
-            if let Some(mut value_stats) = input.statistics.get_mut(*value) {
+            if let Some(value_stats) = input.statistics.get_mut(*value) {
                 if key_stats.action_is_down {
                     *value_stats = key_stats.clone();
                 }
@@ -199,7 +199,7 @@ impl<'s> System<'s> for InputManagementSystem {
                 if action.contains("modifier") {
                     for (key, value) in EQUIVALENCES {
                         if key == action {
-                            input_manager.modifier_keys_down.push(String::from((*value)));
+                            input_manager.modifier_keys_down.push(String::from(*value));
                         }
                     }
                     input_manager.modifier_keys_down.push(action.clone());

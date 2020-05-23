@@ -44,8 +44,11 @@ impl<'s> System<'s> for PlayerInputSystem {
                 continue;
             }
             // Controller input
-            let v_move = input.action_status("vertical_move").axis;
-            let h_move = input.action_status("horizontal_move").axis;
+            let h_move = input.action_status("horizontal").axis;
+            let jump = match input.action_status("accept").is_down {
+                true => 1.0,
+                false => 0.0,
+            };
 
             // Get the grounded status to use auto-complete :)
             let ground: Option<&Grounded> = ground;
@@ -59,7 +62,7 @@ impl<'s> System<'s> for PlayerInputSystem {
             }
 
             // Do the move logic
-            if v_move > 0.0 {
+            if jump > 0.0 {
                 if on_ground {
                     let jump_velocity = 13.0;
                     grav_vel.y += jump_velocity;

@@ -1,4 +1,3 @@
-use crate::components::editor::EditorButtonType;
 use crate::components::graphics::SpriteSheetType;
 use crate::components::physics::{Position, Velocity};
 use crate::states::editor::EDITOR_GRID_SIZE;

@@ -40,6 +40,7 @@ mod events;
 mod level;
 mod states;
 mod systems;
+mod ui;
 mod utils;
 use crate::audio::initialise_audio;
 use crate::bundles::{GameLogicBundle, GraphicsBundle};

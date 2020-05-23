@@ -1,7 +1,7 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorFieldUiComponents,
-    EditorFlag, EditorState, InsertionGameObject, RealCursorPosition, SizeForEditorGrid, UiIndex,
+    CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject,
+    RealCursorPosition, SizeForEditorGrid,
 };
 use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
 use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
@@ -27,6 +27,8 @@ use crate::systems::graphics::{
 };
 use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
+use crate::ui::tile_characteristics::{EditorFieldUiComponents, UiIndex};
+use crate::ui::{UiComponent, UiStack};
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::math::Vector3;
 use amethyst::{
@@ -108,6 +110,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         }
         data.world.insert(EditorState::EditMode);
         data.world.insert(UiIndex::default());
+        let mut ui_stack = UiStack::default();
+        ui_stack
+            .stack
+            .push(Box::new(EditorFieldUiComponents::new(data.world)));
+        data.world.insert(ui_stack);
 
         // setup dispatcher
         let mut dispatcher = Editor::create_dispatcher(data.world);
@@ -122,7 +129,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         Self::set_instance_entities_transparency(data.world, 0.5);
         Self::set_editor_entities_hidden_flag(data.world, false);
-        self.initialize_ui(data.world);
     }
 
     fn on_stop(&mut self, data: StateData<'_, GameData<'s, 's>>) {
@@ -132,7 +138,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         self.change_camera_target(data.world, self.prev_camera_target);
 
         // Clean up cursor
-        let mut to_remove = Vec::new();
+        let mut to_remove: Vec<Entity> = Vec::new();
         for (entity, _) in (
             &data.world.entities(),
             &data.world.read_storage::<EditorCursor>(),
@@ -141,13 +147,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         {
             to_remove.push(entity);
         }
-        for (entity, _) in (
-            &data.world.entities(),
-            &data.world.read_storage::<EditorButton>(),
-        )
-            .join()
-        {
-            to_remove.push(entity);
+        for ui_component in data.world.read_resource::<UiStack>().stack.iter() {
+            to_remove = ui_component.entities_to_remove(to_remove);
         }
         data.world
             .delete_entities(to_remove.as_slice())
@@ -169,29 +170,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         }
 
         if let MyEvents::Ui(event) = &event {
-            match &event.event_type {
-                UiEventType::Click => {
-                    if let Some(button_info) =
-                        data.world.read_storage::<EditorButton>().get(event.target)
-                    {
-                        data.world
-                            .write_resource::<EventChannel<EditorEvents>>()
-                            .single_write(EditorEvents::UiClick(button_info.clone()));
-                    }
-                }
-                UiEventType::HoverStart => {
-                    data.world.write_resource::<UiIndex>().active = true;
-                    if let Some(button_info) =
-                    data.world.read_storage::<EditorButton>().get(event.target)
-                    {
-                        data.world.write_resource::<UiIndex>().index = button_info.id;
-                    }
-                }
-                UiEventType::HoverStop => {
-                    data.world.write_resource::<UiIndex>().active = false;
-                }
-                _ => {}
-            }
+            data.world.write_resource::<UiStack>().top().handle_ui_events(data.world, event.clone());
         }
 
         if let MyEvents::App(event) = &event {
@@ -255,7 +234,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         if let Some(dispatcher) = self.dispatcher.as_mut() {
             dispatcher.dispatch(&data.world);
         }
-        Self::update_ui(data.world);
+        for ui in &mut data.world.write_resource::<UiStack>().stack {
+            ui.update(data.world);
+        }
 
         Trans::None
     }
@@ -300,11 +281,6 @@ impl<'a, 'b> Editor<'a, 'b> {
         );
 
         // Graphics
-        dispatcher_builder.add(
-            systems::graphics::UiColorUpdateSystem,
-            "ui_color_update_system",
-            &["editor_event_handling_system"],
-        );
         dispatcher_builder.add(
             systems::graphics::ScaleDrawUpdateSystem,
             "scale_draw_update_system",
@@ -447,162 +423,5 @@ impl<'a, 'b> Editor<'a, 'b> {
             .with(pos.clone())
             .with(Transparent)
             .build();
-    }
-
-    fn update_ui(world: &mut World) {
-        let state = (*world.read_resource::<EditorState>()).clone();
-        match state {
-            EditorState::EditMode => {
-                let mut ui = world.write_resource::<EditorFieldUiComponents>();
-                ui.hide_components(world, 0, 9);
-            }
-            EditorState::EditGameObject | EditorState::InsertMode => {
-                Self::update_ui_text_general_properties(world);
-                Self::update_ui_text_object_specific_properties(world);
-            }
-        }
-    }
-
-    fn update_ui_text_object_specific_properties(world: &mut World) {
-        let insertion = *world.read_resource::<InsertionGameObject>().clone();
-        let mut ui = world.write_resource::<EditorFieldUiComponents>();
-        let mut ui_text_storage = world.write_storage::<UiText>();
-        ui.show_components(world, 0, 9);
-        let mut counter = 4;
-
-        // Object-specific properties
-        match insertion.0.object_type {
-            SerializedObjectType::StaticTile => {}
-            SerializedObjectType::Player { is_player } => {
-                if let Some(text) = ui_text_storage.get_mut(ui.labels[counter]) {
-                    text.text = format!("Player-controlled: {}", is_player.0);
-                    counter += 1;
-                }
-            }
-        }
-        ui.hide_components(world, counter, 9);
-        let index = world.read_resource::<UiIndex>().index;
-        world.write_resource::<UiIndex>().index = index.clamp(0, counter - 1);
-    }
-
-    fn update_ui_text_general_properties(world: &mut World) {
-        let insertion = world.read_resource::<InsertionGameObject>();
-        let ui = world.write_resource::<EditorFieldUiComponents>();
-        let mut ui_text_storage = world.write_storage::<UiText>();
-        if let Some(text) = ui_text_storage.get_mut(ui.labels[0]) {
-            if let Some(size) = insertion.0.size {
-                text.text = format!("Width: {:?}", size.x / TILE_HEIGHT);
-            }
-        }
-        if let Some(text) = ui_text_storage.get_mut(ui.labels[1]) {
-            if let Some(size) = insertion.0.size {
-                text.text = format!("Height: {:?}", size.y / TILE_HEIGHT);
-            }
-        }
-        if let Some(text) = ui_text_storage.get_mut(ui.labels[2]) {
-            if let Some(sprite) = insertion.0.sprite {
-                text.text = format!("Sprite sheet: {:?}", sprite.sheet);
-            }
-        }
-        if let Some(text) = ui_text_storage.get_mut(ui.labels[3]) {
-            if let Some(sprite) = insertion.0.sprite {
-                text.text = format!("Sprite number: {}", sprite.number);
-            }
-        }
-    }
-
-    fn initialize_ui(&mut self, world: &mut World) {
-        let font: Handle<FontAsset> = world.read_resource::<Loader>().load(
-            "font/LibreBaskerville-Bold.ttf",
-            TtfFormat,
-            (),
-            &world.read_resource(),
-        );
-
-        let width = 200.0;
-        let font_size = 18.;
-        let arrow_font_size = font_size * 1.5;
-        let arrow_width = arrow_font_size * 2.0;
-
-        let mut result: EditorFieldUiComponents = EditorFieldUiComponents::default();
-        for i in 0..10 {
-            let y = -50. + -50. * i as f32;
-            let height = 25.0;
-
-            // Label
-            let x = width / 2.0 + arrow_width;
-            let transform =
-                Self::create_ui_transform(String::from("Label"), x, y, width, height, i);
-            let text = Self::create_ui_text(String::from("DEFAULT TEXT"), font_size, &font);
-            let entity = Self::create_ui_entity(world, i, transform, text, EditorButtonType::Label);
-            result.labels.push(entity);
-
-            // Right Arrow
-            let x = width + arrow_width * 1.5;
-            let transform =
-                Self::create_ui_transform(String::from("ArrowR"), x, y, arrow_width, height, i);
-            let text = Self::create_ui_text(String::from(">>"), arrow_font_size, &font);
-            let entity =
-                Self::create_ui_entity(world, i, transform, text, EditorButtonType::RightArrow);
-            result.right_arrows.push(entity);
-
-            // Left Arrow
-            let x = font_size;
-            let transform =
-                Self::create_ui_transform(String::from("ArrowL"), x, y, arrow_width, height, i);
-            let text = Self::create_ui_text(String::from("<<"), arrow_font_size, &font);
-            let entity =
-                Self::create_ui_entity(world, i, transform, text, EditorButtonType::LeftArrow);
-            result.left_arrows.push(entity);
-        }
-        world.insert(result);
-    }
-
-    fn create_ui_text(text: String, font_size: f32, font: &Handle<FontAsset>) -> UiText {
-        let text = UiText::new(
-            font.clone(),
-            format!("{}", text).to_string(),
-            [1., 1., 1., 1.],
-            font_size,
-        );
-        text
-    }
-
-    fn create_ui_transform(
-        id: String,
-        x: f32,
-        y: f32,
-        width: f32,
-        height: f32,
-        i: usize,
-    ) -> UiTransform {
-        let transform = UiTransform::new(
-            format!("{}{}", id, i).to_string(),
-            Anchor::TopLeft,
-            Anchor::Middle,
-            x,
-            y,
-            1.,
-            width,
-            height,
-        );
-        transform
-    }
-
-    fn create_ui_entity(
-        world: &mut World,
-        i: usize,
-        transform: UiTransform,
-        text: UiText,
-        editor_button_type: EditorButtonType,
-    ) -> Entity {
-        let entity = world
-            .create_entity()
-            .with(transform)
-            .with(text)
-            .with(EditorButton::new(editor_button_type, i))
-            .with(HiddenPropagate::new())
-            .build();
-        entity
     }
 }

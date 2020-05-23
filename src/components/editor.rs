@@ -25,88 +25,12 @@ pub enum EditorCursorState {
 
 #[derive(Derivative)]
 #[derivative(Default)]
-pub struct EditorFieldUiComponents {
-    pub labels: Vec<Entity>,
-    pub left_arrows: Vec<Entity>,
-    pub right_arrows: Vec<Entity>,
-}
-
-impl EditorFieldUiComponents {
-    pub fn hide_components(&mut self, world: &World, first: usize, last: usize) {
-        for i in first..=last {
-            let comp = self.labels[i];
-            world
-                .write_storage::<HiddenPropagate>()
-                .insert(comp.clone(), HiddenPropagate::new())
-                .unwrap();
-            let comp = self.left_arrows[i];
-            world
-                .write_storage::<HiddenPropagate>()
-                .insert(comp.clone(), HiddenPropagate::new())
-                .unwrap();
-            let comp = self.right_arrows[i];
-            world
-                .write_storage::<HiddenPropagate>()
-                .insert(comp.clone(), HiddenPropagate::new())
-                .unwrap();
-        }
-    }
-
-    pub fn show_components(&mut self, world: &World, first: usize, last: usize) {
-        for i in first..=last {
-            let comp = self.labels[i];
-            world
-                .write_storage::<HiddenPropagate>()
-                .remove(comp.clone());
-            let comp = self.left_arrows[i];
-            world
-                .write_storage::<HiddenPropagate>()
-                .remove(comp.clone());
-            let comp = self.right_arrows[i];
-            world
-                .write_storage::<HiddenPropagate>()
-                .remove(comp.clone());
-        }
-    }
-}
-
-#[derive(Derivative)]
-#[derivative(Default)]
 pub struct EditorCursor {
     pub state: EditorCursorState,
 }
 
 impl Component for EditorCursor {
     type Storage = DenseVecStorage<Self>;
-}
-
-#[derive(Derivative, Clone, Copy, Debug)]
-#[derivative(Default)]
-pub enum EditorButtonType {
-    #[derivative(Default)]
-    Label,
-    RightArrow,
-    LeftArrow,
-}
-
-#[derive(Derivative, Copy, Clone, Debug)]
-#[derivative(Default)]
-pub struct EditorButton {
-    pub editor_button_type: EditorButtonType,
-    pub id: usize,
-}
-
-impl Component for EditorButton {
-    type Storage = DenseVecStorage<Self>;
-}
-
-impl EditorButton {
-    pub(crate) fn new(editor_button_type: EditorButtonType, id: usize) -> EditorButton {
-        EditorButton {
-            editor_button_type,
-            id,
-        }
-    }
 }
 
 // Represents the cursor's position as a dot in the middle of the smallest grid unit it is truly in
@@ -155,11 +79,4 @@ impl Default for EditorState {
     fn default() -> Self {
         EditorState::EditMode
     }
-}
-
-#[derive(Derivative, Copy, Clone)]
-#[derivative(Default)]
-pub struct UiIndex {
-    pub index: usize,
-    pub active: bool,
 }

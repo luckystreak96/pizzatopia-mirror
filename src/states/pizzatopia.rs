@@ -1,6 +1,6 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
-use crate::components::editor::{EditorButton, EditorFlag, InstanceEntityId, SizeForEditorGrid};
+use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
 use crate::components::game::{
     CameraTarget, CollisionEvent, Health, Invincibility, SerializedObject, SerializedObjectType,
     Tile,
@@ -19,6 +19,7 @@ use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
 use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
+use crate::ui::tile_characteristics::EditorButton;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
     assets::{

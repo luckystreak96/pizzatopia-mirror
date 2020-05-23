@@ -10,9 +10,8 @@ use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLi
 use amethyst::renderer::palette::Srgba;
 
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorButton, EditorButtonType, EditorCursor, EditorCursorState,
-    EditorState, InsertionGameObject, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
-    UiIndex,
+    CursorWasInThisEntity, EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
+    InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
 };
 use crate::components::game::{Health, SerializedObjectType};
 use crate::components::game::{Player, SerializedObject};
@@ -26,6 +25,7 @@ use crate::systems::input::{InputManager, REPEAT_DELAY};
 use crate::systems::physics::{
     gravitationally_adapted_velocity, gravitationally_de_adapted_velocity, ActorCollisionSystem,
 };
+use crate::ui::tile_characteristics::{EditorButton, EditorButtonType, UiIndex};
 use crate::utils::{Vec2, Vec3};
 use amethyst::assets::Handle;
 use amethyst::ecs::prelude::ReadExpect;
@@ -137,14 +137,20 @@ impl<'s> System<'s> for CursorPositionSystem {
             cursor_position = cursor_pos.0.clone();
         }
 
-        let vertical_move = input
-            .is_valid_repeat_press("vertical_move", REPEAT_DELAY, 2)
+        let mut vertical_move = input
+            .is_valid_repeat_press("vertical", REPEAT_DELAY, 2)
             .excluding_modifiers(EDITOR_MODIFIERS_ALL)
             .axis;
-        let horizontal_move = input
-            .is_valid_repeat_press("horizontal_move", REPEAT_DELAY, 2)
+        let mut horizontal_move = input
+            .is_valid_repeat_press("horizontal", REPEAT_DELAY, 2)
             .excluding_modifiers(EDITOR_MODIFIERS_ALL)
             .axis;
+        if !vertical_move.is_zero() {
+            vertical_move = vertical_move / vertical_move.abs();
+        }
+        if !horizontal_move.is_zero() {
+            horizontal_move = horizontal_move / horizontal_move.abs();
+        }
 
         let cursor_is_moving = horizontal_move != 0.0 || vertical_move != 0.0;
         let mut new_cursor_display_pos;
@@ -351,11 +357,10 @@ impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
         ReadExpect<'s, EditorState>,
         Read<'s, InputManager>,
-        Write<'s, UiIndex>,
         Write<'s, EventChannel<EditorEvents>>,
     );
 
-    fn run(&mut self, (state, input, mut ui_index, mut editor_event_writer): Self::SystemData) {
+    fn run(&mut self, (state, input, mut editor_event_writer): Self::SystemData) {
         if input.action_single_press("save").is_down {
             editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
         }
@@ -433,43 +438,6 @@ impl<'s> System<'s> for EditorButtonEventSystem {
                 }
             }
         }
-        match *state {
-            EditorState::EditGameObject | EditorState::InsertMode => {
-                let horizontal = input
-                    .action_single_press("horizontal_move")
-                    .including_modifiers(EDITOR_MODIFIERS_UI)
-                    .axis;
-                let vertical = input
-                    .action_single_press("vertical_move")
-                    .including_modifiers(EDITOR_MODIFIERS_UI)
-                    .axis;
-                if input.action_status("modifier1").is_down {
-                    ui_index.active = true;
-                    if vertical > 0.0 && ui_index.index > 0 {
-                        ui_index.index -= 1;
-                    } else if vertical < 0.0 {
-                        ui_index.index += 1;
-                    }
-
-                    let mut arrow_direction = EditorButtonType::Label;
-                    if horizontal > 0.0 {
-                        arrow_direction = EditorButtonType::RightArrow;
-                    } else if horizontal < 0.0 {
-                        arrow_direction = EditorButtonType::LeftArrow;
-                    }
-                    match arrow_direction {
-                        EditorButtonType::RightArrow | EditorButtonType::LeftArrow => {
-                            let button_action = EditorButton::new(arrow_direction, ui_index.index);
-                            editor_event_writer.single_write(EditorEvents::UiClick(button_action));
-                        }
-                        _ => {}
-                    }
-                } else if input.action_just_released("modifier1") {
-                    ui_index.active = false;
-                }
-            }
-            _ => {}
-        }
     }
 }
 
@@ -494,11 +462,9 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         Write<'s, EventChannel<Events>>,
         Write<'s, EditorState>,
         Write<'s, InsertionGameObject>,
-        Write<'s, UiIndex>,
         ReadStorage<'s, EditorCursor>,
         WriteStorage<'s, Position>,
         WriteStorage<'s, CursorWasInThisEntity>,
-        Entities<'s>,
     );
 
     fn run(
@@ -508,11 +474,9 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
             mut world_events_channel,
             mut editor_state,
             mut insertion_serialized_object,
-            mut ui_index,
             cursors,
             mut positions,
             previous_block,
-            entities,
         ): Self::SystemData,
     ) {
         // If an event in the queue gets cancelled, interrupt events that go after it
@@ -592,72 +556,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         *editor_state = new_state.clone();
                     }
                 }
-                EditorEvents::UiClick(button_info) => {
-                    ui_index.index = button_info.id;
-                    ui_index.active = true;
-                    let start_id = 4;
-                    match button_info.id {
-                        0..=1 => {
-                            let is_x_axis = button_info.id == 0;
-                            for (pos, _, _) in (&mut positions, &entities, &cursors).join() {
-                                let mut position = pos.0.to_vec2();
-                                match button_info.editor_button_type {
-                                    EditorButtonType::RightArrow => {
-                                        insertion_serialized_object
-                                            .0
-                                            .next_size(&mut position, is_x_axis);
-                                    }
-                                    EditorButtonType::LeftArrow => {
-                                        insertion_serialized_object
-                                            .0
-                                            .prev_size(&mut position, is_x_axis);
-                                    }
-                                    EditorButtonType::Label => {}
-                                }
-                                pos.0.x = position.x;
-                                pos.0.y = position.y;
-                            }
-                        }
-                        2 => {
-                            if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
-                                sprite.sheet = match button_info.editor_button_type {
-                                    EditorButtonType::Label => sprite.sheet,
-                                    EditorButtonType::RightArrow => sprite.sheet.next(),
-                                    EditorButtonType::LeftArrow => sprite.sheet.prev(),
-                                };
-                            }
-                        }
-                        3 => {
-                            if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
-                                sprite.number = match button_info.editor_button_type {
-                                    EditorButtonType::Label => sprite.number,
-                                    EditorButtonType::RightArrow => sprite.number + 1,
-                                    EditorButtonType::LeftArrow => {
-                                        if !sprite.number.is_zero() {
-                                            sprite.number - 1
-                                        } else {
-                                            sprite.number
-                                        }
-                                    }
-                                };
-                            }
-                        }
-                        _ => {}
-                    }
-                    match insertion_serialized_object.0.object_type {
-                        SerializedObjectType::StaticTile => {}
-                        SerializedObjectType::Player { ref mut is_player } => {
-                            if button_info.id == start_id {
-                                match button_info.editor_button_type {
-                                    EditorButtonType::Label => {}
-                                    EditorButtonType::RightArrow | EditorButtonType::LeftArrow => {
-                                        is_player.0 = !is_player.0;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                EditorEvents::UiClick(_) => {}
             };
         }
     }
