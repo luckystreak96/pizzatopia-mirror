@@ -1,7 +1,10 @@
 (
   axes: {
-    "vertical_move": Emulated(pos: Key(Up), neg: Key(Down)),
-    "horizontal_move": Emulated(pos: Key(Right), neg: Key(Left)),
+    "vertical": Emulated(pos: Key(Up), neg: Key(Down)),
+    "horizontal": Emulated(pos: Key(Right), neg: Key(Left)),
+    "vertical_controller": Controller(controller_id: 0, axis: LeftY, invert: true, dead_zone: 0.3),
+    "horizontal_controller": Controller(controller_id: 0, axis: LeftX, invert: false, dead_zone: 0.3),
+    "modifier1_controller": Controller(controller_id: 0, axis: LeftTrigger, invert: false, dead_zone: 0.3),
   },
   actions: {
     "exit": [[Key(Escape)]],
@@ -9,10 +12,10 @@
     "reset": [[Key(Home)]],
     "save": [[Key(Insert)]],
     "revive": [[Key(PageUp)]],
-    "editor": [[Key(LControl)]],
-    "insert": [[Key(A)]],
-    "cancel": [[Key(Z)]],
-    "accept": [[Key(X)]],
+    "editor": [[Key(LControl)], [Controller(0, Back)]],
+    "insert": [[Key(A)], [Controller(0, LeftShoulder)]],
+    "cancel": [[Key(Z)], [Controller(0, B)]],
+    "accept": [[Key(X)], [Controller(0, A)]],
     "1": [[Key(Key1)]],
     "2": [[Key(Key2)]],
     "modifier1": [[Key(LShift)]],

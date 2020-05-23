@@ -3,6 +3,7 @@ name = "pizzatopia"
 version = "0.0.1"
 authors = []
 edition = "2018"
+build = "build.rs"
 
 [dependencies]
 amethyst = "0.15"
@@ -14,7 +15,6 @@ ron = "0.5.1"
 num-traits = "0.1.43"
 
 [features]
-default = ["vulkan"]
-vulkan = ["amethyst/vulkan"]
-metal = ["amethyst/metal"]
-profiler = ["amethyst/profiler"]
+ default = ["vulkan", "sdl_controller"]
+ vulkan = ["amethyst/vulkan"]
+ sdl_controller = ["amethyst/sdl_controller"]

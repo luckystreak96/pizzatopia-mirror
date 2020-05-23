@@ -9,7 +9,7 @@ use log::{error, warn};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-#[derive(Derivative, Debug)]
+#[derive(Derivative, Debug, Clone)]
 #[derivative(Default)]
 struct InputStatistics {
     #[derivative(Default(value = "Instant::now()"))]
@@ -22,7 +22,7 @@ struct InputStatistics {
     action_axis_value: f32,
 }
 
-#[derive(Derivative)]
+#[derive(Derivative, Clone)]
 #[derivative(Default)]
 pub struct InputResult {
     pub is_down: bool,
@@ -96,9 +96,6 @@ impl InputManager {
         if let Some(input) = self.statistics.get(action) {
             // 2 cases: the button was JUST pressed (elapsed = 0), or enough time passed
             let elapsed = input.press_length_millis.elapsed().as_millis();
-            if action == "horizontal" {
-                warn!("Elapsed: {:?}, Stats: {:?}", elapsed, input);
-            }
             if input.action_is_down
                 && (input.same_action_frame_count == 1
                     || (elapsed >= repeat_delay && self.frame_counter % repeat_every_x_frames == 0))
@@ -146,6 +143,29 @@ impl InputManager {
 #[derive(SystemDesc)]
 pub struct InputManagementSystem;
 
+const EQUIVALENCES: &[(&str, &str)] = &[
+    ("vertical_controller", "vertical"),
+    ("horizontal_controller", "horizontal"),
+    ("modifier1_controller", "modifier1"),
+];
+
+impl InputManagementSystem {
+    fn update_equivalences(&mut self, input: &mut InputManager) {
+        for (key, value) in EQUIVALENCES {
+            let key_stats = input
+                .statistics
+                .get(*key)
+                .unwrap_or(&InputStatistics::default())
+                .clone();
+            if let Some(mut value_stats) = input.statistics.get_mut(*value) {
+                if key_stats.action_is_down {
+                    *value_stats = key_stats.clone();
+                }
+            }
+        }
+    }
+}
+
 impl<'s> System<'s> for InputManagementSystem {
     type SystemData = (
         Read<'s, InputHandler<StringBindings>>,
@@ -177,6 +197,11 @@ impl<'s> System<'s> for InputManagementSystem {
                 stats.same_action_frame_count += 1;
                 stats.action_is_down = true;
                 if action.contains("modifier") {
+                    for (key, value) in EQUIVALENCES {
+                        if key == action {
+                            input_manager.modifier_keys_down.push(String::from((*value)));
+                        }
+                    }
                     input_manager.modifier_keys_down.push(action.clone());
                 }
             } else {
@@ -189,6 +214,7 @@ impl<'s> System<'s> for InputManagementSystem {
                 stats.same_action_frame_count += 1;
             }
         }
+        self.update_equivalences(&mut input_manager);
     }
 }
 
