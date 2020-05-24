@@ -11,10 +11,11 @@ use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
     Sticky, Velocity,
 };
-use crate::states::loading::{AssetsDir, LevelPath};
+use crate::states::loading::AssetsDir;
 use crate::states::pizzatopia::{CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::editor::EditorButtonEventSystem;
 use crate::systems::physics::CollisionDirection;
+use crate::ui::file_picker::{FilePickerFilename, DIR_LEVELS};
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::math::Vector3;
 use amethyst::{
@@ -241,11 +242,13 @@ impl Level {
         Level::calculate_camera_limits(world);
     }
 
-    // Turns all current entities into a RON file with the current date as a name
     pub(crate) fn save_level(world: &mut World) {
-        let filename = world.read_resource::<LevelPath>().0.clone();
+        let filename = world.read_resource::<FilePickerFilename>().filename.clone();
+        if filename.is_empty() {
+            error!("Can't save file {} - no filename given", filename);
+        }
         let assets_dir = world.read_resource::<AssetsDir>().0.clone();
-        let path = assets_dir.join(filename);
+        let path = assets_dir.join(DIR_LEVELS).join(filename);
         warn!("Saving level {:?}...", path);
 
         // Create Level struct

@@ -27,6 +27,7 @@ use crate::systems::graphics::{
 };
 use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
+use crate::ui::file_picker::FilePickerUi;
 use crate::ui::tile_characteristics::{EditorFieldUiComponents, UiIndex};
 use crate::ui::{UiComponent, UiStack};
 use crate::utils::{Vec2, Vec3};
@@ -150,9 +151,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         for ui_component in data.world.read_resource::<UiStack>().stack.iter() {
             to_remove = ui_component.entities_to_remove(to_remove);
         }
-        data.world
-            .delete_entities(to_remove.as_slice())
-            .expect("Failed to delete cursor entities.");
+        Self::remove_entities(to_remove, data.world);
     }
 
     fn handle_event(
@@ -170,7 +169,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         }
 
         if let MyEvents::Ui(event) = &event {
-            data.world.write_resource::<UiStack>().handle_ui_events(data.world, event);
+            data.world
+                .write_resource::<UiStack>()
+                .handle_ui_events(data.world, event);
         }
 
         if let MyEvents::App(event) = &event {
@@ -216,6 +217,13 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 }
                 Events::Warp(_) => {}
                 Events::Reset => {}
+                Events::OpenFilePickerUi => {
+                    let file_picker_ui = Box::new(FilePickerUi::new(data.world));
+                    data.world
+                        .write_resource::<UiStack>()
+                        .stack
+                        .push(file_picker_ui);
+                }
             }
         }
 
@@ -234,15 +242,35 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         if let Some(dispatcher) = self.dispatcher.as_mut() {
             dispatcher.dispatch(&data.world);
         }
+
+        let mut index = 0;
+        let mut remove_indices = Vec::new();
         for ui in &mut data.world.write_resource::<UiStack>().stack {
             ui.update(data.world);
+            if ui.should_destroy() {
+                remove_indices.insert(0, index);
+            }
+            index += 1;
         }
+        let mut entities = Vec::new();
+        for index in remove_indices {
+            entities =
+                data.world.read_resource::<UiStack>().stack[index].entities_to_remove(entities);
+            data.world.write_resource::<UiStack>().stack.remove(index);
+        }
+        Self::remove_entities(entities, data.world);
 
         Trans::None
     }
 }
 
 impl<'a, 'b> Editor<'a, 'b> {
+    fn remove_entities(entities: Vec<Entity>, world: &mut World) {
+        world
+            .delete_entities(entities.as_slice())
+            .expect("Failed to delete entities.");
+    }
+
     fn create_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         // Main logic
         let mut dispatcher_builder = DispatcherBuilder::new();

@@ -26,6 +26,7 @@ use crate::systems::physics::{
     gravitationally_adapted_velocity, gravitationally_de_adapted_velocity, ActorCollisionSystem,
 };
 use crate::ui::tile_characteristics::{EditorButton, EditorButtonType, UiIndex};
+use crate::ui::UiStack;
 use crate::utils::{Vec2, Vec3};
 use amethyst::assets::Handle;
 use amethyst::ecs::prelude::ReadExpect;
@@ -107,6 +108,7 @@ impl<'s> System<'s> for CursorPositionSystem {
         ReadExpect<'s, EditorState>,
         Write<'s, DebugLines>,
         Read<'s, InputManager>,
+        Read<'s, UiStack>,
         WriteStorage<'s, Position>,
         ReadStorage<'s, EditorCursor>,
         WriteStorage<'s, RealCursorPosition>,
@@ -121,6 +123,7 @@ impl<'s> System<'s> for CursorPositionSystem {
             editor_state,
             mut debug_lines_resource,
             input,
+            ui,
             mut positions,
             cursors,
             mut real_positions,
@@ -145,6 +148,10 @@ impl<'s> System<'s> for CursorPositionSystem {
             .is_valid_repeat_press("horizontal", REPEAT_DELAY, 2)
             .excluding_modifiers(EDITOR_MODIFIERS_ALL)
             .axis;
+        if ui.is_blocking_all_input() {
+            vertical_move = 0.;
+            horizontal_move = 0.;
+        }
         if !vertical_move.is_zero() {
             vertical_move = vertical_move / vertical_move.abs();
         }
@@ -357,10 +364,19 @@ impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
         ReadExpect<'s, EditorState>,
         Read<'s, InputManager>,
+        Read<'s, UiStack>,
         Write<'s, EventChannel<EditorEvents>>,
+        Write<'s, EventChannel<Events>>,
     );
 
-    fn run(&mut self, (state, input, mut editor_event_writer): Self::SystemData) {
+    fn run(
+        &mut self,
+        (state, input, ui, mut editor_event_writer, mut global_event_writer): Self::SystemData,
+    ) {
+        if ui.is_blocking_all_input() {
+            return;
+        }
+
         if input.action_single_press("save").is_down {
             editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
         }
@@ -388,6 +404,12 @@ impl<'s> System<'s> for EditorButtonEventSystem {
                 {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(EditorState::InsertMode));
+                } else if input
+                    .action_single_press("start")
+                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .is_down
+                {
+                    global_event_writer.single_write(Events::OpenFilePickerUi);
                 }
             }
             EditorState::InsertMode => {

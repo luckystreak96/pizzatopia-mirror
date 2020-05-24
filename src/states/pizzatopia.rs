@@ -19,7 +19,9 @@ use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
 use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
+use crate::ui::file_picker::{FilePickerButton, FilePickerUi};
 use crate::ui::tile_characteristics::EditorButton;
+use crate::ui::UiStack;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
     assets::{
@@ -120,6 +122,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         // Created in Pizzatopia and system in Editor
         data.world.register::<InstanceEntityId>();
         data.world.register::<EditorButton>();
+        data.world.register::<FilePickerButton>();
 
         // setup dispatcher
         let mut dispatcher = Pizzatopia::create_pizzatopia_dispatcher(data.world);
@@ -144,9 +147,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         mut data: StateData<'_, GameData<'s, 's>>,
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
-        let world = &mut data.world;
         if let MyEvents::Window(_) = &event {
-            let input = world.read_resource::<InputManager>();
+            let input = data.world.read_resource::<InputManager>();
             if input.action_status("exit").is_down {
                 return Trans::Quit;
             } else if input.action_single_press("editor").is_down {
@@ -158,7 +160,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
             match event {
                 Events::Reset => {
                     println!("Resetting map...");
-                    Level::reinitialize_level(world);
+                    Level::reinitialize_level(data.world);
                 }
                 Events::ChangeInsertionGameObject(_) => {}
                 Events::SetInsertionGameObject(_) => {}
@@ -167,6 +169,13 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                 Events::AddGameObject => {}
                 Events::DeleteGameObject(_) => {}
                 Events::EntityToInsertionGameObject(_) => {}
+                Events::OpenFilePickerUi => {
+                    let file_picker_ui = Box::new(FilePickerUi::new(data.world));
+                    data.world
+                        .write_resource::<UiStack>()
+                        .stack
+                        .push(file_picker_ui);
+                }
             }
         }
 

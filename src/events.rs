@@ -11,6 +11,7 @@ pub enum Events {
     ChangeInsertionGameObject(u8),
     SetInsertionGameObject(SerializedObject),
     EntityToInsertionGameObject(u32),
+    OpenFilePickerUi,
 }
 
 #[derive(Debug, Clone)]

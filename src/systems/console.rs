@@ -36,6 +36,8 @@ impl<'s> System<'s> for ConsoleInputSystem {
             input_string = read_line_from_console();
         } else if input.action_single_press("reset").is_down {
             input_string = String::from("reset");
+        } else if input.action_single_press("start").is_down {
+            input_string = String::from("filepicker");
         } else if input.action_single_press("revive").is_down {
             input_string = String::from("revive");
         } else {
@@ -53,6 +55,9 @@ impl<'s> System<'s> for ConsoleInputSystem {
             }
             "revive" => {
                 player_event_channel.single_write(PlayerEvent::Revive(5));
+            }
+            "filepicker" => {
+                events_channel.single_write(Events::OpenFilePickerUi);
             }
             _ => {}
         }

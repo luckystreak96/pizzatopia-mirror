@@ -4,6 +4,8 @@ use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
 use crate::states::pizzatopia::{MyEvents, Pizzatopia};
 use crate::systems::input::InputManager;
+use crate::ui::file_picker::{FilePickerFilename, DIR_LEVELS};
+use crate::ui::UiStack;
 use amethyst::assets::Completion;
 use amethyst::assets::Progress;
 use amethyst::{
@@ -41,7 +43,6 @@ use log::error;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-pub struct LevelPath(pub String);
 pub struct AssetsDir(pub PathBuf);
 
 pub struct LoadingState {
@@ -61,46 +62,54 @@ impl Default for LoadingState {
 
 impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
-        let StateData { world, .. } = data;
-        {
-            initialise_audio(world);
-        }
-        let platform_size_prefab_handle = world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
-            loader.load("prefab/tile_size.ron", RonFormat, ())
-        });
-        world.insert(platform_size_prefab_handle.clone());
+        initialise_audio(data.world);
+        let platform_size_prefab_handle =
+            data.world.exec(|loader: PrefabLoader<'_, PlatformCuboid>| {
+                loader.load("prefab/tile_size.ron", RonFormat, ())
+            });
+        data.world.insert(platform_size_prefab_handle.clone());
 
-        world.insert(AssetsDir(application_root_dir().unwrap().join("assets")));
-
-        world.insert(LevelPath(String::from("levels/level0.ron")));
-        let level_handle = world.read_resource::<Loader>().load(
-            world.read_resource::<LevelPath>().0.as_str(), // Here we load the associated ron file
+        data.world
+            .insert(AssetsDir(application_root_dir().unwrap().join("assets")));
+        let filename = "level0.ron";
+        let path = PathBuf::from(DIR_LEVELS)
+            .join(filename)
+            .display()
+            .to_string();
+        let level_handle = data.world.read_resource::<Loader>().load(
+            path.as_str(), // Here we load the associated ron file
             RonFormat,
             &mut self.level_progress,
-            &world.read_resource::<AssetStorage<Level>>(),
+            &data.world.read_resource::<AssetStorage<Level>>(),
         );
-        world.insert(level_handle.clone());
-        world.insert(BTreeMap::<u8, Handle<SpriteSheet>>::new());
+        data.world.insert(level_handle.clone());
+        data.world
+            .insert(BTreeMap::<u8, Handle<SpriteSheet>>::new());
 
         let name = String::from("texture/tiles");
-        let tiles = load_spritesheet(name.clone(), world, &mut self.progress_counter);
-        world
+        let tiles = load_spritesheet(name.clone(), data.world, &mut self.progress_counter);
+        data.world
             .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             .insert(SpriteSheetType::Tiles as u8, tiles);
 
         let name = String::from("texture/spritesheet");
-        let sprites = load_spritesheet(name.clone(), world, &mut self.progress_counter);
-        world
+        let sprites = load_spritesheet(name.clone(), data.world, &mut self.progress_counter);
+        data.world
             .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             .insert(SpriteSheetType::Didi as u8, sprites);
 
         let name = String::from("texture/spritesheet2");
-        let sprites2 = load_spritesheet(name.clone(), world, &mut self.progress_counter);
-        world
+        let sprites2 = load_spritesheet(name.clone(), data.world, &mut self.progress_counter);
+        data.world
             .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             .insert(SpriteSheetType::Snap as u8, sprites2);
 
-        world.insert(InputManager::new(world));
+        data.world.insert(InputManager::new(data.world));
+        data.world.insert(FilePickerFilename::new(
+            "insert filename here".to_string(),
+            "insert fullpath here".to_string(),
+        ));
+        data.world.insert(UiStack::default());
     }
 
     fn update(
