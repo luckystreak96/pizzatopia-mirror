@@ -13,7 +13,10 @@ use amethyst::{
     ecs::prelude::{Component, DenseVecStorage, Entity, Join, NullStorage},
     prelude::World,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
-    ui::{Anchor, FontAsset, TextEditing, TtfFormat, UiEvent, UiEventType, UiText, UiTransform},
+    ui::{
+        Anchor, FontAsset, Interactable, Selectable, Selected, TextEditing, TtfFormat, UiEvent,
+        UiEventType, UiText, UiTransform,
+    },
 };
 use derivative::Derivative;
 use log::{error, warn};
@@ -121,7 +124,7 @@ impl FilePickerUi {
             .to_string();
         let paths = fs::read_dir(path).unwrap();
         for path in paths {
-            filename_list.push(path.unwrap().path().display().to_string());
+            filename_list.push(path.unwrap().file_name().into_string().unwrap());
         }
 
         result.ui_index.max_index = filename_list.len() - 1;
@@ -226,7 +229,12 @@ impl FilePickerUi {
             .with(FilePickerButton::new(file_picker_button_type, i));
         match file_picker_button_type {
             FilePickerButtonType::EditableLabel => {
-                entity = entity.with(TextEditing::new(40, COLOR_RED, COLOR_GOLD, true));
+                let mut selectable: Selectable<()> = Selectable::<()>::new(0);
+                selectable.consumes_inputs = true;
+                entity = entity
+                    .with(TextEditing::new(40, COLOR_RED, COLOR_GOLD, true))
+                    .with(Interactable)
+                    .with(selectable);
             }
             _ => {}
         }
@@ -241,6 +249,26 @@ impl FilePickerUi {
 
     fn handle_input(&mut self, world: &World) {
         let input = world.read_resource::<InputManager>();
+        if input.action_single_press("start").is_down {
+            let mut ui_texts = world.write_storage::<UiText>();
+            let mut text = None;
+            if let Some(ui_text) = ui_texts.get_mut(self.editable_label.unwrap()) {
+                text = Some(ui_text.text.clone());
+            }
+            if let Some(text) = text {
+                world.write_resource::<FilePickerFilename>().filename = text;
+            }
+            self.should_destroy = true;
+        }
+
+        // Don't process keyboard events if the label is selected for input
+        if let Some(_selected) = world
+            .read_storage::<Selected>()
+            .get(self.editable_label.unwrap())
+        {
+            return;
+        }
+
         let horizontal = input
             .action_single_press("horizontal")
             .excluding_modifiers(EDITOR_MODIFIERS_ALL)
@@ -268,18 +296,6 @@ impl FilePickerUi {
             let button_info =
                 FilePickerButton::new(FilePickerButtonType::Label, self.ui_index.index);
             self.handle_click(world, &button_info);
-        }
-
-        if input.action_single_press("start").is_down {
-            let mut ui_texts = world.write_storage::<UiText>();
-            let mut text = None;
-            if let Some(ui_text) = ui_texts.get_mut(self.editable_label.unwrap()) {
-                text = Some(ui_text.text.clone());
-            }
-            if let Some(text) = text {
-                world.write_resource::<FilePickerFilename>().filename = text;
-            }
-            self.should_destroy = true;
         }
 
         if input.action_single_press("cancel").is_down {

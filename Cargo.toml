@@ -6,7 +6,7 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
-amethyst = "0.15"
+amethyst = "^0.15"
 #amethyst = {  git = "https://github.com/amethyst/amethyst.git", branch = "master", features = ["vulkan", "no-slow-safety-checks"]}
 log = "0.4.8"
 serde = { version = "1.0", features = ["derive"] }

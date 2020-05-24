@@ -218,6 +218,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 Events::Warp(_) => {}
                 Events::Reset => {}
                 Events::OpenFilePickerUi => {
+                    warn!("Opening file picker!");
                     let file_picker_ui = Box::new(FilePickerUi::new(data.world));
                     data.world
                         .write_resource::<UiStack>()

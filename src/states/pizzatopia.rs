@@ -38,7 +38,7 @@ use amethyst::{
     },
     derive::EventReader,
     ecs::prelude::{Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join},
-    input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
+    input::{is_key_down, InputEvent, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
     renderer::{
         rendy::{
@@ -84,6 +84,7 @@ pub const FRICTION: f32 = 0.90;
 pub enum MyEvents {
     Window(Event),
     Ui(UiEvent),
+    Input(InputEvent<StringBindings>),
     App(Events),
 }
 
@@ -144,7 +145,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
 
     fn handle_event(
         &mut self,
-        mut data: StateData<'_, GameData<'s, 's>>,
+        data: StateData<'_, GameData<'s, 's>>,
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         if let MyEvents::Window(_) = &event {
@@ -169,18 +170,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                 Events::AddGameObject => {}
                 Events::DeleteGameObject(_) => {}
                 Events::EntityToInsertionGameObject(_) => {}
-                Events::OpenFilePickerUi => {
-                    let file_picker_ui = Box::new(FilePickerUi::new(data.world));
-                    data.world
-                        .write_resource::<UiStack>()
-                        .stack
-                        .push(file_picker_ui);
-                }
+                Events::OpenFilePickerUi => {}
             }
-        }
-
-        if let MyEvents::Ui(_) = &event {
-            println!("Ui event triggered!");
         }
 
         // Escape isn't pressed, so we stay in this `State`.
