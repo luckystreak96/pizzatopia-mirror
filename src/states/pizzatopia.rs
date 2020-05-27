@@ -1,6 +1,6 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
-use crate::components::editor::{EditorEntity, RealEntityId, SizeForEditorGrid};
+use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
 use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::AnimationCounter;
 use crate::components::physics::{
@@ -105,25 +105,18 @@ impl Default for Pizzatopia<'_, '_> {
 
 impl Pizzatopia<'_, '_> {
     fn initialize_level(&mut self, world: &mut World, resetting: bool) {
-        // remove entities to be reset
-        let mut to_remove = Vec::new();
-        for (entity, reset) in (&world.entities(), &world.read_storage::<Resettable>()).join() {
-            to_remove.push(entity);
-        }
-        world
-            .delete_entities(to_remove.as_slice())
-            .expect("Failed to delete entities for reset.");
+        Level::reinitialize_level(world);
 
         // add the entities for the level
         // will want to move this in the future to level.rs
-        Level::initialise_actor(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world);
-        Level::initialise_actor(
+        Level::initialize_player(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0), true, world);
+        Level::initialize_player(
             Vec2::new(CAM_WIDTH / 2.0 - (TILE_HEIGHT * 2.0), CAM_HEIGHT / 2.0),
             false,
             world,
         );
         if !resetting {
-            Level::initialize_level(world);
+            Level::load_level(world);
             initialise_camera(world);
         }
     }
@@ -132,12 +125,12 @@ impl Pizzatopia<'_, '_> {
 impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         data.world.register::<Resettable>();
-        data.world.register::<EditorEntity>();
+        data.world.register::<EditorFlag>();
         data.world.register::<Tile>();
         // Created in Pizzatopia and system in Editor
         data.world.register::<SizeForEditorGrid>();
         // Created in Pizzatopia and system in Editor
-        data.world.register::<RealEntityId>();
+        data.world.register::<InstanceEntityId>();
 
         // setup dispatcher
         let mut dispatcher = Pizzatopia::create_pizzatopia_dispatcher(data.world);

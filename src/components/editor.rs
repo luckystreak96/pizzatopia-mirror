@@ -8,8 +8,8 @@ use amethyst::{
 };
 
 #[derive(Default)]
-pub struct EditorEntity;
-impl Component for EditorEntity {
+pub struct EditorFlag;
+impl Component for EditorFlag {
     type Storage = NullStorage<Self>;
 }
 
@@ -41,8 +41,8 @@ impl Component for CursorWasInThisEntity {
 }
 
 #[derive(Default, Clone)]
-pub struct RealEntityId(pub Option<u32>);
+pub struct InstanceEntityId(pub Option<u32>);
 
-impl Component for RealEntityId {
+impl Component for InstanceEntityId {
     type Storage = DenseVecStorage<Self>;
 }

@@ -6,8 +6,8 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 
-#[derive(Default)]
-pub struct Player;
+#[derive(Default, Copy, Clone)]
+pub struct Player(pub bool);
 impl Component for Player {
-    type Storage = NullStorage<Self>;
+    type Storage = DenseVecStorage<Self>;
 }

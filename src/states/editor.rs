@@ -1,6 +1,6 @@
 use crate::audio::{initialise_audio, Sounds};
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, EditorEntity, RealCursorPosition,
+    CursorWasInThisEntity, EditorCursor, EditorFlag, RealCursorPosition,
 };
 use crate::components::game::{CollisionEvent, Health, Invincibility, Resettable};
 use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
@@ -206,7 +206,7 @@ impl<'a, 'b> Editor<'a, 'b> {
             &world.entities(),
             &world.read_storage::<Transform>(),
             &world.read_storage::<Position>(),
-            !&world.read_storage::<EditorEntity>(),
+            !&world.read_storage::<EditorFlag>(),
         )
             .join()
         {
@@ -223,7 +223,7 @@ impl<'a, 'b> Editor<'a, 'b> {
                 &world.entities(),
                 &world.read_storage::<Transform>(),
                 &world.read_storage::<Position>(),
-                &world.read_storage::<EditorEntity>(),
+                &world.read_storage::<EditorFlag>(),
             )
                 .join()
             {
@@ -237,7 +237,7 @@ impl<'a, 'b> Editor<'a, 'b> {
                 &world.entities(),
                 &world.read_storage::<Transform>(),
                 &world.read_storage::<Position>(),
-                &world.read_storage::<EditorEntity>(),
+                &world.read_storage::<EditorFlag>(),
             )
                 .join()
             {
@@ -268,7 +268,7 @@ impl<'a, 'b> Editor<'a, 'b> {
         // Create cursor
         world
             .create_entity()
-            .with(EditorEntity)
+            .with(EditorFlag)
             .with(EditorCursor)
             .with(RealCursorPosition(pos.0.to_vec2()))
             .with(PulseAnimation::default())

@@ -10,7 +10,7 @@ use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLi
 use amethyst::renderer::palette::Srgba;
 
 use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, RealCursorPosition, RealEntityId, SizeForEditorGrid,
+    CursorWasInThisEntity, EditorCursor, RealCursorPosition, InstanceEntityId, SizeForEditorGrid,
 };
 use crate::components::game::Health;
 use crate::components::graphics::Scale;
@@ -312,6 +312,8 @@ impl<'s> System<'s> for EditorButtonEventSystem {
             editor_event_writer.single_write(EditorEvents::RemoveTile);
         } else if input.action_is_down("accept").unwrap_or(false) {
             editor_event_writer.single_write(EditorEvents::AddTile);
+        } else if input.action_is_down("accept").unwrap_or(false) {
+            editor_event_writer.single_write(EditorEvents::AddTile);
         }
     }
 }
@@ -338,7 +340,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         Write<'s, EventChannel<Events>>,
         ReadStorage<'s, EditorCursor>,
         ReadStorage<'s, RealCursorPosition>,
-        ReadStorage<'s, RealEntityId>,
+        ReadStorage<'s, InstanceEntityId>,
         WriteStorage<'s, CursorWasInThisEntity>,
         Entities<'s>,
         ReadExpect<'s, Vec<Handle<SpriteSheet>>>,
@@ -366,7 +368,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                     let mut tile = Tile::default();
 
                     for (cursor, position, previous_block) in
-                        (&cursors, &real_positions, &previous_block).join()
+                    (&cursors, &real_positions, &previous_block).join()
                     {
                         // We only add the block if the cursor isn't currently in a tile
                         if previous_block.0.is_none() {
@@ -381,7 +383,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 }
                 EditorEvents::RemoveTile => {
                     for (cursor, previous_block, cursor_entity) in
-                        (&cursors, &previous_block, &entities).join()
+                    (&cursors, &previous_block, &entities).join()
                     {
                         let target: Option<u32> = previous_block.0;
                         if target.is_some() {

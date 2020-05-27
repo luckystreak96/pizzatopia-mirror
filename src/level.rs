@@ -1,4 +1,4 @@
-use crate::components::editor::{EditorEntity, RealEntityId, SizeForEditorGrid};
+use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
 use crate::components::game::{Health, Invincibility, Resettable};
 use crate::components::graphics::{AnimationCounter, Scale};
 use crate::components::physics::{
@@ -30,6 +30,7 @@ use amethyst::{
 use derivative::Derivative;
 use serde::Deserialize;
 use serde::Serialize;
+use std::ops::Index;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Level {
@@ -101,8 +102,8 @@ impl Level {
         // create editor entity
         let editor_entity = world
             .create_entity()
-            .with(RealEntityId(Some(entity.id())))
-            .with(EditorEntity)
+            .with(InstanceEntityId(Some(entity.id())))
+            .with(EditorFlag)
             .with(tile.clone())
             .with(transform.clone())
             .with(sprite_render.clone())
@@ -116,7 +117,7 @@ impl Level {
 
     /// Initialises the ground using storages.
     // pub fn create_tile(tile: &Tile, spritesheet: Fetch<Vec<Handle<SpriteSheet>>>, ) {
-        // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
+    // let tile_size = (*world.read_resource::<Handle<Prefab<PlatformCuboid>>>()).clone();
     //     let tile_size = PlatformCuboid::create(tile.size.x, tile.size.y);
     //     let scale = Scale(Vec2::new(
     //         tile.size.x / TILE_WIDTH,
@@ -167,7 +168,7 @@ impl Level {
     //     println!("New editor tile id is : {}", editor_entity.id());
     // }
 
-    pub(crate) fn initialize_level(world: &mut World) {
+    pub(crate) fn load_level(world: &mut World) {
         let tiles;
         {
             let asset = &world.read_resource::<AssetStorage<Level>>();
@@ -182,8 +183,40 @@ impl Level {
         }
     }
 
+    pub(crate) fn reinitialize_level(world: &mut World) {
+        let mut resettables = Vec::new();
+
+        // TODO : Relink the entities
+        let entities = world.entities();
+        for (editor_entity, instance_id) in (&world.entities(), &world.read_storage::<InstanceEntityId>()).join() {
+            if let Some(id) = instance_id {
+                let instance_entity = entities.entity(id);
+                if let Some(reset) = world.read_storage::<Resettable>().get(instance_entity) {
+                    resettables.push((editor_entity, instance_entity, reset.clone()));
+                }
+            }
+        }
+
+        // Re-create the entities according to their type
+        let instance_storage = &mut world.write_storage::<InstanceEntityId>();
+        for (editor_entity, instance_entity, reset_data) in resettables {
+            let new_instance_id =
+                match reset_data {
+                    Resettable::StaticTile => { panic!("Failed to reset tile - tiles are not resettable") }
+                    Resettable::Player(pos, player) => {
+                        Level::initialize_player(pos.0.to_vec2(), player.0, true, world)
+                    }
+                };
+            instance_storage.get_mut(editor_entity).unwrap().0 = Some(new_inst_id);
+        }
+
+        world
+            .delete_entities(to_remove.as_slice())
+            .expect("Failed to delete entities for reset.");
+    }
+
     /// Initialises one tile.
-    pub fn initialise_actor(pos: Vec2, player: bool, world: &mut World) {
+    pub fn initialize_player(pos: Vec2, player: bool, ignore_editor: bool, world: &mut World) -> u32 {
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, 0.0);
 
@@ -200,15 +233,17 @@ impl Level {
             sprite_number: 1,
         };
 
+        position = Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS));
+
         let entity;
         let builder = world
             .create_entity()
-            .with(Resettable)
+            .with(Resettable::Player(position.clone(), Player(player)))
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(AnimationCounter(0))
             .with(Grounded(false))
-            .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
+            .with(position.clone())
             .with(Velocity(Vec2::new(0.0, 0.0)))
             // 2.25 to fit in 1 block holes
             .with(PlatformCollisionPoints::square(TILE_HEIGHT / 2.25))
@@ -222,23 +257,26 @@ impl Level {
         entity = match player {
             true => builder
                 .with(GravityDirection(CollisionDirection::FromTop))
-                .with(Player)
+                .with(Player(player))
                 .build(),
             false => builder.build(),
         };
 
         // create editor entity
-        world
-            .create_entity()
-            .with(RealEntityId(Some(entity.id())))
-            .with(EditorEntity)
-            .with(SizeForEditorGrid(Vec2::new(TILE_WIDTH, TILE_HEIGHT)))
-            .with(transform.clone())
-            .with(sprite_render.clone())
-            .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
-            // .with(Tint(Srgba::new(1.0, 1.0, 1.0, 0.5).into()))
-            .with(amethyst::core::Hidden)
-            .with(Transparent)
-            .build();
+        if !ignore_editor {
+            world
+                .create_entity()
+                .with(InstanceEntityId(Some(entity.id())))
+                .with(EditorFlag)
+                .with(SizeForEditorGrid(Vec2::new(TILE_WIDTH, TILE_HEIGHT)))
+                .with(transform.clone())
+                .with(sprite_render.clone())
+                .with(Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS)))
+                // .with(Tint(Srgba::new(1.0, 1.0, 1.0, 0.5).into()))
+                .with(amethyst::core::Hidden)
+                .with(Transparent)
+                .build();
+        }
+        return entity.id();
     }
 }
