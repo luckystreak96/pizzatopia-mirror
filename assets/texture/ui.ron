@@ -1,0 +1,27 @@
+List((
+    texture_width: 1024,
+    texture_height: 1024,
+    sprites: [
+        // Single button
+        (
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 80,
+        ),
+        // Enter/Shift keys
+        (
+            x: 80,
+            y: 0,
+            width: 120,
+            height: 80,
+        ),
+        // Ctrl-key
+        (
+            x: 200,
+            y: 0,
+            width: 80,
+            height: 80,
+        ),
+    ],
+))

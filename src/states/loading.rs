@@ -86,23 +86,18 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
         data.world
             .insert(BTreeMap::<u8, Handle<SpriteSheet>>::new());
 
-        let name = String::from("texture/tiles");
-        let tiles = load_spritesheet(name.clone(), data.world, &mut self.progress_counter);
-        data.world
-            .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
-            .insert(SpriteSheetType::Tiles as u8, tiles);
-
-        let name = String::from("texture/spritesheet");
-        let sprites = load_spritesheet(name.clone(), data.world, &mut self.progress_counter);
-        data.world
-            .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
-            .insert(SpriteSheetType::Didi as u8, sprites);
-
-        let name = String::from("texture/spritesheet2");
-        let sprites2 = load_spritesheet(name.clone(), data.world, &mut self.progress_counter);
-        data.world
-            .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
-            .insert(SpriteSheetType::Snap as u8, sprites2);
+        self.add_new_sprite_sheet(data.world, "texture/tiles", SpriteSheetType::Tiles as u8);
+        self.add_new_sprite_sheet(
+            data.world,
+            "texture/spritesheet",
+            SpriteSheetType::Didi as u8,
+        );
+        self.add_new_sprite_sheet(
+            data.world,
+            "texture/spritesheet2",
+            SpriteSheetType::Snap as u8,
+        );
+        self.add_new_sprite_sheet(data.world, "texture/ui", SpriteSheetType::Ui as u8);
 
         data.world.insert(InputManager::new(data.world));
         data.world.insert(FilePickerFilename::new(
@@ -173,5 +168,15 @@ fn get_image_texure_config() -> ImageTextureConfig {
         // Don't generate mipmaps for this image
         generate_mips: false,
         premultiply_alpha: true,
+    }
+}
+
+impl LoadingState {
+    fn add_new_sprite_sheet(&mut self, world: &mut World, name: &str, sheet_number: u8) {
+        let name = String::from(name);
+        let sprites = load_spritesheet(name.clone(), world, &mut self.progress_counter);
+        world
+            .write_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            .insert(sheet_number, sprites);
     }
 }
