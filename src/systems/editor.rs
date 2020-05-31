@@ -105,6 +105,7 @@ pub struct CursorPositionSystem;
 
 impl<'s> System<'s> for CursorPositionSystem {
     type SystemData = (
+        Write<'s, EventChannel<Events>>,
         ReadExpect<'s, EditorState>,
         Write<'s, DebugLines>,
         Read<'s, InputManager>,
@@ -120,6 +121,7 @@ impl<'s> System<'s> for CursorPositionSystem {
     fn run(
         &mut self,
         (
+            mut event_channel,
             editor_state,
             mut debug_lines_resource,
             input,
@@ -202,6 +204,10 @@ impl<'s> System<'s> for CursorPositionSystem {
                     display_position.0.y = new_cursor_display_pos.y;
                     cursor_pos.0.x = cursor_position.x;
                     cursor_pos.0.y = cursor_position.y;
+
+                    if new_tile_id.is_some() {
+                        event_channel.single_write(Events::HoverGameObject);
+                    }
                 }
                 _ => {
                     display_position.0.x += horizontal_move * EDITOR_GRID_SIZE;

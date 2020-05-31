@@ -12,6 +12,7 @@ pub enum Events {
     SetInsertionGameObject(SerializedObject),
     EntityToInsertionGameObject(u32),
     OpenFilePickerUi,
+    HoverGameObject,
 }
 
 #[derive(Debug, Clone)]

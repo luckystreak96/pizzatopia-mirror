@@ -33,7 +33,6 @@ pub struct FilePickerUi {
     pub labels: Vec<Entity>,
     pub editable_label: Option<Entity>,
     ui_index: FilePickerUiIndex,
-    font_handle: Option<Handle<FontAsset>>,
     should_destroy: bool,
 }
 
@@ -107,15 +106,9 @@ impl FilePickerUi {
     }
 
     fn initialize_ui(world: &mut World) -> Self {
-        let font: Handle<FontAsset> = world.read_resource::<Loader>().load(
-            "font/LibreBaskerville-Bold.ttf",
-            TtfFormat,
-            (),
-            &world.read_resource(),
-        );
+        let font = (*world.read_resource::<Handle<FontAsset>>()).clone();
 
         let mut result: FilePickerUi = FilePickerUi::default();
-        result.font_handle = Some(font.clone());
 
         let mut filename_list = Vec::new();
         let path = PathBuf::from(DIR_ASSETS)

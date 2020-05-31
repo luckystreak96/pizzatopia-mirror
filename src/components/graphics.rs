@@ -15,9 +15,11 @@ use serde::{Deserialize, Serialize};
 use crate::states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
 use crate::utils::{Vec2, Vec3};
 use derivative::Derivative;
-use log::info;
+use log::{info, warn};
 use num_traits::identities::Zero;
 use std::ops::Add;
+use strum::{EnumCount, IntoEnumIterator};
+use strum_macros::{EnumCount, EnumIter};
 
 #[derive(Derivative)]
 #[derivative(Default)]
@@ -110,8 +112,7 @@ impl Component for PulseAnimation {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[repr(u8)]
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative, EnumIter, EnumCount)]
 #[derivative(Default)]
 pub enum SpriteSheetType {
     #[derivative(Default)]

@@ -27,6 +27,7 @@ use crate::systems::graphics::{
 };
 use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
+use crate::ui::current_actions::CurrentActionsUi;
 use crate::ui::file_picker::FilePickerUi;
 use crate::ui::tile_characteristics::{EditorFieldUiComponents, UiIndex};
 use crate::ui::{UiComponent, UiStack};
@@ -114,6 +115,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         let mut ui_stack = UiStack::default();
         ui_stack
             .stack
+            .push(Box::new(CurrentActionsUi::new(data.world)));
+        ui_stack
+            .stack
             .push(Box::new(EditorFieldUiComponents::new(data.world)));
         data.world.insert(ui_stack);
 
@@ -169,12 +173,19 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         }
 
         if let MyEvents::Ui(event) = &event {
-            data.world
-                .write_resource::<UiStack>()
-                .handle_ui_events(data.world, event);
+            data.world.write_resource::<UiStack>().handle_ui_events(
+                data.world,
+                Some(event.clone()),
+                None,
+            );
         }
 
         if let MyEvents::App(event) = &event {
+            data.world.write_resource::<UiStack>().handle_ui_events(
+                data.world,
+                None,
+                Some(event.clone()),
+            );
             match event {
                 Events::AddGameObject => {
                     let mut serialized_object =
@@ -215,8 +226,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                     let serialized_object = Level::entity_to_serialized_object(data.world, *id);
                     data.world.insert(InsertionGameObject(serialized_object));
                 }
-                Events::Warp(_) => {}
-                Events::Reset => {}
                 Events::OpenFilePickerUi => {
                     warn!("Opening file picker!");
                     let file_picker_ui = Box::new(FilePickerUi::new(data.world));
@@ -225,6 +234,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                         .stack
                         .push(file_picker_ui);
                 }
+                _ => {}
             }
         }
 

@@ -25,7 +25,6 @@ pub struct EditorFieldUiComponents {
     pub left_arrows: Vec<Entity>,
     pub right_arrows: Vec<Entity>,
     ui_index: UiIndex,
-    font_handle: Option<Handle<FontAsset>>,
 }
 
 impl UiComponent for EditorFieldUiComponents {
@@ -133,12 +132,7 @@ impl EditorFieldUiComponents {
     }
 
     fn initialize_ui(world: &mut World) -> Self {
-        let font: Handle<FontAsset> = world.read_resource::<Loader>().load(
-            "font/LibreBaskerville-Bold.ttf",
-            TtfFormat,
-            (),
-            &world.read_resource(),
-        );
+        let font = (*world.read_resource::<Handle<FontAsset>>()).clone();
 
         let width = 200.0;
         let font_size = 18.;
@@ -146,7 +140,6 @@ impl EditorFieldUiComponents {
         let arrow_width = arrow_font_size * 2.0;
 
         let mut result: EditorFieldUiComponents = EditorFieldUiComponents::default();
-        result.font_handle = Some(font.clone());
         for i in 0..10 {
             let y = -50. + -50. * i as f32;
             let height = 25.0;
@@ -155,7 +148,7 @@ impl EditorFieldUiComponents {
             let x = width / 2.0 + arrow_width;
             let transform =
                 Self::create_ui_transform(String::from("Label"), x, y, width, height, i);
-            let text = Self::create_ui_text(String::from("DEFAULT TEXT"), font_size, &font);
+            let text = Self::create_ui_text(String::from("DEFAULT TEXT"), font_size, font.clone());
             let entity = Self::create_ui_entity(world, i, transform, text, EditorButtonType::Label);
             result.labels.push(entity);
 
@@ -163,7 +156,7 @@ impl EditorFieldUiComponents {
             let x = width + arrow_width * 1.5;
             let transform =
                 Self::create_ui_transform(String::from("ArrowR"), x, y, arrow_width, height, i);
-            let text = Self::create_ui_text(String::from(">>"), arrow_font_size, &font);
+            let text = Self::create_ui_text(String::from(">>"), arrow_font_size, font.clone());
             let entity =
                 Self::create_ui_entity(world, i, transform, text, EditorButtonType::RightArrow);
             result.right_arrows.push(entity);
@@ -172,7 +165,7 @@ impl EditorFieldUiComponents {
             let x = font_size;
             let transform =
                 Self::create_ui_transform(String::from("ArrowL"), x, y, arrow_width, height, i);
-            let text = Self::create_ui_text(String::from("<<"), arrow_font_size, &font);
+            let text = Self::create_ui_text(String::from("<<"), arrow_font_size, font.clone());
             let entity =
                 Self::create_ui_entity(world, i, transform, text, EditorButtonType::LeftArrow);
             result.left_arrows.push(entity);
@@ -180,9 +173,9 @@ impl EditorFieldUiComponents {
         return result;
     }
 
-    fn create_ui_text(text: String, font_size: f32, font: &Handle<FontAsset>) -> UiText {
+    fn create_ui_text(text: String, font_size: f32, font: Handle<FontAsset>) -> UiText {
         let text = UiText::new(
-            font.clone(),
+            font,
             format!("{}", text).to_string(),
             [1., 1., 1., 1.],
             font_size,

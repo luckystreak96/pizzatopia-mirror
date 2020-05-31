@@ -1,5 +1,6 @@
 use crate::audio::initialise_audio;
 use crate::components::graphics::SpriteSheetType;
+use crate::components::graphics::SPRITESHEETTYPE_COUNT;
 use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
 use crate::states::pizzatopia::{MyEvents, Pizzatopia};
@@ -32,14 +33,14 @@ use amethyst::{
         },
         Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
     },
-    ui::{RenderUi, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
+    ui::{FontAsset, RenderUi, TtfFormat, UiBundle, UiCreator, UiEvent, UiFinder, UiText},
     utils::{
         application_root_dir,
         fps_counter::{FpsCounter, FpsCounterBundle},
     },
     winit::Event,
 };
-use log::error;
+use log::{error, warn};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -82,6 +83,13 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
             &mut self.level_progress,
             &data.world.read_resource::<AssetStorage<Level>>(),
         );
+        let font_handle: Handle<FontAsset> = data.world.read_resource::<Loader>().load(
+            "font/LibreBaskerville-Bold.ttf",
+            TtfFormat,
+            &mut self.progress_counter,
+            &data.world.read_resource(),
+        );
+        data.world.insert(font_handle);
         data.world.insert(level_handle.clone());
         data.world
             .insert(BTreeMap::<u8, Handle<SpriteSheet>>::new());
@@ -113,6 +121,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         data.data.update(&mut data.world);
         if self.progress_counter.is_complete() {
+            warn!(
+                "Number of assets loaded: {}, should be: {}",
+                self.progress_counter.num_assets(),
+                SPRITESHEETTYPE_COUNT,
+            );
             match self.level_progress.complete() {
                 Completion::Failed => {
                     error!("Failed to load Level asset");
@@ -141,7 +154,7 @@ fn load_spritesheet(
         loader.load(
             filename_without_extension.clone() + ".png",
             ImageFormat(get_image_texure_config()),
-            (),
+            progress,
             &texture_storage,
         )
     };
@@ -151,12 +164,12 @@ fn load_spritesheet(
     loader.load(
         filename_without_extension.clone() + ".ron", // Here we load the associated ron file
         SpriteSheetFormat(texture_handle),
-        progress,
+        (),
         &sprite_sheet_store,
     )
 }
 
-fn get_image_texure_config() -> ImageTextureConfig {
+pub fn get_image_texure_config() -> ImageTextureConfig {
     ImageTextureConfig {
         // Determine format automatically
         format: None,
