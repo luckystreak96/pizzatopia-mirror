@@ -4,7 +4,9 @@ use crate::components::physics::Position;
 use crate::states::pizzatopia::TILE_HEIGHT;
 use crate::systems::editor::{EditorEvents, EDITOR_MODIFIERS_ALL, EDITOR_MODIFIERS_UI};
 use crate::systems::input::InputManager;
-use crate::ui::{UiComponent, COLOR_GOLD, COLOR_GOLDEN_RED, COLOR_GRAY, COLOR_RED};
+use crate::ui::{
+    with_transparent, UiComponent, COLOR_BLACK, COLOR_GOLD, COLOR_GOLDEN_RED, COLOR_GRAY, COLOR_RED,
+};
 use crate::utils::Vec2;
 use amethyst::prelude::{Builder, WorldExt};
 use amethyst::{
@@ -15,7 +17,7 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     ui::{
         Anchor, FontAsset, Interactable, Selectable, Selected, TextEditing, TtfFormat, UiEvent,
-        UiEventType, UiText, UiTransform,
+        UiEventType, UiImage, UiText, UiTransform,
     },
 };
 use derivative::Derivative;
@@ -85,22 +87,39 @@ impl FilePickerUi {
 
     fn update_color(&self, world: &World) {
         let mut ui_texts = world.write_storage::<UiText>();
+        let mut ui_images = world.write_storage::<UiImage>();
         for i in 0..self.labels.len() {
-            let color;
+            let fg;
+            let bg;
             let selected_index = self.ui_index.selected_index.unwrap_or(99999);
             if i == selected_index && selected_index == self.ui_index.index {
-                color = COLOR_GOLDEN_RED;
+                fg = COLOR_RED;
+                bg = with_transparent(COLOR_GOLDEN_RED, 0.75);
             } else if i == selected_index {
-                color = COLOR_GOLD;
+                fg = COLOR_BLACK;
+                bg = with_transparent(COLOR_GOLD, 0.75);
             } else if i == self.ui_index.index {
-                color = COLOR_RED;
+                fg = COLOR_BLACK;
+                bg = with_transparent(COLOR_RED, 0.75);
             } else {
-                color = COLOR_GRAY;
+                fg = COLOR_GRAY;
+                bg = with_transparent(COLOR_BLACK, 0.75);
             }
 
             let entity = self.labels[i];
             if let Some(ui_text) = ui_texts.get_mut(entity) {
-                ui_text.color = color;
+                ui_text.color = fg;
+            }
+            if let Some(ui_image) = ui_images.get_mut(entity) {
+                match ui_image {
+                    UiImage::SolidColor(ref mut color) => {
+                        color[0] = bg[0];
+                        color[1] = bg[1];
+                        color[2] = bg[2];
+                        color[3] = bg[3];
+                    }
+                    _ => {}
+                }
             }
         }
     }
@@ -160,11 +179,11 @@ impl FilePickerUi {
             String::from("EditableFilename"),
             0.,
             y,
-            label_width * 10.,
-            label_height * 10.,
+            label_width * 2.,
+            label_height * 2.,
             0,
         );
-        let text = Self::create_ui_text(current_filename, font_size, font.clone());
+        let text = Self::create_ui_text(current_filename, font_size * 2., font.clone());
         let entity = Self::create_ui_entity(
             world,
             0,
@@ -227,9 +246,10 @@ impl FilePickerUi {
                 entity = entity
                     .with(TextEditing::new(40, COLOR_RED, COLOR_GOLD, true))
                     .with(Interactable)
+                    .with(UiImage::SolidColor(with_transparent(COLOR_BLACK, 0.95)))
                     .with(selectable);
             }
-            _ => {}
+            _ => entity = entity.with(UiImage::SolidColor(with_transparent(COLOR_BLACK, 0.95))),
         }
         let entity = entity.build();
         entity
