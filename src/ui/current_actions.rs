@@ -36,14 +36,13 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 #[derive(PartialOrd, Ord, PartialEq, Clone, Copy, Eq, EnumIter)]
-pub enum CurrentActions {
+pub enum EditorActions {
+    EnterPlayMode,
     EnterInsertMode,
     EnterEditModeFromInsert,
     EnterEditGameObject,
-    InsertModeTile,
     InsertModePlayer,
-    EnterPlayMode,
-    EnterEditorMode,
+    InsertModeTile,
     SaveLevel,
     ChooseSaveFile,
 }
@@ -67,7 +66,7 @@ impl ActionPackage {
 #[derive(Derivative)]
 #[derivative(Default)]
 pub struct CurrentActionsUi {
-    pub labels: BTreeMap<CurrentActions, ActionPackage>,
+    pub labels: BTreeMap<EditorActions, ActionPackage>,
     hover_game_object: bool,
 }
 
@@ -108,25 +107,38 @@ impl CurrentActionsUi {
     pub fn update_component_positions(&mut self, world: &World) {
         let mut bottom_left_index = 0;
         let mut top_middle_index = 0;
-        for action in CurrentActions::iter() {
+        for action in EditorActions::iter() {
             // Bottom left
             match action {
-                CurrentActions::EnterInsertMode
-                | CurrentActions::EnterEditModeFromInsert
-                | CurrentActions::EnterEditGameObject
-                | CurrentActions::InsertModeTile
-                | CurrentActions::InsertModePlayer
-                | CurrentActions::EnterPlayMode
-                | CurrentActions::EnterEditorMode => {
+                EditorActions::EnterInsertMode
+                | EditorActions::EnterEditModeFromInsert
+                | EditorActions::EnterEditGameObject
+                | EditorActions::InsertModeTile
+                | EditorActions::InsertModePlayer
+                | EditorActions::EnterPlayMode => {
                     let pack = self.labels.get(&action).unwrap();
                     if pack.show {
-                        let comb = vec![pack.button, pack.label];
-                        for ent in comb {
+                        let button_text = match action {
+                            EditorActions::EnterPlayMode => "LCTRL",
+                            _ => "",
+                        };
+                        let button_len = button_text.len() as f32 * FONT_SIZE / 1.5;
+                        let comb = vec![
+                            (pack.button, X_OFFSET, BUTTON_WIDTH + button_len),
+                            (
+                                pack.label,
+                                X_OFFSET + button_len + BUTTON_WIDTH,
+                                LABEL_WIDTH,
+                            ),
+                        ];
+                        for (ent, x_pos, width) in comb {
                             if let Some(component) =
                                 world.write_storage::<UiTransform>().get_mut(ent)
                             {
+                                component.local_x = x_pos;
                                 component.local_y = BUTTON_HEIGHT.max(LABEL_HEIGHT)
                                     * (bottom_left_index as f32 + 0.5);
+                                component.width = width;
                             }
                         }
                         bottom_left_index += 1;
@@ -137,7 +149,7 @@ impl CurrentActionsUi {
 
             // Top middle
             match action {
-                CurrentActions::SaveLevel => {
+                EditorActions::SaveLevel => {
                     let pack = self.labels.get(&action).unwrap();
                     if pack.show {
                         let button_text = "INSERT";
@@ -172,7 +184,7 @@ impl CurrentActionsUi {
 
             // Top right
             match action {
-                CurrentActions::ChooseSaveFile => {
+                EditorActions::ChooseSaveFile => {
                     let pack = self.labels.get(&action).unwrap();
                     if pack.show {
                         let filename = world.read_resource::<FilePickerFilename>().filename.clone();
@@ -215,31 +227,30 @@ impl CurrentActionsUi {
                 _ => {}
             }
         }
-        /*
-        i = 0
-        foreach possible component in the bottom left corner (just a match that only matches actions in that area)
-            if show == true
-                set pos = i * width height etc
-                i++
-            else
-                continue // don't update i
-
-         repeat for every area that has competition
-         */
-        // unimplemented!();
     }
-    fn show(&mut self, action: CurrentActions, show: bool) {
+
+    fn show(&mut self, action: EditorActions, show: bool) {
         self.labels.get_mut(&action).unwrap().show = show;
     }
 
     pub fn update_component_visibility(&mut self, world: &World) {
         let state = (*world.read_resource::<EditorState>()).clone();
-        for action in CurrentActions::iter() {
+        for action in EditorActions::iter() {
             self.show(action, false);
             match action {
-                CurrentActions::EnterInsertMode => {}
-                CurrentActions::EnterEditModeFromInsert => {}
-                CurrentActions::EnterEditGameObject => match state {
+                EditorActions::EnterInsertMode => match state {
+                    EditorState::EditMode => {
+                        self.show(action, true);
+                    }
+                    _ => {}
+                },
+                EditorActions::EnterEditModeFromInsert => match state {
+                    EditorState::InsertMode => {
+                        self.show(action, true);
+                    }
+                    _ => {}
+                },
+                EditorActions::EnterEditGameObject => match state {
                     EditorState::EditMode => {
                         if self.hover_game_object {
                             self.show(action, true);
@@ -247,11 +258,22 @@ impl CurrentActionsUi {
                     }
                     _ => {}
                 },
-                CurrentActions::InsertModeTile => {}
-                CurrentActions::InsertModePlayer => {}
-                CurrentActions::EnterPlayMode => {}
-                CurrentActions::EnterEditorMode => {}
-                CurrentActions::SaveLevel | CurrentActions::ChooseSaveFile => {
+                EditorActions::InsertModeTile => match state {
+                    EditorState::InsertMode => {
+                        self.show(action, true);
+                    }
+                    _ => {}
+                },
+                EditorActions::InsertModePlayer => match state {
+                    EditorState::InsertMode => {
+                        self.show(action, true);
+                    }
+                    _ => {}
+                },
+                EditorActions::EnterPlayMode => {
+                    self.show(action, true);
+                }
+                EditorActions::SaveLevel | EditorActions::ChooseSaveFile => {
                     self.show(action, true);
                 }
             }
@@ -303,7 +325,7 @@ impl CurrentActionsUi {
         let font = (*world.read_resource::<Handle<FontAsset>>()).clone();
 
         let mut i = 0;
-        for action in CurrentActions::iter() {
+        for action in EditorActions::iter() {
             let y = BUTTON_HEIGHT.max(LABEL_HEIGHT) * (i as f32 + 0.5);
 
             // Label
@@ -317,15 +339,14 @@ impl CurrentActionsUi {
             );
             let filename = world.read_resource::<FilePickerFilename>().filename.clone();
             let text_string = match action {
-                CurrentActions::ChooseSaveFile => ("ENTER", filename.as_str()),
-                CurrentActions::EnterInsertMode => ("X", "Edit Object"),
-                CurrentActions::EnterEditModeFromInsert => ("X", "Edit Object"),
-                CurrentActions::EnterEditGameObject => ("X", "Edit Object"),
-                CurrentActions::InsertModeTile => ("X", "Edit Object"),
-                CurrentActions::InsertModePlayer => ("X", "Edit Object"),
-                CurrentActions::EnterPlayMode => ("X", "Edit Object"),
-                CurrentActions::EnterEditorMode => ("X", "Edit Object"),
-                CurrentActions::SaveLevel => ("INSERT", "Save"),
+                EditorActions::ChooseSaveFile => ("ENTER", filename.as_str()),
+                EditorActions::EnterInsertMode => ("A", "Add Objects"),
+                EditorActions::EnterEditModeFromInsert => ("Z", "Return To Edit"),
+                EditorActions::EnterEditGameObject => ("X", "Edit Object"),
+                EditorActions::InsertModeTile => ("1", "Switch To Tiles"),
+                EditorActions::InsertModePlayer => ("2", "Switch To Players"),
+                EditorActions::EnterPlayMode => ("LCTRL", "Play Level"),
+                EditorActions::SaveLevel => ("INSERT", "Save"),
             };
             let text = Self::create_ui_text(String::from(text_string.0), font.clone(), true);
             let button_entity = Self::create_ui_entity(world, transform, text, true);
