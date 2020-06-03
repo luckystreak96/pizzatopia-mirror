@@ -5,7 +5,8 @@ use crate::states::pizzatopia::TILE_HEIGHT;
 use crate::systems::editor::{EditorEvents, EDITOR_MODIFIERS_ALL, EDITOR_MODIFIERS_UI};
 use crate::systems::input::InputManager;
 use crate::ui::{
-    UiComponent, COLOR_BLACK, COLOR_GOLD, COLOR_GOLDEN_RED, COLOR_GRAY, COLOR_RED, COLOR_WHITE,
+    with_transparent, UiComponent, COLOR_BLACK, COLOR_GOLD, COLOR_GOLDEN_RED, COLOR_GRAY,
+    COLOR_RED, COLOR_WHITE,
 };
 use crate::utils::Vec2;
 use amethyst::prelude::{Builder, WorldExt};
@@ -41,6 +42,8 @@ pub enum EditorActions {
     EnterInsertMode,
     EnterEditModeFromInsert,
     EnterEditGameObject,
+    PlaceEditGameObject,
+    DeleteEditGameObject,
     InsertModePlayer,
     InsertModeTile,
     SaveLevel,
@@ -115,6 +118,8 @@ impl CurrentActionsUi {
                 | EditorActions::EnterEditGameObject
                 | EditorActions::InsertModeTile
                 | EditorActions::InsertModePlayer
+                | EditorActions::DeleteEditGameObject
+                | EditorActions::PlaceEditGameObject
                 | EditorActions::EnterPlayMode => {
                     let pack = self.labels.get(&action).unwrap();
                     if pack.show {
@@ -258,6 +263,23 @@ impl CurrentActionsUi {
                     }
                     _ => {}
                 },
+                EditorActions::PlaceEditGameObject => match state {
+                    EditorState::EditGameObject => {
+                        self.show(action, true);
+                    }
+                    _ => {}
+                },
+                EditorActions::DeleteEditGameObject => match state {
+                    EditorState::EditMode => {
+                        if self.hover_game_object {
+                            self.show(action, true);
+                        }
+                    }
+                    EditorState::EditGameObject => {
+                        self.show(action, true);
+                    }
+                    _ => {}
+                },
                 EditorActions::InsertModeTile => match state {
                     EditorState::InsertMode => {
                         self.show(action, true);
@@ -347,6 +369,8 @@ impl CurrentActionsUi {
                 EditorActions::InsertModePlayer => ("2", "Switch To Players"),
                 EditorActions::EnterPlayMode => ("LCTRL", "Play Level"),
                 EditorActions::SaveLevel => ("INSERT", "Save"),
+                EditorActions::PlaceEditGameObject => ("X", "Place Object"),
+                EditorActions::DeleteEditGameObject => ("Z", "Remove Object"),
             };
             let text = Self::create_ui_text(String::from(text_string.0), font.clone(), true);
             let button_entity = Self::create_ui_entity(world, transform, text, true);
@@ -426,6 +450,8 @@ impl CurrentActionsUi {
         let mut entity = world.create_entity().with(transform).with(text);
         if bg {
             entity = entity.with(sprite_render);
+        } else {
+            entity = entity.with(UiImage::SolidColor(with_transparent(COLOR_GRAY, 0.05)))
         }
 
         entity.build()

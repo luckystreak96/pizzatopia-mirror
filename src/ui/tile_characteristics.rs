@@ -4,7 +4,7 @@ use crate::components::physics::Position;
 use crate::states::pizzatopia::TILE_HEIGHT;
 use crate::systems::editor::{EditorEvents, EDITOR_MODIFIERS_UI};
 use crate::systems::input::InputManager;
-use crate::ui::UiComponent;
+use crate::ui::{with_transparent, UiComponent, COLOR_BLACK};
 use crate::utils::Vec2;
 use amethyst::prelude::{Builder, WorldExt};
 use amethyst::{
@@ -13,7 +13,7 @@ use amethyst::{
     ecs::prelude::{Component, DenseVecStorage, Entity, Join, NullStorage},
     prelude::World,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
-    ui::{Anchor, FontAsset, TtfFormat, UiEvent, UiEventType, UiText, UiTransform},
+    ui::{Anchor, FontAsset, TtfFormat, UiEvent, UiEventType, UiImage, UiText, UiTransform},
 };
 use derivative::Derivative;
 use num_traits::Zero;
@@ -137,15 +137,15 @@ impl EditorFieldUiComponents {
         let width = 200.0;
         let font_size = 18.;
         let arrow_font_size = font_size * 1.5;
-        let arrow_width = arrow_font_size * 2.0;
+        let arrow_width = arrow_font_size;
 
         let mut result: EditorFieldUiComponents = EditorFieldUiComponents::default();
         for i in 0..10 {
-            let y = -50. + -50. * i as f32;
             let height = 25.0;
+            let y = -50. + -(height * 1.2) * i as f32;
 
             // Label
-            let x = width / 2.0 + arrow_width;
+            let x = width / 2.0 + arrow_width * 2.;
             let transform =
                 Self::create_ui_transform(String::from("Label"), x, y, width, height, i);
             let text = Self::create_ui_text(String::from("DEFAULT TEXT"), font_size, font.clone());
@@ -153,7 +153,7 @@ impl EditorFieldUiComponents {
             result.labels.push(entity);
 
             // Right Arrow
-            let x = width + arrow_width * 1.5;
+            let x = width + arrow_width * 3.;
             let transform =
                 Self::create_ui_transform(String::from("ArrowR"), x, y, arrow_width, height, i);
             let text = Self::create_ui_text(String::from(">>"), arrow_font_size, font.clone());
@@ -174,12 +174,13 @@ impl EditorFieldUiComponents {
     }
 
     fn create_ui_text(text: String, font_size: f32, font: Handle<FontAsset>) -> UiText {
-        let text = UiText::new(
+        let mut text = UiText::new(
             font,
             format!("{}", text).to_string(),
             [1., 1., 1., 1.],
             font_size,
         );
+        text.align = Anchor::Middle;
         text
     }
 
@@ -217,6 +218,7 @@ impl EditorFieldUiComponents {
             .with(text)
             .with(EditorButton::new(editor_button_type, i))
             .with(HiddenPropagate::new())
+            .with(UiImage::SolidColor(with_transparent(COLOR_BLACK, 0.8)))
             .build();
         entity
     }
