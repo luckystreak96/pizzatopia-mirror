@@ -31,6 +31,7 @@ use std::path::PathBuf;
 
 use crate::components::graphics::SpriteSheetType;
 use crate::events::Events;
+use crate::ui::file_picker::FilePickerFilename;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -45,7 +46,6 @@ pub enum CurrentActions {
     EnterEditorMode,
     SaveLevel,
     ChooseSaveFile,
-    ShowCurrentSaveFile,
 }
 
 pub struct ActionPackage {
@@ -68,6 +68,7 @@ impl ActionPackage {
 #[derivative(Default)]
 pub struct CurrentActionsUi {
     pub labels: BTreeMap<CurrentActions, ActionPackage>,
+    hover_game_object: bool,
 }
 
 impl UiComponent for CurrentActionsUi {
@@ -80,34 +81,140 @@ impl UiComponent for CurrentActionsUi {
     }
 
     fn update(&mut self, world: &World) {
-        self.update_component_visibility();
+        self.update_component_visibility(world);
         self.update_component_positions(world);
+        self.hover_game_object = false;
     }
 
     fn handle_ui_events(&mut self, _world: &World, _event: UiEvent) {}
     fn handle_custom_events(&mut self, world: &World, event: Events) {
         match event {
             Events::HoverGameObject => {
-                self.labels
-                    .get_mut(&CurrentActions::EnterEditGameObject)
-                    .unwrap()
-                    .show = true;
-                self.update_component_positions(world);
+                self.hover_game_object = true;
             }
             _ => {}
         }
     }
 }
 
+const LABEL_WIDTH: f32 = 200.0;
+const LABEL_HEIGHT: f32 = 25.0;
+const BUTTON_WIDTH: f32 = 40.0;
+const BUTTON_HEIGHT: f32 = 40.0;
+const FONT_SIZE: f32 = 18.;
+const X_OFFSET: f32 = 0.0;
+
 impl CurrentActionsUi {
-    pub fn update_component_visibility(&mut self) {
-        // TODO : based on editor state
-        // TODO : Set `show`
-        // TODO : Hide and show components
-        unimplemented!();
-    }
     pub fn update_component_positions(&mut self, world: &World) {
-        // TODO : Set the component positions based on how many there are per space
+        let mut bottom_left_index = 0;
+        let mut top_middle_index = 0;
+        for action in CurrentActions::iter() {
+            // Bottom left
+            match action {
+                CurrentActions::EnterInsertMode
+                | CurrentActions::EnterEditModeFromInsert
+                | CurrentActions::EnterEditGameObject
+                | CurrentActions::InsertModeTile
+                | CurrentActions::InsertModePlayer
+                | CurrentActions::EnterPlayMode
+                | CurrentActions::EnterEditorMode => {
+                    let pack = self.labels.get(&action).unwrap();
+                    if pack.show {
+                        let comb = vec![pack.button, pack.label];
+                        for ent in comb {
+                            if let Some(component) =
+                                world.write_storage::<UiTransform>().get_mut(ent)
+                            {
+                                component.local_y = BUTTON_HEIGHT.max(LABEL_HEIGHT)
+                                    * (bottom_left_index as f32 + 0.5);
+                            }
+                        }
+                        bottom_left_index += 1;
+                    }
+                }
+                _ => {}
+            }
+
+            // Top middle
+            match action {
+                CurrentActions::SaveLevel => {
+                    let pack = self.labels.get(&action).unwrap();
+                    if pack.show {
+                        let button_text = "INSERT";
+                        let button_len = button_text.len() as f32 * FONT_SIZE / 1.5;
+                        let comb = vec![
+                            (pack.button, X_OFFSET, button_len),
+                            (pack.label, X_OFFSET + button_len, LABEL_WIDTH),
+                        ];
+                        for (ent, x_pos, width) in comb {
+                            if let Some(component) =
+                                world.write_storage::<UiTransform>().get_mut(ent)
+                            {
+                                component.local_x = x_pos
+                                    + ((BUTTON_WIDTH + LABEL_WIDTH) * (top_middle_index as f32));
+                                component.local_y = -BUTTON_HEIGHT / 2.0;
+                                component.anchor = Anchor::TopMiddle;
+                                component.pivot = Anchor::MiddleLeft;
+                                component.width = width;
+                            }
+                        }
+                        if let Some(component) =
+                            world.write_storage::<UiText>().get_mut(pack.button)
+                        {
+                            component.text = button_text.to_string();
+                            component.font_size = button_len / button_text.len() as f32;
+                        }
+                        top_middle_index += 1;
+                    }
+                }
+                _ => {}
+            }
+
+            // Top right
+            match action {
+                CurrentActions::ChooseSaveFile => {
+                    let pack = self.labels.get(&action).unwrap();
+                    if pack.show {
+                        let filename = world.read_resource::<FilePickerFilename>().filename.clone();
+                        let button_text = "ENTER";
+                        let button_len = BUTTON_WIDTH + button_text.len() as f32 * FONT_SIZE / 1.5;
+                        let comb = vec![
+                            (pack.button, X_OFFSET, button_text, button_len),
+                            (
+                                pack.label,
+                                X_OFFSET + button_len,
+                                filename.as_str(),
+                                LABEL_WIDTH,
+                            ),
+                        ];
+                        for (ent, x_pos, text, width) in comb {
+                            if let Some(component) =
+                                world.write_storage::<UiTransform>().get_mut(ent)
+                            {
+                                component.local_x = x_pos - (button_len + LABEL_WIDTH);
+                                component.local_y = -BUTTON_HEIGHT / 2.0;
+                                component.anchor = Anchor::TopRight;
+                                component.width = width;
+                            }
+                            if let Some(component) = world.write_storage::<UiText>().get_mut(ent) {
+                                component.text = text.to_string();
+                            }
+                        }
+                        if let Some(component) =
+                            world.write_storage::<UiImage>().get_mut(pack.button)
+                        {
+                            match component {
+                                UiImage::Sprite(ref mut sprite) => {
+                                    sprite.sprite_number = 1;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
         /*
         i = 0
         foreach possible component in the bottom left corner (just a match that only matches actions in that area)
@@ -119,41 +226,70 @@ impl CurrentActionsUi {
 
          repeat for every area that has competition
          */
-        unimplemented!();
+        // unimplemented!();
+    }
+    fn show(&mut self, action: CurrentActions, show: bool) {
+        self.labels.get_mut(&action).unwrap().show = show;
+    }
+
+    pub fn update_component_visibility(&mut self, world: &World) {
+        let state = (*world.read_resource::<EditorState>()).clone();
+        for action in CurrentActions::iter() {
+            self.show(action, false);
+            match action {
+                CurrentActions::EnterInsertMode => {}
+                CurrentActions::EnterEditModeFromInsert => {}
+                CurrentActions::EnterEditGameObject => match state {
+                    EditorState::EditMode => {
+                        if self.hover_game_object {
+                            self.show(action, true);
+                        }
+                    }
+                    _ => {}
+                },
+                CurrentActions::InsertModeTile => {}
+                CurrentActions::InsertModePlayer => {}
+                CurrentActions::EnterPlayMode => {}
+                CurrentActions::EnterEditorMode => {}
+                CurrentActions::SaveLevel | CurrentActions::ChooseSaveFile => {
+                    self.show(action, true);
+                }
+            }
+        }
+
+        for (_, component) in &self.labels {
+            if component.show {
+                Self::show_component(world, component);
+            } else {
+                Self::hide_component(world, component);
+            }
+        }
     }
 
     pub fn hide_all_components(&mut self, world: &World) {
-        let mut actions = Vec::new();
-        for (action, _) in &self.labels {
-            actions.push(action.clone());
-        }
-        for action in actions {
-            self.hide_component(world, &action);
+        for (_, pack) in &self.labels {
+            Self::hide_component(world, pack);
         }
     }
 
-    pub fn hide_component(&mut self, world: &World, action: &CurrentActions) {
-        if let Some(pack) = self.labels.get(action) {
-            world
-                .write_storage::<HiddenPropagate>()
-                .insert(pack.button.clone(), HiddenPropagate::new())
-                .unwrap();
-            world
-                .write_storage::<HiddenPropagate>()
-                .insert(pack.label.clone(), HiddenPropagate::new())
-                .unwrap();
-        }
+    pub fn hide_component(world: &World, pack: &ActionPackage) {
+        world
+            .write_storage::<HiddenPropagate>()
+            .insert(pack.button.clone(), HiddenPropagate::new())
+            .unwrap();
+        world
+            .write_storage::<HiddenPropagate>()
+            .insert(pack.label.clone(), HiddenPropagate::new())
+            .unwrap();
     }
 
-    pub fn show_component(&mut self, world: &World, action: &CurrentActions) {
-        if let Some(comp) = self.labels.get(action) {
-            world
-                .write_storage::<HiddenPropagate>()
-                .remove(comp.button.clone());
-            world
-                .write_storage::<HiddenPropagate>()
-                .remove(comp.label.clone());
-        }
+    pub fn show_component(world: &World, comp: &ActionPackage) {
+        world
+            .write_storage::<HiddenPropagate>()
+            .remove(comp.button.clone());
+        world
+            .write_storage::<HiddenPropagate>()
+            .remove(comp.label.clone());
     }
 
     pub fn new(world: &mut World) -> Self {
@@ -166,51 +302,43 @@ impl CurrentActionsUi {
         let mut result: CurrentActionsUi = CurrentActionsUi::default();
         let font = (*world.read_resource::<Handle<FontAsset>>()).clone();
 
-        let label_width = 200.0;
-        let label_height: f32 = 25.0;
-        let button_width = 40.0;
-        let button_height: f32 = 40.0;
-        let font_size = 18.;
-        let x_offset = 0.0;
-
         let mut i = 0;
         for action in CurrentActions::iter() {
-            let y = button_height.max(label_height) * (i as f32 + 0.5);
+            let y = BUTTON_HEIGHT.max(LABEL_HEIGHT) * (i as f32 + 0.5);
 
             // Label
             let transform = Self::create_ui_transform(
                 String::from("ActionButton"),
-                x_offset,
+                X_OFFSET,
                 y,
-                button_width,
-                button_height,
+                BUTTON_WIDTH,
+                BUTTON_HEIGHT,
                 i,
             );
-            match action {
-                CurrentActions::ChooseSaveFile => {}
-                CurrentActions::EnterInsertMode => {}
-                CurrentActions::EnterEditModeFromInsert => {}
-                CurrentActions::EnterEditGameObject => {}
-                CurrentActions::InsertModeTile => {}
-                CurrentActions::InsertModePlayer => {}
-                CurrentActions::EnterPlayMode => {}
-                CurrentActions::EnterEditorMode => {}
-                CurrentActions::SaveLevel => {}
-                CurrentActions::ShowCurrentSaveFile => {}
-            }
-            let text = Self::create_ui_text(String::from("X"), font_size, font.clone(), true);
+            let filename = world.read_resource::<FilePickerFilename>().filename.clone();
+            let text_string = match action {
+                CurrentActions::ChooseSaveFile => ("ENTER", filename.as_str()),
+                CurrentActions::EnterInsertMode => ("X", "Edit Object"),
+                CurrentActions::EnterEditModeFromInsert => ("X", "Edit Object"),
+                CurrentActions::EnterEditGameObject => ("X", "Edit Object"),
+                CurrentActions::InsertModeTile => ("X", "Edit Object"),
+                CurrentActions::InsertModePlayer => ("X", "Edit Object"),
+                CurrentActions::EnterPlayMode => ("X", "Edit Object"),
+                CurrentActions::EnterEditorMode => ("X", "Edit Object"),
+                CurrentActions::SaveLevel => ("INSERT", "Save"),
+            };
+            let text = Self::create_ui_text(String::from(text_string.0), font.clone(), true);
             let button_entity = Self::create_ui_entity(world, transform, text, true);
 
             let transform = Self::create_ui_transform(
                 String::from("ActionLabel"),
-                x_offset + button_width / 2.0,
+                X_OFFSET + BUTTON_WIDTH,
                 y,
-                label_width,
-                label_height,
+                LABEL_WIDTH,
+                LABEL_HEIGHT,
                 i,
             );
-            let text =
-                Self::create_ui_text(String::from("PLACEHOLDER"), font_size, font.clone(), false);
+            let text = Self::create_ui_text(String::from(text_string.1), font.clone(), false);
             let label_entity = Self::create_ui_entity(world, transform, text, false);
 
             result
@@ -222,16 +350,19 @@ impl CurrentActionsUi {
         return result;
     }
 
-    fn create_ui_text(text: String, font_size: f32, font: Handle<FontAsset>, bg: bool) -> UiText {
-        let text = UiText::new(
+    fn create_ui_text(text: String, font: Handle<FontAsset>, bg: bool) -> UiText {
+        let mut text = UiText::new(
             font.clone(),
             format!("{}", text).to_string(),
             match bg {
                 false => COLOR_WHITE,
                 true => COLOR_BLACK,
             },
-            font_size,
+            FONT_SIZE,
         );
+        if !bg {
+            text.align = Anchor::MiddleLeft;
+        }
         text
     }
 
