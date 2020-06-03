@@ -17,6 +17,7 @@
     "cancel": [[Key(Z)], [Controller(0, B)]],
     "accept": [[Key(X)], [Controller(0, A)]],
     "start": [[Key(Return)], [Controller(0, Start)]],
+    "toggle_debug": [[Key(L)]],
     "1": [[Key(Key1)]],
     "2": [[Key(Key2)]],
     "modifier1": [[Key(LShift)]],

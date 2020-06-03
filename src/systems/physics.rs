@@ -1,5 +1,5 @@
 use crate::components::physics::{
-    Collidee, CollideeDetails, CollisionSideOfBlock, GravityDirection, Grounded,
+    Collidee, CollideeDetails, CollisionPoint, CollisionSideOfBlock, GravityDirection, Grounded,
     PlatformCollisionPoints, PlatformCuboid, Position, Sticky, Velocity,
 };
 use crate::events::Events;
@@ -296,7 +296,10 @@ impl ActorCollisionSystem {
         let mut bottommost: f32 = 999999.0;
         // Go through every collision point to create cuboid shape
         for collider_offset in &points.0 {
-            let point_pos = Vec2::new(collider_offset.x + pos.x, collider_offset.y + pos.y);
+            let point_pos = Vec2::new(
+                collider_offset.point.x + pos.x,
+                collider_offset.point.y + pos.y,
+            );
 
             leftmost = leftmost.min(point_pos.x);
             bottommost = bottommost.min(point_pos.y);
@@ -382,13 +385,27 @@ pub struct PlatformCollisionSystem;
 
 impl PlatformCollisionSystem {
     fn raycast(
-        point: &Vec2,
+        point: CollisionPoint,
         vel: &Vec2,
         cuboid_pos: &Vec2,
         cuboid: &PlatformCuboid,
     ) -> Option<(Vec2, CollisionSideOfBlock)> {
-        let x_intersects = cuboid.intersect_x(point, cuboid_pos);
-        let y_intersects = cuboid.intersect_y(point, cuboid_pos);
+        let x_intersects = cuboid.within_range_x(
+            &point.point,
+            cuboid_pos,
+            match point.is_horizontal {
+                true => point.half_reach,
+                false => 0.,
+            },
+        );
+        let y_intersects = cuboid.within_range_y(
+            &point.point,
+            cuboid_pos,
+            match point.is_horizontal {
+                true => 0.,
+                false => point.half_reach,
+            },
+        );
 
         // The point must be outside the tile
         if x_intersects && y_intersects {
@@ -406,8 +423,25 @@ impl PlatformCollisionSystem {
             false => cuboid_pos.y + cuboid.half_height,
         };
 
-        let hor_dist = hor_side - point.x;
-        let ver_dist = ver_side - point.y;
+        let offset_x = match point.is_horizontal {
+            true => point.half_reach,
+            false => 0.,
+        };
+        let offset_y = match point.is_horizontal {
+            true => 0.,
+            false => point.half_reach,
+        };
+        let mut hor_dist = hor_side - point.point.x;
+        let mut ver_dist = ver_side - point.point.y;
+        if hor_side < point.point.x + offset_x && hor_side > point.point.x - offset_x {
+            hor_dist = 0.;
+        }
+        if ver_side < point.point.y + offset_y && ver_side > point.point.y - offset_y {
+            ver_dist = 0.;
+        }
+
+        // let hor_dist = hor_side - point.x;
+        // let ver_dist = ver_side - point.y;
 
         let magic_number = -9999.0;
 
@@ -495,8 +529,11 @@ impl PlatformCollisionSystem {
         };
 
         let result = match side.is_horizontal() {
-            true => Vec2::new(hor_side, point.y + horizontal_perc_to_collision * vel.y),
-            false => Vec2::new(point.x + vertical_perc_to_collision * vel.x, ver_side),
+            true => Vec2::new(
+                hor_side,
+                point.point.y + horizontal_perc_to_collision * vel.y,
+            ),
+            false => Vec2::new(point.point.x + vertical_perc_to_collision * vel.x, ver_side),
         };
 
         debug!(
@@ -505,10 +542,16 @@ impl PlatformCollisionSystem {
         );
         debug!("Values = {:?}", result);
 
-        match cuboid.intersect_x(&result, &cuboid_pos) && cuboid.intersect_y(&result, &cuboid_pos) {
+        match cuboid.within_range_x(&result, &cuboid_pos, offset_x)
+            && cuboid.within_range_y(&result, &cuboid_pos, offset_y)
+        {
             true => Some((result, side)),
             false => None,
         }
+        // match cuboid.intersect_x(&result, &cuboid_pos) && cuboid.intersect_y(&result, &cuboid_pos) {
+        //     true => Some((result, side)),
+        //     false => None,
+        // }
     }
 }
 
@@ -525,7 +568,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
         &mut self,
         (mut velocities, mut collidees, positions, cuboids, coll_points): Self::SystemData,
     ) {
-        for (velocity, collidee, ent_pos, coll_point) in
+        for (velocity, collidee, ent_pos, collision_points) in
             (&mut velocities, &mut collidees, &positions, &coll_points).join()
         {
             // Reset collidees here they can be used for the rest of the frame
@@ -548,10 +591,10 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                 let mut num_coll_points = 0;
 
                 // Go through every collision point
-                for collider_offset in &coll_point.0 {
+                for col_point in &collision_points.0 {
                     let point_pos = Vec2::new(
-                        collider_offset.x + current_ent_pos.x,
-                        collider_offset.y + current_ent_pos.y,
+                        col_point.point.x + current_ent_pos.x,
+                        col_point.point.y + current_ent_pos.y,
                     );
                     debug!("Point: {:?}", point_pos);
 
@@ -561,8 +604,8 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                         let delta = TILE_WIDTH;
                         let platform_position = plat_pos.0.to_vec2();
                         let point_vel_pos = Vec2::new(
-                            collider_offset.x + ent_pos.0.x + current_vel.x,
-                            collider_offset.y + ent_pos.0.y + current_vel.y,
+                            col_point.point.x + ent_pos.0.x + current_vel.x,
+                            col_point.point.y + ent_pos.0.y + current_vel.y,
                         );
 
                         // Is the block even close to us
@@ -570,7 +613,11 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                             if cuboid.within_range_y(&point_vel_pos, &platform_position, delta) {
                                 // point of collision and side
                                 let point_of_collision = Self::raycast(
-                                    &point_pos,
+                                    CollisionPoint::new(
+                                        point_pos,
+                                        col_point.half_reach,
+                                        col_point.is_horizontal,
+                                    ),
                                     &current_vel,
                                     &platform_position,
                                     cuboid,
@@ -633,7 +680,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                                     distance: cur_distance_to_collision,
                                     new_collider_pos: Vec2::subtract(
                                         &point_of_collision,
-                                        &collider_offset,
+                                        &col_point.point,
                                     ),
                                     old_collider_vel: current_vel.clone(),
                                     new_collider_vel: new_velocity,

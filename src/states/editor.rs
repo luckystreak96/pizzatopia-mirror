@@ -103,9 +103,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     fn on_start(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         data.world.register::<HiddenPropagate>();
 
-        data.world.insert(DebugLines::new());
-        data.world.insert(DebugLinesParams { line_width: 2.0 });
-
         if data.world.try_fetch::<InsertionGameObject>().is_none() {
             data.world
                 .insert(InsertionGameObject(SerializedObject::default()));

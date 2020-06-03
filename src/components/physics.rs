@@ -155,39 +155,40 @@ impl Component for Position {
     type Storage = DenseVecStorage<Self>;
 }
 
+#[derive(Debug)]
+pub struct CollisionPoint {
+    pub point: Vec2,
+    pub half_reach: f32,
+    pub is_horizontal: bool,
+}
+
+impl CollisionPoint {
+    pub fn new(point: Vec2, half_reach: f32, is_horizontal: bool) -> CollisionPoint {
+        CollisionPoint {
+            point,
+            half_reach,
+            is_horizontal,
+        }
+    }
+}
+
 // The points represent offsets from Position
-pub struct PlatformCollisionPoints(pub Vec<Vec2>);
+pub struct PlatformCollisionPoints(pub Vec<CollisionPoint>);
 
 impl Component for PlatformCollisionPoints {
     type Storage = DenseVecStorage<Self>;
 }
 impl PlatformCollisionPoints {
-    pub fn vertical_line(half_height: f32) -> PlatformCollisionPoints {
+    pub fn plus(half_width: f32, half_height: f32) -> PlatformCollisionPoints {
         let mut vec = Vec::new();
-        vec.push(Vec2::new(0.0, -half_height));
-        vec.push(Vec2::new(0.0, half_height));
-        vec.push(Vec2::new(0.0, 0.0));
-        PlatformCollisionPoints(vec)
-    }
-
-    pub fn triangle(half_height: f32) -> PlatformCollisionPoints {
-        let mut vec = Vec::new();
-        vec.push(Vec2::new(-half_height, -half_height));
-        vec.push(Vec2::new(0.0, half_height));
-        vec.push(Vec2::new(half_height, -half_height));
-        PlatformCollisionPoints(vec)
-    }
-
-    pub fn square(half_height: f32) -> PlatformCollisionPoints {
-        Self::rectangle(half_height, half_height)
-    }
-
-    pub fn rectangle(half_width: f32, half_height: f32) -> PlatformCollisionPoints {
-        let mut vec = Vec::new();
-        vec.push(Vec2::new(-half_width, -half_height));
-        vec.push(Vec2::new(-half_width, half_height));
-        vec.push(Vec2::new(half_width, -half_height));
-        vec.push(Vec2::new(half_width, half_height));
+        let left = CollisionPoint::new(Vec2::new(-half_width, 0.), half_height, false);
+        let right = CollisionPoint::new(Vec2::new(half_width, 0.), half_height, false);
+        let top = CollisionPoint::new(Vec2::new(0., half_height), half_width, true);
+        let bottom = CollisionPoint::new(Vec2::new(0., -half_height), half_width, true);
+        vec.push(left);
+        vec.push(right);
+        vec.push(top);
+        vec.push(bottom);
         PlatformCollisionPoints(vec)
     }
 }

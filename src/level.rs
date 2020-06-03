@@ -404,7 +404,7 @@ impl Level {
             .size
             .unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
-        let collision_points = PlatformCollisionPoints::rectangle(size.x / 2.25, size.y / 2.25);
+        let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
 
         // Data common to both editor and entity
         let mut builder = world

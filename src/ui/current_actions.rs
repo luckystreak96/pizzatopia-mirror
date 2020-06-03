@@ -89,7 +89,7 @@ impl UiComponent for CurrentActionsUi {
     }
 
     fn handle_ui_events(&mut self, _world: &World, _event: UiEvent) {}
-    fn handle_custom_events(&mut self, world: &World, event: Events) {
+    fn handle_custom_events(&mut self, _world: &World, event: Events) {
         match event {
             Events::HoverGameObject => {
                 self.hover_game_object = true;

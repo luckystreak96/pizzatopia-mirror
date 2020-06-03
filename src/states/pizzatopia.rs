@@ -15,8 +15,10 @@ use crate::components::physics::{
 use crate::events::Events;
 use crate::level::Level;
 use crate::states::editor::Editor;
+use crate::states::loading::DrawDebugLines;
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
+use crate::systems::graphics::CollisionDebugLinesSystem;
 use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
 use crate::ui::file_picker::{FilePickerButton, FilePickerUi};
@@ -154,6 +156,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                 return Trans::Quit;
             } else if input.action_single_press("editor").is_down {
                 return Trans::Push(Box::new(Editor::default()));
+            } else if input.action_single_press("toggle_debug").is_down {
+                let current = data.world.read_resource::<DrawDebugLines>().0;
+                data.world.write_resource::<DrawDebugLines>().0 = !current;
             }
         }
 
@@ -276,6 +281,12 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             systems::physics::ApplyStickySystem,
             "apply_sticky_system",
             &["apply_velocity_system"],
+        );
+
+        dispatcher_builder.add(
+            CollisionDebugLinesSystem,
+            "collision_debug_lines_system",
+            &["apply_sticky_system"],
         );
         dispatcher_builder.add(
             systems::game::CameraTargetSystem,

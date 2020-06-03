@@ -6,8 +6,11 @@ use crate::components::game::{SerializedObjectType, SpriteRenderData};
 use crate::components::graphics::{
     AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale, SpriteSheetType,
 };
-use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
-use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
+use crate::components::physics::{
+    GravityDirection, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
+};
+use crate::states::loading::DrawDebugLines;
+use crate::states::pizzatopia::{DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
 use crate::ui::tile_characteristics::{EditorFieldUiComponents, UiIndex};
 use crate::ui::UiStack;
@@ -18,6 +21,7 @@ use amethyst::derive::SystemDesc;
 use amethyst::ecs::{
     Join, Read, ReadExpect, ReadStorage, System, SystemData, World, Write, WriteStorage,
 };
+use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLinesParams};
 use amethyst::renderer::{
     palette::Srgba, resources::Tint, Camera, ImageFormat, SpriteRender, SpriteSheet,
     SpriteSheetFormat, Texture,
@@ -68,6 +72,72 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
     fn run(&mut self, (mut transforms, positions): Self::SystemData) {
         for (transform, position) in (&mut transforms, &positions).join() {
             transform.set_translation_xyz(position.0.x, position.0.y, position.0.z);
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct CollisionDebugLinesSystem;
+
+impl<'s> System<'s> for CollisionDebugLinesSystem {
+    type SystemData = (
+        ReadStorage<'s, Position>,
+        ReadStorage<'s, PlatformCuboid>,
+        ReadStorage<'s, PlatformCollisionPoints>,
+        Read<'s, DrawDebugLines>,
+        Write<'s, DebugLines>,
+    );
+
+    fn run(
+        &mut self,
+        (positions, platform_cuboids, collision_points, draw, mut debug_lines): Self::SystemData,
+    ) {
+        if !draw.0 {
+            return;
+        }
+        for (platform, position) in (&platform_cuboids, &positions).join() {
+            debug_lines.draw_rectangle(
+                [
+                    position.0.x - platform.half_width,
+                    position.0.y - platform.half_height,
+                ]
+                .into(),
+                [
+                    position.0.x + platform.half_width,
+                    position.0.y + platform.half_height,
+                ]
+                .into(),
+                DEPTH_UI,
+                Srgba::new(1., 0., 0., 1.),
+            );
+        }
+
+        for (col, position) in (&collision_points, &positions).join() {
+            for point in &col.0 {
+                let offset_x = match point.is_horizontal {
+                    true => point.half_reach,
+                    false => 0.,
+                };
+                let offset_y = match point.is_horizontal {
+                    true => 0.,
+                    false => point.half_reach,
+                };
+                debug_lines.draw_line(
+                    [
+                        position.0.x + point.point.x - offset_x,
+                        position.0.y + point.point.y - offset_y,
+                        DEPTH_UI,
+                    ]
+                    .into(),
+                    [
+                        position.0.x + point.point.x + offset_x,
+                        position.0.y + point.point.y + offset_y,
+                        DEPTH_UI,
+                    ]
+                    .into(),
+                    Srgba::new(1., 0., 0., 1.),
+                );
+            }
         }
     }
 }

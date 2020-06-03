@@ -27,6 +27,7 @@ use amethyst::{
     input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
     renderer::{
+        debug_drawing::{DebugLines, DebugLinesComponent, DebugLinesParams},
         rendy::{
             hal::image::{Filter, SamplerInfo, WrapMode},
             texture::image::{ImageTextureConfig, Repr, TextureKind},
@@ -45,6 +46,9 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub struct AssetsDir(pub PathBuf);
+
+#[derive(Default)]
+pub struct DrawDebugLines(pub bool);
 
 pub struct LoadingState {
     /// Tracks loaded assets.
@@ -69,6 +73,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
                 loader.load("prefab/tile_size.ron", RonFormat, ())
             });
         data.world.insert(platform_size_prefab_handle.clone());
+
+        data.world.insert(DebugLines::new());
+        data.world.insert(DebugLinesParams { line_width: 2.0 });
+        data.world.insert(DrawDebugLines(false));
 
         data.world
             .insert(AssetsDir(application_root_dir().unwrap().join("assets")));
