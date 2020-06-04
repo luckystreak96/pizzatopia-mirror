@@ -387,6 +387,10 @@ impl<'s> System<'s> for EditorButtonEventSystem {
             editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
         }
 
+        if input.action_single_press("load").is_down {
+            global_event_writer.single_write(Events::LoadLevel);
+        }
+
         match *state {
             EditorState::EditMode => {
                 // Controller input

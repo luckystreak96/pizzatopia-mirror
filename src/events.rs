@@ -8,6 +8,7 @@ pub enum Events {
     AddGameObject,
     DeleteGameObject(u32),
     SaveLevel,
+    LoadLevel,
     ChangeInsertionGameObject(u8),
     SetInsertionGameObject(SerializedObject),
     EntityToInsertionGameObject(u32),

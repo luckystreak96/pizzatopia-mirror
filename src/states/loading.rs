@@ -3,6 +3,7 @@ use crate::components::graphics::SpriteSheetType;
 use crate::components::graphics::SPRITESHEETTYPE_COUNT;
 use crate::components::physics::PlatformCuboid;
 use crate::level::Level;
+use crate::states::load_level::LoadLevelState;
 use crate::states::pizzatopia::{MyEvents, Pizzatopia};
 use crate::systems::input::InputManager;
 use crate::ui::file_picker::{FilePickerFilename, DIR_LEVELS};
@@ -53,14 +54,12 @@ pub struct DrawDebugLines(pub bool);
 pub struct LoadingState {
     /// Tracks loaded assets.
     progress_counter: ProgressCounter,
-    level_progress: ProgressCounter,
 }
 
 impl Default for LoadingState {
     fn default() -> Self {
         LoadingState {
             progress_counter: ProgressCounter::default(),
-            level_progress: ProgressCounter::default(),
         }
     }
 }
@@ -80,17 +79,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
 
         data.world
             .insert(AssetsDir(application_root_dir().unwrap().join("assets")));
-        let filename = "level0.ron";
-        let path = PathBuf::from(DIR_LEVELS)
-            .join(filename)
-            .display()
-            .to_string();
-        let level_handle = data.world.read_resource::<Loader>().load(
-            path.as_str(), // Here we load the associated ron file
-            RonFormat,
-            &mut self.level_progress,
-            &data.world.read_resource::<AssetStorage<Level>>(),
-        );
         let font_handle: Handle<FontAsset> = data.world.read_resource::<Loader>().load(
             "font/LibreBaskerville-Bold.ttf",
             TtfFormat,
@@ -98,7 +86,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
             &data.world.read_resource(),
         );
         data.world.insert(font_handle);
-        data.world.insert(level_handle.clone());
         data.world
             .insert(BTreeMap::<u8, Handle<SpriteSheet>>::new());
 
@@ -117,8 +104,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
 
         data.world.insert(InputManager::new(data.world));
         data.world.insert(FilePickerFilename::new(
-            "insert filename here".to_string(),
-            "insert fullpath here".to_string(),
+            "level0.ron".to_string(),
+            "level0.ron".to_string(),
         ));
         data.world.insert(UiStack::default());
     }
@@ -134,14 +121,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
                 self.progress_counter.num_assets(),
                 SPRITESHEETTYPE_COUNT,
             );
-            match self.level_progress.complete() {
-                Completion::Failed => {
-                    error!("Failed to load Level asset");
-                    Trans::Switch(Box::new(Pizzatopia::default()))
-                }
-                Completion::Complete => Trans::Switch(Box::new(Pizzatopia::default())),
-                _ => Trans::None,
-            }
+            return Trans::Switch(Box::new(LoadLevelState::default()));
         } else {
             Trans::None
         }

@@ -13,6 +13,7 @@ use crate::components::physics::{
 };
 use crate::events::Events;
 use crate::level::Level;
+use crate::states::load_level::LoadLevelState;
 use crate::states::pizzatopia;
 use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
@@ -194,6 +195,12 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 }
                 Events::SaveLevel => {
                     Level::save_level(data.world);
+                }
+                Events::LoadLevel => {
+                    return Trans::Sequence(vec![
+                        Trans::Pop,
+                        Trans::Switch(Box::new(LoadLevelState::default())),
+                    ]);
                 }
                 Events::ChangeInsertionGameObject(id) => {
                     let mod_id = id % 2;

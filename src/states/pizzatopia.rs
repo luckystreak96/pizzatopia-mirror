@@ -141,6 +141,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         });
     }
 
+    fn on_stop(&mut self, data: StateData<'_, GameData<'s, 's>>) {
+        data.world.delete_all();
+    }
+
     fn on_resume(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         Level::calculate_camera_limits(data.world);
     }

@@ -12,6 +12,7 @@
     "reset": [[Key(Home)]],
     "save": [[Key(Insert)]],
     "revive": [[Key(PageUp)]],
+    "load": [[Key(PageDown)]],
     "editor": [[Key(LControl)], [Controller(0, Back)]],
     "insert": [[Key(A)], [Controller(0, LeftShoulder)]],
     "cancel": [[Key(Z)], [Controller(0, B)]],
