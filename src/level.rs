@@ -9,7 +9,7 @@ use crate::components::graphics::SpriteSheetType;
 use crate::components::graphics::{AnimationCounter, CameraLimit, Scale};
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
-    Sticky, Velocity,
+    RTreeEntity, Sticky, Velocity,
 };
 use crate::states::loading::AssetsDir;
 use crate::states::pizzatopia::{CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
@@ -37,6 +37,7 @@ use amethyst::{
 };
 use derivative::Derivative;
 use log::{error, info, warn};
+use rstar::{RTree, RTreeObject, AABB};
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -240,6 +241,20 @@ impl Level {
                 Self::initialize_serialized_object(world, &mut serialized_object, false);
             }
         }
+
+        let mut positions = Vec::new();
+        for (entity, pos, platform_cuboid) in (
+            &world.entities(),
+            &world.read_storage::<Position>(),
+            &world.read_storage::<PlatformCuboid>(),
+        )
+            .join()
+        {
+            let rtree_entity = RTreeEntity::new(pos.0.to_vec2(), platform_cuboid.to_vec2(), entity);
+            positions.push(rtree_entity);
+        }
+        let tree = RTree::bulk_load(positions);
+        world.insert(tree);
 
         Level::calculate_camera_limits(world);
     }

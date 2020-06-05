@@ -1,6 +1,6 @@
 use crate::components::physics::{
     Collidee, CollideeDetails, CollisionPoint, CollisionSideOfBlock, GravityDirection, Grounded,
-    PlatformCollisionPoints, PlatformCuboid, Position, Sticky, Velocity,
+    PlatformCollisionPoints, PlatformCuboid, Position, RTreeEntity, Sticky, Velocity,
 };
 use crate::events::Events;
 use crate::states::pizzatopia::{FRICTION, MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH};
@@ -28,6 +28,8 @@ use amethyst::{
     input::{InputHandler, StringBindings},
     prelude::*,
 };
+use rstar::{RTree, AABB};
+use std::time::Instant;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CollisionDirection {
@@ -295,7 +297,7 @@ impl ActorCollisionSystem {
         let mut topmost: f32 = -999999.0;
         let mut bottommost: f32 = 999999.0;
         // Go through every collision point to create cuboid shape
-        for collider_offset in &points.0 {
+        for collider_offset in &points.collision_points {
             let point_pos = Vec2::new(
                 collider_offset.point.x + pos.x,
                 collider_offset.point.y + pos.y,
@@ -562,11 +564,12 @@ impl<'s> System<'s> for PlatformCollisionSystem {
         ReadStorage<'s, Position>,
         ReadStorage<'s, PlatformCuboid>,
         ReadStorage<'s, PlatformCollisionPoints>,
+        Read<'s, RTree<RTreeEntity>>,
     );
 
     fn run(
         &mut self,
-        (mut velocities, mut collidees, positions, cuboids, coll_points): Self::SystemData,
+        (mut velocities, mut collidees, positions, cuboids, coll_points, rtree): Self::SystemData,
     ) {
         for (velocity, collidee, ent_pos, collision_points) in
             (&mut velocities, &mut collidees, &positions, &coll_points).join()
@@ -591,14 +594,37 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                 let mut num_coll_points = 0;
 
                 // Go through every collision point
-                for col_point in &collision_points.0 {
+                for col_point in &collision_points.collision_points {
+                    let col_point: &CollisionPoint = col_point;
                     let point_pos = Vec2::new(
                         col_point.point.x + current_ent_pos.x,
                         col_point.point.y + current_ent_pos.y,
                     );
                     debug!("Point: {:?}", point_pos);
 
-                    for (plat_pos, cuboid) in (&positions, &cuboids).join() {
+                    let bottom_left = [
+                        current_ent_pos.x + current_vel.x + collision_points.half_size.x * 2.,
+                        current_ent_pos.y + current_vel.y + collision_points.half_size.y * 2.,
+                    ];
+                    let top_right = [
+                        current_ent_pos.x + current_vel.x - collision_points.half_size.x * 2.,
+                        current_ent_pos.y + current_vel.y - collision_points.half_size.y * 2.,
+                    ];
+                    for rtree_ent in rtree.locate_in_envelope_intersecting(&AABB::from_corners(
+                        bottom_left,
+                        top_right,
+                    )) {
+                        let plat_pos = positions.get(rtree_ent.entity);
+                        let cuboid = cuboids.get(rtree_ent.entity);
+                        if plat_pos.is_none() || cuboid.is_none() {
+                            continue;
+                        }
+                        let plat_pos = plat_pos.unwrap();
+                        let cuboid = cuboid.unwrap();
+
+                        // uncomment the following 2 lines to return to old iterative collisions
+                        // }
+                        // for (plat_pos, cuboid) in (&positions, &cuboids).join() {
                         // delta so if we go through the corner of a block we still check
                         // Must stay gt or eq to the max speed that will be reached
                         let delta = TILE_WIDTH;

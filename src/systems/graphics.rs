@@ -113,7 +113,7 @@ impl<'s> System<'s> for CollisionDebugLinesSystem {
         }
 
         for (col, position) in (&collision_points, &positions).join() {
-            for point in &col.0 {
+            for point in &col.collision_points {
                 let offset_x = match point.is_horizontal {
                     true => point.half_reach,
                     false => 0.,

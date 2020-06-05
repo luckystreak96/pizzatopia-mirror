@@ -15,6 +15,7 @@ ron = "0.5.1"
 num-traits = "0.1.43"
 strum = "0.18.0"
 strum_macros = "0.18.0"
+rstar = "0.8.0"
 
 [features]
  default = ["vulkan", "sdl_controller"]

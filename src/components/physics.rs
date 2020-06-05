@@ -16,6 +16,7 @@ use crate::states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::CollisionDirection;
 use crate::utils::{Vec2, Vec3};
 use derivative::Derivative;
+use rstar::{RTreeObject, AABB};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CollisionSideOfBlock {
@@ -147,6 +148,38 @@ impl Component for GravityDirection {
     type Storage = DenseVecStorage<Self>;
 }
 
+#[derive(Clone)]
+pub struct RTreeEntity {
+    pub pos: Vec2,
+    pub half_size: Vec2,
+    pub entity: Entity,
+}
+
+impl RTreeEntity {
+    pub fn new(pos: Vec2, half_size: Vec2, entity: Entity) -> RTreeEntity {
+        RTreeEntity {
+            pos,
+            half_size,
+            entity,
+        }
+    }
+
+    fn get_corners(&self) -> ([f32; 2], [f32; 2]) {
+        let bottom_left = [self.pos.x - self.half_size.x, self.pos.y - self.half_size.y];
+        let top_right = [self.pos.x + self.half_size.x, self.pos.y + self.half_size.y];
+        (bottom_left, top_right)
+    }
+}
+
+impl RTreeObject for RTreeEntity {
+    type Envelope = AABB<[f32; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        let corners = self.get_corners();
+        AABB::from_corners(corners.0, corners.1)
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
 pub struct Position(pub Vec3);
@@ -173,7 +206,10 @@ impl CollisionPoint {
 }
 
 // The points represent offsets from Position
-pub struct PlatformCollisionPoints(pub Vec<CollisionPoint>);
+pub struct PlatformCollisionPoints {
+    pub collision_points: Vec<CollisionPoint>,
+    pub half_size: Vec2,
+}
 
 impl Component for PlatformCollisionPoints {
     type Storage = DenseVecStorage<Self>;
@@ -189,7 +225,10 @@ impl PlatformCollisionPoints {
         vec.push(right);
         vec.push(top);
         vec.push(bottom);
-        PlatformCollisionPoints(vec)
+        PlatformCollisionPoints {
+            collision_points: vec,
+            half_size: Vec2::new(half_width, half_height),
+        }
     }
 }
 
@@ -207,6 +246,10 @@ impl PlatformCuboid {
             half_width: TILE_WIDTH / 2.0,
             half_height: TILE_HEIGHT / 2.0,
         }
+    }
+
+    pub fn to_vec2(&self) -> Vec2 {
+        Vec2::new(self.half_width, self.half_height)
     }
 
     pub fn create(tile_size_x: f32, tile_size_y: f32) -> PlatformCuboid {
