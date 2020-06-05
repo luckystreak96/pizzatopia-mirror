@@ -47,6 +47,7 @@ pub enum EditorActions {
     InsertModePlayer,
     InsertModeTile,
     SaveLevel,
+    LoadLevel,
     ChooseSaveFile,
 }
 
@@ -184,6 +185,36 @@ impl CurrentActionsUi {
                         top_middle_index += 1;
                     }
                 }
+                EditorActions::LoadLevel => {
+                    let pack = self.labels.get(&action).unwrap();
+                    if pack.show {
+                        let button_text = "PgDn";
+                        let button_len = button_text.len() as f32 * FONT_SIZE / 1.5;
+                        let comb = vec![
+                            (pack.button, X_OFFSET, button_len),
+                            (pack.label, X_OFFSET + button_len, LABEL_WIDTH),
+                        ];
+                        for (ent, x_pos, width) in comb {
+                            if let Some(component) =
+                                world.write_storage::<UiTransform>().get_mut(ent)
+                            {
+                                component.local_x = x_pos
+                                    + ((BUTTON_WIDTH + LABEL_WIDTH) * (top_middle_index as f32));
+                                component.local_y = -BUTTON_HEIGHT / 2.0;
+                                component.anchor = Anchor::TopMiddle;
+                                component.pivot = Anchor::MiddleLeft;
+                                component.width = width;
+                            }
+                        }
+                        if let Some(component) =
+                            world.write_storage::<UiText>().get_mut(pack.button)
+                        {
+                            component.text = button_text.to_string();
+                            component.font_size = button_len / button_text.len() as f32;
+                        }
+                        top_middle_index += 1;
+                    }
+                }
                 _ => {}
             }
 
@@ -295,7 +326,9 @@ impl CurrentActionsUi {
                 EditorActions::EnterPlayMode => {
                     self.show(action, true);
                 }
-                EditorActions::SaveLevel | EditorActions::ChooseSaveFile => {
+                EditorActions::LoadLevel
+                | EditorActions::SaveLevel
+                | EditorActions::ChooseSaveFile => {
                     self.show(action, true);
                 }
             }
@@ -368,7 +401,8 @@ impl CurrentActionsUi {
                 EditorActions::InsertModeTile => ("1", "Switch To Tiles"),
                 EditorActions::InsertModePlayer => ("2", "Switch To Players"),
                 EditorActions::EnterPlayMode => ("LCTRL", "Play Level"),
-                EditorActions::SaveLevel => ("INSERT", "Save"),
+                EditorActions::SaveLevel => ("INSERT", "Save Level"),
+                EditorActions::LoadLevel => ("PgDn", "Load Level"),
                 EditorActions::PlaceEditGameObject => ("X", "Place Object"),
                 EditorActions::DeleteEditGameObject => ("Z", "Remove Object"),
             };
