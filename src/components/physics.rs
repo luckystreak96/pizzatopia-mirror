@@ -184,6 +184,14 @@ impl RTreeObject for RTreeEntity {
 #[derivative(Default)]
 pub struct Position(pub Vec3);
 
+impl Position {
+    pub fn with_depth(&self, depth: f32) -> Position {
+        let mut vec3 = self.0;
+        vec3.z = depth;
+        Position(vec3)
+    }
+}
+
 impl Component for Position {
     type Storage = DenseVecStorage<Self>;
 }

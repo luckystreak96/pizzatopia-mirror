@@ -12,7 +12,9 @@ use crate::components::physics::{
     RTreeEntity, Sticky, Velocity,
 };
 use crate::states::loading::AssetsDir;
-use crate::states::pizzatopia::{CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, TILE_HEIGHT, TILE_WIDTH};
+use crate::states::pizzatopia::{
+    CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, DEPTH_EDITOR, DEPTH_TILES, TILE_HEIGHT, TILE_WIDTH,
+};
 use crate::systems::editor::EditorButtonEventSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::ui::file_picker::{FilePickerFilename, DIR_LEVELS};
@@ -177,7 +179,8 @@ impl Level {
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
 
         // Correctly position the tile.
-        let pos = Position(serialized_object.pos.unwrap().to_vec3().clone());
+        let mut pos = Position(serialized_object.pos.unwrap().to_vec3().clone());
+        pos.0.z = DEPTH_TILES;
 
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
@@ -215,7 +218,7 @@ impl Level {
             .with(Tile)
             .with(transform.clone())
             .with(sprite_render.clone())
-            .with(pos.clone())
+            .with(pos.clone().with_depth(DEPTH_EDITOR))
             .with(amethyst::core::Hidden)
             .with(scale.clone())
             .with(SizeForEditorGrid(size.clone()))
@@ -398,7 +401,7 @@ impl Level {
             }
         };
         let mut transform = Transform::default();
-        transform.set_translation_xyz(pos.x, pos.y, 0.0);
+        transform.set_translation_xyz(pos.x, pos.y, DEPTH_ACTORS);
 
         let sprite_sheet_type = serialized_object
             .sprite
@@ -452,7 +455,7 @@ impl Level {
                 .with(transform.clone())
                 .with(Player(player))
                 .with(sprite_render.clone())
-                .with(position.clone())
+                .with(position.clone().with_depth(DEPTH_EDITOR))
                 .with(scale.clone())
                 .with(Transparent)
                 .with(Resettable)
