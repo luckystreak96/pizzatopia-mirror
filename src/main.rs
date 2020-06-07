@@ -33,6 +33,7 @@ use amethyst::{
 };
 use log::info;
 
+mod animations;
 mod audio;
 mod bundles;
 mod components;

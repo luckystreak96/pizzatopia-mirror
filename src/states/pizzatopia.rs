@@ -1,3 +1,4 @@
+use crate::animations::AnimationId;
 use crate::audio::{initialise_audio, Sounds};
 use crate::bundles::{GameLogicBundle, GraphicsBundle};
 use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
@@ -26,6 +27,7 @@ use crate::ui::tile_characteristics::EditorButton;
 use crate::ui::UiStack;
 use crate::utils::{Vec2, Vec3};
 use amethyst::{
+    animation::*,
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
         PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
@@ -307,13 +309,44 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             "camera_edge_clamp_system",
             &["lerper_system"],
         );
+
+        dispatcher_builder.add(
+            systems::graphics::TransformResetSystem,
+            "transform_reset_system",
+            &["lerper_system"],
+        );
+
         // register a bundle to the builder
+        AnimationBundle::<AnimationId, Transform>::new(
+            "animation_control_system",
+            "sampler_interpolation_system",
+        )
+        .with_dep(&["transform_reset_system"])
+        .build(world, &mut dispatcher_builder)
+        .expect("Failed to register animation bundle in pizzatopia");
         GameLogicBundle::default()
             .build(world, &mut dispatcher_builder)
             .expect("Failed to register GameLogic bundle.");
-        GraphicsBundle::default()
-            .build(world, &mut dispatcher_builder)
-            .expect("Failed to register Graphics bundle.");
+        dispatcher_builder.add(
+            systems::graphics::SpriteUpdateSystem,
+            "sprite_update_system",
+            &["apply_velocity_system"],
+        );
+        dispatcher_builder.add(
+            systems::graphics::PositionDrawUpdateSystem,
+            "position_draw_update_system",
+            &["sprite_update_system", "sampler_interpolation_system"],
+        );
+        dispatcher_builder.add(
+            systems::graphics::ScaleDrawUpdateSystem,
+            "scale_draw_update_system",
+            &["position_draw_update_system"],
+        );
+        dispatcher_builder.add(
+            systems::graphics::DeadDrawUpdateSystem,
+            "dead_draw_update_system",
+            &["scale_draw_update_system"],
+        );
 
         dispatcher_builder
             .with_pool((*world.read_resource::<ArcThreadPool>()).clone())

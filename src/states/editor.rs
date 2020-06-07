@@ -325,14 +325,19 @@ impl<'a, 'b> Editor<'a, 'b> {
 
         // Graphics
         dispatcher_builder.add(
+            systems::graphics::TransformResetSystem,
+            "transform_reset_system",
+            &["editor_event_handling_system"],
+        );
+        dispatcher_builder.add(
             systems::graphics::ScaleDrawUpdateSystem,
             "scale_draw_update_system",
-            &["editor_event_handling_system"],
+            &["transform_reset_system"],
         );
         dispatcher_builder.add(
             CursorSpriteUpdateSystem,
             "cursor_sprite_update_system",
-            &["editor_event_handling_system"],
+            &["transform_reset_system"],
         );
         dispatcher_builder.add(
             CursorColorUpdateSystem,

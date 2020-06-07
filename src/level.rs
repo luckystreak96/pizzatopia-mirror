@@ -1,3 +1,4 @@
+use crate::animations::{AnimationFactory, AnimationId};
 use crate::components::editor::{
     EditorFlag, InsertionGameObject, InstanceEntityId, SizeForEditorGrid,
 };
@@ -21,9 +22,10 @@ use crate::ui::file_picker::{FilePickerFilename, DIR_LEVELS};
 use crate::utils::{Vec2, Vec3};
 use amethyst::core::math::Vector3;
 use amethyst::{
+    animation::*,
     assets::{
-        Asset, AssetStorage, Format, Handle, Loader, Prefab, ProcessingState, Processor,
-        ProgressCounter, Source,
+        Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabLoader, ProcessingState,
+        Processor, ProgressCounter, RonFormat, Source,
     },
     core::transform::Transform,
     ecs::prelude::{Component, DenseVecStorage, Join, NullStorage},
@@ -47,6 +49,7 @@ use std::fs::File;
 use std::io::Write;
 use std::ops::Index;
 use std::path::PathBuf;
+use std::process::id;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
@@ -423,10 +426,12 @@ impl Level {
             .unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
+        let animation = AnimationFactory::create_bob(world, 10.);
 
         // Data common to both editor and entity
         let mut builder = world
             .create_entity()
+            .with(animation)
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(position.clone())

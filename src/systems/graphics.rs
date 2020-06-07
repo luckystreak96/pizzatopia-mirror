@@ -1,3 +1,4 @@
+use crate::animations::{AnimationAction, AnimationFactory, AnimationId, SamplerAction};
 use crate::components::editor::{
     EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
 };
@@ -14,12 +15,13 @@ use crate::states::pizzatopia::{DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
 use crate::ui::tile_characteristics::{EditorFieldUiComponents, UiIndex};
 use crate::ui::UiStack;
+use amethyst::animation::*;
 use amethyst::assets::{AssetStorage, Handle};
 use amethyst::core::math::Vector3;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{
-    Join, Read, ReadExpect, ReadStorage, System, SystemData, World, Write, WriteStorage,
+    Entities, Join, Read, ReadExpect, ReadStorage, System, SystemData, World, Write, WriteStorage,
 };
 use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLinesParams};
 use amethyst::renderer::{
@@ -64,6 +66,23 @@ impl<'s> System<'s> for LerperSystem {
 }
 
 #[derive(SystemDesc)]
+pub struct TransformResetSystem;
+
+impl<'s> System<'s> for TransformResetSystem {
+    type SystemData = WriteStorage<'s, Transform>;
+
+    fn run(&mut self, mut transforms: Self::SystemData) {
+        for transform in (&mut transforms).join() {
+            transform.set_translation_xyz(0., 0., 0.);
+            transform.set_rotation_x_axis(0.);
+            transform.set_rotation_y_axis(0.);
+            transform.set_rotation_z_axis(0.);
+            transform.set_scale(Vector3::new(1., 1., 1.));
+        }
+    }
+}
+
+#[derive(SystemDesc)]
 pub struct PositionDrawUpdateSystem;
 
 impl<'s> System<'s> for PositionDrawUpdateSystem {
@@ -71,7 +90,7 @@ impl<'s> System<'s> for PositionDrawUpdateSystem {
 
     fn run(&mut self, (mut transforms, positions): Self::SystemData) {
         for (transform, position) in (&mut transforms, &positions).join() {
-            transform.set_translation_xyz(position.0.x, position.0.y, position.0.z);
+            transform.append_translation_xyz(position.0.x, position.0.y, position.0.z);
         }
     }
 }
@@ -292,18 +311,32 @@ impl<'s> System<'s> for SpriteUpdateSystem {
         WriteStorage<'s, Scale>,
         ReadStorage<'s, Velocity>,
         ReadStorage<'s, GravityDirection>,
+        ReadStorage<'s, AnimationSet<AnimationId, Transform>>,
+        WriteStorage<'s, AnimationControlSet<AnimationId, Transform>>,
+        Entities<'s>,
     );
 
     fn run(
         &mut self,
-        (mut transforms, mut sprites, mut counters, mut scales, velocities, gravities): Self::SystemData,
+        (
+            mut transforms,
+            mut sprites,
+            mut counters,
+            mut scales,
+            velocities,
+            gravities,
+            sets,
+            mut controls,
+            entities,
+        ): Self::SystemData,
     ) {
-        for (transform, sprite, counter, scale, velocity, gravity) in (
+        for (transform, sprite, counter, scale, velocity, entity, gravity) in (
             &mut transforms,
             &mut sprites,
             &mut counters,
             &mut scales,
             &velocities,
+            &entities,
             (&gravities).maybe(),
         )
             .join()
@@ -319,10 +352,16 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             let mut sprite_number = sprite.sprite_number % 2;
             if grav_vel.x != 0.0 {
                 counter.0 = counter.0 + grav_vel.x.abs() as u32;
-                if counter.0 >= 100 {
-                    sprite_number = (sprite_number + 1) % 2;
-                    counter.0 = 0;
-                }
+
+                AnimationFactory::set_animation(
+                    &sets,
+                    &mut controls,
+                    entity,
+                    AnimationId::Translate,
+                    AnimationAction::StartAnimationOrSetRate(grav_vel.x.abs()),
+                    None,
+                );
+
                 let mut cur_scale = &mut scale.0;
                 match grav_vel.x < 0.0 {
                     true => {
@@ -333,11 +372,27 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     }
                 };
             } else {
+                AnimationFactory::set_animation(
+                    &sets,
+                    &mut controls,
+                    entity,
+                    AnimationId::Translate,
+                    AnimationAction::AbortAnimation,
+                    None,
+                );
                 sprite_number = 0;
             }
             match grav_vel.y != 0.0 {
                 true => {
                     sprite_number += 2;
+                    AnimationFactory::set_animation(
+                        &sets,
+                        &mut controls,
+                        entity,
+                        AnimationId::Translate,
+                        AnimationAction::AbortAnimation,
+                        None,
+                    );
                 }
                 false => {}
             };
