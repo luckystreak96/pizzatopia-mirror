@@ -190,6 +190,14 @@ impl Position {
         vec3.z = depth;
         Position(vec3)
     }
+
+    pub fn with_append_xyz(&self, x: f32, y: f32, z: f32) -> Position {
+        let mut vec3 = self.0;
+        vec3.x = x;
+        vec3.y = y;
+        vec3.z = z;
+        Position(vec3)
+    }
 }
 
 impl Component for Position {

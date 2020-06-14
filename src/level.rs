@@ -20,6 +20,7 @@ use crate::systems::editor::EditorButtonEventSystem;
 use crate::systems::physics::CollisionDirection;
 use crate::ui::file_picker::{FilePickerFilename, DIR_LEVELS};
 use crate::utils::{Vec2, Vec3};
+use amethyst::core::components::Parent;
 use amethyst::core::math::Vector3;
 use amethyst::{
     animation::*,
@@ -28,6 +29,7 @@ use amethyst::{
         Processor, ProgressCounter, RonFormat, Source,
     },
     core::transform::Transform,
+    core::transform::*,
     ecs::prelude::{Component, DenseVecStorage, Join, NullStorage},
     ecs::VecStorage,
     error::{format_err, Error, ResultExt},
@@ -230,6 +232,22 @@ impl Level {
         return entity.id();
     }
 
+    pub fn recalculate_collision_tree(world: &mut World) {
+        let mut positions = Vec::new();
+        for (entity, pos, platform_cuboid) in (
+            &world.entities(),
+            &world.read_storage::<Position>(),
+            &world.read_storage::<PlatformCuboid>(),
+        )
+            .join()
+        {
+            let rtree_entity = RTreeEntity::new(pos.0.to_vec2(), platform_cuboid.to_vec2(), entity);
+            positions.push(rtree_entity);
+        }
+        let tree = RTree::bulk_load(positions);
+        world.insert(tree);
+    }
+
     // Turn the currently-loaded Level asset into entities
     pub(crate) fn load_level(world: &mut World) {
         let serialized_objects;
@@ -248,19 +266,7 @@ impl Level {
             }
         }
 
-        let mut positions = Vec::new();
-        for (entity, pos, platform_cuboid) in (
-            &world.entities(),
-            &world.read_storage::<Position>(),
-            &world.read_storage::<PlatformCuboid>(),
-        )
-            .join()
-        {
-            let rtree_entity = RTreeEntity::new(pos.0.to_vec2(), platform_cuboid.to_vec2(), entity);
-            positions.push(rtree_entity);
-        }
-        let tree = RTree::bulk_load(positions);
-        world.insert(tree);
+        Self::recalculate_collision_tree(world);
 
         Level::calculate_camera_limits(world);
     }
@@ -414,9 +420,9 @@ impl Level {
             [&(sprite_sheet_type as u8)]
             .clone();
         // Assign the sprite
-        let sprite_render = SpriteRender {
+        let mut sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
-            sprite_number: 1,
+            sprite_number: 0,
         };
 
         let position = Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS));
@@ -427,6 +433,13 @@ impl Level {
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
         let animation = AnimationFactory::create_bob(world, 10.);
+
+        match sprite_sheet_type {
+            SpriteSheetType::Animation => {
+                sprite_render.sprite_number = 3;
+            }
+            _ => {}
+        }
 
         // Data common to both editor and entity
         let mut builder = world
@@ -450,6 +463,75 @@ impl Level {
             builder = builder.with(Player(player));
         }
         let entity = builder.build();
+
+        match sprite_sheet_type {
+            SpriteSheetType::Animation => {
+                // All the other body parts
+                let mut sprite_rarm = sprite_render.clone();
+                sprite_rarm.sprite_number = 0;
+                let mut sprite_larm = sprite_render.clone();
+                sprite_larm.sprite_number = 1;
+                let mut sprite_head = sprite_render.clone();
+                sprite_head.sprite_number = 2;
+                let mut sprite_rleg = sprite_render.clone();
+                sprite_rleg.sprite_number = 4;
+                let mut sprite_lleg = sprite_render.clone();
+                sprite_lleg.sprite_number = 5;
+                let left_arm = world
+                    .create_entity()
+                    .with(Transform::default())
+                    .with(Position(Vec3::new(-20., 25., 0.)))
+                    .with(Transparent)
+                    .with(sprite_larm)
+                    .with(Parent { entity })
+                    .build();
+                let right_arm = world
+                    .create_entity()
+                    .with(Transform::default())
+                    .with(position.with_append_xyz(20., 25., 0.))
+                    .with(Transparent)
+                    .with(sprite_rarm)
+                    .with(Parent { entity })
+                    .build();
+                let left_leg = world
+                    .create_entity()
+                    .with(Transform::default())
+                    .with(position.with_append_xyz(-10., -25., -1.))
+                    .with(Transparent)
+                    .with(sprite_lleg)
+                    .with(Parent { entity })
+                    .build();
+                let right_leg = world
+                    .create_entity()
+                    .with(Transform::default())
+                    .with(position.with_append_xyz(10., -25., -1.))
+                    .with(Transparent)
+                    .with(sprite_rleg)
+                    .with(Parent { entity })
+                    .build();
+                let head = world
+                    .create_entity()
+                    .with(Transform::default())
+                    .with(position.with_append_xyz(0., 40., 0.))
+                    .with(Transparent)
+                    .with(sprite_head)
+                    .with(Parent { entity })
+                    .build();
+
+                let mut hierarchy = AnimationHierarchy::new();
+                hierarchy.nodes.insert(0, entity);
+                hierarchy.nodes.insert(1, left_arm);
+                hierarchy.nodes.insert(2, right_arm);
+                hierarchy.nodes.insert(3, left_leg);
+                hierarchy.nodes.insert(4, right_leg);
+                hierarchy.nodes.insert(5, head);
+
+                world
+                    .write_storage::<AnimationHierarchy<Transform>>()
+                    .insert(entity, hierarchy);
+            }
+            _ => {}
+        }
 
         // create editor entity
         if !ignore_editor {

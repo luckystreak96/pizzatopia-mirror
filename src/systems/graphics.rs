@@ -5,7 +5,8 @@ use crate::components::editor::{
 use crate::components::game::Health;
 use crate::components::game::{SerializedObjectType, SpriteRenderData};
 use crate::components::graphics::{
-    AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale, SpriteSheetType,
+    AbsolutePositioning, AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale,
+    SpriteSheetType,
 };
 use crate::components::physics::{
     GravityDirection, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
@@ -66,6 +67,9 @@ impl<'s> System<'s> for LerperSystem {
 }
 
 #[derive(SystemDesc)]
+// This system is necessary only for use with animations.
+// Animations set the trans/rot/scale, so we need to adapt after the fact.
+// Cleanest way to do this : reset -> animate -> add your pos/rot/scale -> draw system will do the rest properly
 pub struct TransformResetSystem;
 
 impl<'s> System<'s> for TransformResetSystem {
@@ -73,24 +77,41 @@ impl<'s> System<'s> for TransformResetSystem {
 
     fn run(&mut self, mut transforms: Self::SystemData) {
         for transform in (&mut transforms).join() {
-            transform.set_translation_xyz(0., 0., 0.);
-            transform.set_rotation_x_axis(0.);
-            transform.set_rotation_y_axis(0.);
-            transform.set_rotation_z_axis(0.);
-            transform.set_scale(Vector3::new(1., 1., 1.));
+            *transform = Transform::default();
         }
     }
 }
 
 #[derive(SystemDesc)]
-pub struct PositionDrawUpdateSystem;
+pub struct PositionUpdateSystem;
 
-impl<'s> System<'s> for PositionDrawUpdateSystem {
+impl<'s> System<'s> for PositionUpdateSystem {
     type SystemData = (WriteStorage<'s, Transform>, ReadStorage<'s, Position>);
 
     fn run(&mut self, (mut transforms, positions): Self::SystemData) {
         for (transform, position) in (&mut transforms, &positions).join() {
-            transform.append_translation_xyz(position.0.x, position.0.y, position.0.z);
+            transform.prepend_translation_x(position.0.x);
+            transform.prepend_translation_y(position.0.y);
+            transform.prepend_translation_z(position.0.z);
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct AbsolutePositionUpdateSystem;
+
+impl<'s> System<'s> for AbsolutePositionUpdateSystem {
+    type SystemData = (
+        WriteStorage<'s, Transform>,
+        ReadStorage<'s, Position>,
+        ReadStorage<'s, AbsolutePositioning>,
+    );
+
+    fn run(&mut self, (mut transforms, positions, is_abs_pos): Self::SystemData) {
+        for (transform, position, _abs) in (&mut transforms, &positions, &is_abs_pos).join() {
+            transform.set_translation_x(position.0.x);
+            transform.set_translation_y(position.0.y);
+            transform.set_translation_z(position.0.z);
         }
     }
 }
@@ -396,7 +417,8 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                 }
                 false => {}
             };
-            sprite.sprite_number = sprite_number;
+            // Uncomment me to regain spite animation
+            // sprite.sprite_number = sprite_number;
 
             // Set the rotation for sticky nerds
             match grav_dir {

@@ -62,14 +62,14 @@ impl<'a, 'b> SystemBundle<'a, 'b> for GraphicsBundle {
             &["apply_velocity_system"],
         );
         builder.add(
-            systems::graphics::PositionDrawUpdateSystem,
-            "position_draw_update_system",
+            systems::graphics::PositionUpdateSystem,
+            "position_update_system",
             &["sprite_update_system"],
         );
         builder.add(
             systems::graphics::ScaleDrawUpdateSystem,
             "scale_draw_update_system",
-            &["position_draw_update_system"],
+            &["position_update_system"],
         );
         builder.add(
             systems::graphics::DeadDrawUpdateSystem,

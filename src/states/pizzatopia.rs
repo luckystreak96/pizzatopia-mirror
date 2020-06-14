@@ -7,7 +7,7 @@ use crate::components::game::{
     Tile,
 };
 use crate::components::game::{Player, Resettable};
-use crate::components::graphics::SpriteSheetType;
+use crate::components::graphics::{AbsolutePositioning, SpriteSheetType};
 use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -149,6 +149,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
 
     fn on_resume(&mut self, data: StateData<'_, GameData<'s, 's>>) {
         Level::calculate_camera_limits(data.world);
+        Level::recalculate_collision_tree(data.world);
     }
 
     fn handle_event(
@@ -222,6 +223,7 @@ fn initialise_camera(world: &mut World) {
         .with(Camera::standard_2d(CAM_WIDTH, CAM_HEIGHT))
         .with(transform)
         .with(pos)
+        .with(AbsolutePositioning)
         .with(CameraTarget::Player)
         .with(CameraLimit::default())
         .with(Lerper::default())
@@ -311,9 +313,15 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
         );
 
         dispatcher_builder.add(
+            systems::graphics::SpriteUpdateSystem,
+            "sprite_update_system",
+            &["camera_edge_clamp_system"],
+        );
+
+        dispatcher_builder.add(
             systems::graphics::TransformResetSystem,
             "transform_reset_system",
-            &["lerper_system"],
+            &["sprite_update_system"],
         );
 
         // register a bundle to the builder
@@ -328,19 +336,19 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             .build(world, &mut dispatcher_builder)
             .expect("Failed to register GameLogic bundle.");
         dispatcher_builder.add(
-            systems::graphics::SpriteUpdateSystem,
-            "sprite_update_system",
-            &["apply_velocity_system"],
+            systems::graphics::PositionUpdateSystem,
+            "position_update_system",
+            &["sampler_interpolation_system"],
         );
         dispatcher_builder.add(
-            systems::graphics::PositionDrawUpdateSystem,
-            "position_draw_update_system",
-            &["sprite_update_system", "sampler_interpolation_system"],
+            systems::graphics::AbsolutePositionUpdateSystem,
+            "absolute_position_update_system",
+            &["position_update_system"],
         );
         dispatcher_builder.add(
             systems::graphics::ScaleDrawUpdateSystem,
             "scale_draw_update_system",
-            &["position_draw_update_system"],
+            &["absolute_position_update_system"],
         );
         dispatcher_builder.add(
             systems::graphics::DeadDrawUpdateSystem,

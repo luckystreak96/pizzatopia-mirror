@@ -749,19 +749,14 @@ pub struct ApplyCollisionSystem;
 impl<'s> System<'s> for ApplyCollisionSystem {
     type SystemData = (
         WriteStorage<'s, Velocity>,
-        WriteStorage<'s, Position>,
         WriteStorage<'s, Collidee>,
         WriteStorage<'s, Grounded>,
         ReadStorage<'s, GravityDirection>,
     );
 
-    fn run(
-        &mut self,
-        (mut velocities, mut positions, mut collidees, mut grounded, gravities): Self::SystemData,
-    ) {
-        for (velocity, position, collidee, mut grounded, gravity) in (
+    fn run(&mut self, (mut velocities, mut collidees, mut grounded, gravities): Self::SystemData) {
+        for (velocity, collidee, mut grounded, gravity) in (
             &mut velocities,
-            &mut positions,
             &mut collidees,
             (&mut grounded).maybe(),
             (&gravities).maybe(),
@@ -780,20 +775,18 @@ impl<'s> System<'s> for ApplyCollisionSystem {
             if let Some(cdee) = &collidee.vertical {
                 match cdee.side {
                     CollisionSideOfBlock::Bottom => {
-                        position.0.y += cdee.correction;
                         if let Some(ground) = &mut grounded {
                             ground.0 = grav_dir == CollisionDirection::FromBottom;
                         };
                     }
                     CollisionSideOfBlock::Top => {
-                        position.0.y += cdee.correction;
                         if let Some(ground) = &mut grounded {
                             ground.0 = grav_dir == CollisionDirection::FromTop;
                         };
                     }
                     _ => {}
                 }
-                velocity.0.y = 0.0;
+                velocity.0.y = cdee.correction;
             }
 
             if let Some(cdee) = &collidee.horizontal {
@@ -810,8 +803,7 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                     }
                     _ => {}
                 }
-                position.0.x += cdee.correction;
-                velocity.0.x = 0.0;
+                velocity.0.x = cdee.correction;
             }
         }
     }

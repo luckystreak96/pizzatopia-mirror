@@ -3,7 +3,7 @@ use amethyst::{
     assets::{AssetStorage, Handle, Loader, PrefabData},
     core::transform::Transform,
     derive::PrefabData,
-    ecs::prelude::{Component, DenseVecStorage},
+    ecs::prelude::{Component, DenseVecStorage, NullStorage},
     ecs::Entity,
     ecs::WriteStorage,
     prelude::*,
@@ -112,6 +112,13 @@ impl Component for PulseAnimation {
     type Storage = DenseVecStorage<Self>;
 }
 
+#[derive(Default)]
+pub struct AbsolutePositioning;
+
+impl Component for AbsolutePositioning {
+    type Storage = NullStorage<Self>;
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative, EnumIter, EnumCount)]
 #[derivative(Default)]
 pub enum SpriteSheetType {
@@ -120,6 +127,7 @@ pub enum SpriteSheetType {
     Didi,
     Snap,
     Ui,
+    Animation,
 }
 
 impl SpriteSheetType {
@@ -144,7 +152,8 @@ impl From<u8> for SpriteSheetType {
             x if x == SpriteSheetType::Didi as u8 => SpriteSheetType::Didi,
             x if x == SpriteSheetType::Snap as u8 => SpriteSheetType::Snap,
             x if x == SpriteSheetType::Ui as u8 => SpriteSheetType::Ui,
-            _ => SpriteSheetType::Ui,
+            x if x == SpriteSheetType::Animation as u8 => SpriteSheetType::Animation,
+            _ => SpriteSheetType::Animation,
         }
     }
 }

@@ -101,6 +101,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
             SpriteSheetType::Snap as u8,
         );
         self.add_new_sprite_sheet(data.world, "texture/ui", SpriteSheetType::Ui as u8);
+        self.add_new_sprite_sheet(
+            data.world,
+            "texture/animation",
+            SpriteSheetType::Animation as u8,
+        );
 
         data.world.insert(InputManager::new(data.world));
         data.world.insert(FilePickerFilename::new(

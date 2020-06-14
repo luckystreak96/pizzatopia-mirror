@@ -5,7 +5,7 @@ use crate::components::editor::{
 };
 use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
 use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
-use crate::components::graphics::SpriteSheetType;
+use crate::components::graphics::{AbsolutePositioning, SpriteSheetType};
 use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
 use crate::components::physics::{
     Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
@@ -325,19 +325,14 @@ impl<'a, 'b> Editor<'a, 'b> {
 
         // Graphics
         dispatcher_builder.add(
-            systems::graphics::TransformResetSystem,
-            "transform_reset_system",
-            &["editor_event_handling_system"],
-        );
-        dispatcher_builder.add(
             systems::graphics::ScaleDrawUpdateSystem,
             "scale_draw_update_system",
-            &["transform_reset_system"],
+            &["editor_event_handling_system"],
         );
         dispatcher_builder.add(
             CursorSpriteUpdateSystem,
             "cursor_sprite_update_system",
-            &["transform_reset_system"],
+            &["editor_event_handling_system"],
         );
         dispatcher_builder.add(
             CursorColorUpdateSystem,
@@ -360,8 +355,8 @@ impl<'a, 'b> Editor<'a, 'b> {
             &["camera_target_system"],
         );
         dispatcher_builder.add(
-            systems::graphics::PositionDrawUpdateSystem,
-            "position_draw_update_system",
+            systems::graphics::AbsolutePositionUpdateSystem,
+            "absolute_position_update_system",
             &["lerper_system"],
         );
 
@@ -469,6 +464,7 @@ impl<'a, 'b> Editor<'a, 'b> {
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(pos.clone())
+            .with(AbsolutePositioning)
             .with(Transparent)
             .build();
     }
