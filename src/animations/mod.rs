@@ -11,6 +11,7 @@ pub enum AnimationId {
     Scale,
     Rotate,
     Translate,
+    Animate,
 }
 
 pub enum AnimationAction {
@@ -46,7 +47,7 @@ impl AnimationFactory {
             (),
             &world.read_resource(),
         );
-        anim.animations.insert(AnimationId::Translate, animation);
+        anim.animations.insert(AnimationId::Animate, animation);
         anim
     }
 
@@ -120,7 +121,7 @@ impl AnimationFactory {
             .push((4, TransformChannel::Rotation, forward_rot_sampler.clone()));
 
         let animation = loader.load_from_data(animation, (), &world.read_resource());
-        anim.animations.insert(AnimationId::Rotate, animation);
+        anim.animations.insert(AnimationId::Animate, animation);
         anim
     }
 

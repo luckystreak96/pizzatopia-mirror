@@ -432,14 +432,14 @@ impl Level {
             .unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
-        let animation = AnimationFactory::create_bob(world, 10.);
 
-        match sprite_sheet_type {
+        let animation = match sprite_sheet_type {
             SpriteSheetType::Animation => {
                 sprite_render.sprite_number = 3;
+                AnimationFactory::create_walking_animation(world)
             }
-            _ => {}
-        }
+            _ => AnimationFactory::create_bob(world, 10.),
+        };
 
         // Data common to both editor and entity
         let mut builder = world

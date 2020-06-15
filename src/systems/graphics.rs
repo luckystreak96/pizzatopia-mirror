@@ -378,7 +378,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     &sets,
                     &mut controls,
                     entity,
-                    AnimationId::Translate,
+                    AnimationId::Animate,
                     AnimationAction::StartAnimationOrSetRate(grav_vel.x.abs()),
                     None,
                 );
@@ -397,7 +397,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     &sets,
                     &mut controls,
                     entity,
-                    AnimationId::Translate,
+                    AnimationId::Animate,
                     AnimationAction::AbortAnimation,
                     None,
                 );
@@ -410,7 +410,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                         &sets,
                         &mut controls,
                         entity,
-                        AnimationId::Translate,
+                        AnimationId::Animate,
                         AnimationAction::AbortAnimation,
                         None,
                     );
