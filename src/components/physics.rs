@@ -129,7 +129,12 @@ impl Component for Grounded {
     type Storage = DenseVecStorage<Self>;
 }
 
-pub struct Velocity(pub Vec2);
+#[derive(Derivative)]
+#[derivative(Default)]
+pub struct Velocity {
+    pub vel: Vec2,
+    pub acc: Vec2,
+}
 
 impl Component for Velocity {
     type Storage = DenseVecStorage<Self>;

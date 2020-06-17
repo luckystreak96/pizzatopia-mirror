@@ -56,7 +56,7 @@ impl<'s> System<'s> for PlayerInputSystem {
             let on_ground = ground.unwrap_or(&default_ground);
             let on_ground = on_ground.0;
 
-            let mut grav_vel = velocity.0.clone();
+            let mut grav_vel = velocity.vel.clone();
             if let Some(grav) = gravity {
                 grav_vel = gravitationally_de_adapted_velocity(&grav_vel, &grav);
             }
@@ -80,7 +80,7 @@ impl<'s> System<'s> for PlayerInputSystem {
             grav_vel.x += scaled_amount;
 
             if let Some(grav) = gravity {
-                velocity.0 = gravitationally_adapted_velocity(&grav_vel, &grav);
+                velocity.vel = gravitationally_adapted_velocity(&grav_vel, &grav);
             }
         }
     }

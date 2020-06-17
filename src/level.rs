@@ -453,7 +453,7 @@ impl Level {
             .with(GravityDirection(CollisionDirection::FromTop))
             .with(AnimationCounter(0))
             .with(Grounded(false))
-            .with(Velocity(Vec2::new(0.0, 0.0)))
+            .with(Velocity::default())
             .with(collision_points)
             .with(Collidee::new())
             .with(Health(5))

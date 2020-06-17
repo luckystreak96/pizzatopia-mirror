@@ -368,7 +368,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             }
 
             let grav_vel =
-                gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
+                gravitationally_de_adapted_velocity(&velocity.vel, &GravityDirection(grav_dir));
 
             let mut sprite_number = sprite.sprite_number % 2;
             if grav_vel.x != 0.0 {
