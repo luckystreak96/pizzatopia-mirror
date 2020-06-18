@@ -133,7 +133,12 @@ impl Component for Grounded {
 #[derivative(Default)]
 pub struct Velocity {
     pub vel: Vec2,
-    pub acc: Vec2,
+}
+
+impl Velocity {
+    pub fn project_move(&self, time_scale: f32) -> Vec2 {
+        self.vel.mul_f32(time_scale)
+    }
 }
 
 impl Component for Velocity {

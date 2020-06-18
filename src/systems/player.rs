@@ -1,5 +1,7 @@
+use amethyst::core::timing::Time;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
+use amethyst::ecs::Write;
 use amethyst::ecs::{
     Join, NullStorage, Read, ReadStorage, System, SystemData, World, WriteStorage,
 };
@@ -25,11 +27,12 @@ impl<'s> System<'s> for PlayerInputSystem {
         ReadStorage<'s, Health>,
         ReadStorage<'s, Grounded>,
         ReadStorage<'s, GravityDirection>,
+        Write<'s, Time>,
     );
 
     fn run(
         &mut self,
-        (mut velocities, input, players, healths, grounded, gravities): Self::SystemData,
+        (mut velocities, input, players, healths, grounded, gravities, mut time): Self::SystemData,
     ) {
         for (velocity, _player, health, ground, gravity) in (
             &mut velocities,
@@ -45,10 +48,15 @@ impl<'s> System<'s> for PlayerInputSystem {
             }
             // Controller input
             let h_move = input.action_status("horizontal").axis;
-            let jump = match input.action_status("accept").is_down {
-                true => 1.0,
-                false => 0.0,
-            };
+            let jumping = input.action_status("accept").is_down;
+            let release = input.action_just_released("accept");
+            let slowing = input.action_status("insert").is_down;
+
+            if slowing {
+                time.set_time_scale(0.5);
+            } else {
+                time.set_time_scale(1.);
+            }
 
             // Get the grounded status to use auto-complete :)
             let ground: Option<&Grounded> = ground;
@@ -62,15 +70,16 @@ impl<'s> System<'s> for PlayerInputSystem {
             }
 
             // Do the move logic
-            if jump > 0.0 {
+            if jumping {
                 if on_ground {
                     let jump_velocity = 13.0;
                     grav_vel.y += jump_velocity;
                 }
             }
             // letting go of `up` will stop your jump
-            else if grav_vel.y > 0.0 {
-                grav_vel.y *= 0.85;
+            // TODO : Make jumping constantly give you up velocity and stop when you release
+            if grav_vel.y > 0.0 && release {
+                grav_vel.y *= 0.5;
             }
 
             let mut scaled_amount = 0.30 * h_move as f32;

@@ -47,7 +47,7 @@ impl Lerper {
         return (first - second).abs() < self.epsilon;
     }
 
-    pub fn lerp(&mut self, pos: Vec2) -> Vec2 {
+    pub fn lerp(&mut self, pos: Vec2, time_scale: f32) -> Vec2 {
         // get the movement vector
         let mut movement_vector = Vec2::subtract(&self.target, &pos);
         if movement_vector.x.abs() <= self.epsilon {
@@ -69,14 +69,14 @@ impl Lerper {
         // store this value
         let mut new_velocity = movement_vector.clone();
 
-        new_velocity.x = movement_vector.x / 20.0;
-        new_velocity.y = movement_vector.y / 20.0;
+        new_velocity.x = movement_vector.x / (20.0 / time_scale);
+        new_velocity.y = movement_vector.y / (20.0 / time_scale);
 
         // Remember the previous velocity
         self.prev_velocity = new_velocity;
 
         // Adjust the pos based on the new velocity
-        return Vec2::add(&pos, &new_velocity);
+        return pos.add(&new_velocity);
     }
 }
 

@@ -457,7 +457,7 @@ impl Level {
             .with(collision_points)
             .with(Collidee::new())
             .with(Health(5))
-            .with(Invincibility(0));
+            .with(Invincibility(0.0));
         // .with(Sticky(false))
         if player {
             builder = builder.with(Player(player));

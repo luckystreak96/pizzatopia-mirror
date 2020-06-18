@@ -19,6 +19,7 @@ use crate::ui::UiStack;
 use amethyst::animation::*;
 use amethyst::assets::{AssetStorage, Handle};
 use amethyst::core::math::Vector3;
+use amethyst::core::timing::Time;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{
@@ -55,11 +56,17 @@ impl<'s> System<'s> for CameraEdgeClampSystem {
 pub struct LerperSystem;
 
 impl<'s> System<'s> for LerperSystem {
-    type SystemData = (WriteStorage<'s, Lerper>, WriteStorage<'s, Position>);
+    type SystemData = (
+        WriteStorage<'s, Lerper>,
+        WriteStorage<'s, Position>,
+        Read<'s, Time>,
+    );
 
-    fn run(&mut self, (mut lerpers, mut positions): Self::SystemData) {
+    fn run(&mut self, (mut lerpers, mut positions, time): Self::SystemData) {
         for (lerper, mut position) in (&mut lerpers, &mut positions).join() {
-            let mut pos = lerper.lerp(position.0.to_vec2()).to_vec3();
+            let mut pos = lerper
+                .lerp(position.0.to_vec2(), time.time_scale())
+                .to_vec3();
             pos.z = position.0.z;
             position.0 = pos;
         }

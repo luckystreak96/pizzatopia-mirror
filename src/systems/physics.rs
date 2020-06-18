@@ -216,12 +216,17 @@ pub fn gravitationally_de_adapted_velocity(vel: &Vec2, gravity: &GravityDirectio
 pub struct ApplyVelocitySystem;
 
 impl<'s> System<'s> for ApplyVelocitySystem {
-    type SystemData = (WriteStorage<'s, Velocity>, WriteStorage<'s, Position>);
+    type SystemData = (
+        ReadStorage<'s, Velocity>,
+        WriteStorage<'s, Position>,
+        Read<'s, Time>,
+    );
 
-    fn run(&mut self, (mut velocities, mut positions): Self::SystemData) {
-        for (velocity, position) in (&mut velocities, &mut positions).join() {
-            position.0.x += velocity.vel.x;
-            position.0.y += velocity.vel.y;
+    fn run(&mut self, (velocities, mut positions, time): Self::SystemData) {
+        for (velocity, position) in (&velocities, &mut positions).join() {
+            let projection = velocity.project_move(time.time_scale());
+            position.0.x += projection.x;
+            position.0.y += projection.y;
         }
     }
 }
@@ -235,9 +240,10 @@ impl<'s> System<'s> for ApplyGravitySystem {
         ReadStorage<'s, Grounded>,
         ReadStorage<'s, GravityDirection>,
         Read<'s, InputManager>,
+        Read<'s, Time>,
     );
 
-    fn run(&mut self, (mut velocities, grounded, gravities, input): Self::SystemData) {
+    fn run(&mut self, (mut velocities, grounded, gravities, input, time): Self::SystemData) {
         for (velocity, grounded, gravity) in
             (&mut velocities, (&grounded).maybe(), (&gravities).maybe()).join()
         {
@@ -259,7 +265,7 @@ impl<'s> System<'s> for ApplyGravitySystem {
                             grav_vel.x = 0.0;
                         } else {
                             // Slow in opposite direction
-                            grav_vel.x *= FRICTION;
+                            grav_vel.x -= grav_vel.x * FRICTION * time.time_scale();
                         }
                         velocity.vel = gravitationally_adapted_velocity(
                             &grav_vel,
@@ -273,8 +279,8 @@ impl<'s> System<'s> for ApplyGravitySystem {
             gravity_vec =
                 gravitationally_adapted_velocity(&gravity_vec, &GravityDirection(grav_dir));
 
-            velocity.vel.x += gravity_vec.x;
-            velocity.vel.y += gravity_vec.y;
+            velocity.vel.x += gravity_vec.x * time.time_scale();
+            velocity.vel.y += gravity_vec.y * time.time_scale();
 
             // Limit speed
             velocity.vel.x = f32::min(velocity.vel.x, MAX_RUN_SPEED);
@@ -566,11 +572,12 @@ impl<'s> System<'s> for PlatformCollisionSystem {
         ReadStorage<'s, PlatformCuboid>,
         ReadStorage<'s, PlatformCollisionPoints>,
         Read<'s, RTree<RTreeEntity>>,
+        Read<'s, Time>,
     );
 
     fn run(
         &mut self,
-        (mut velocities, mut collidees, positions, cuboids, coll_points, rtree): Self::SystemData,
+        (mut velocities, mut collidees, positions, cuboids, coll_points, rtree, time): Self::SystemData,
     ) {
         for (velocity, collidee, ent_pos, collision_points) in
             (&mut velocities, &mut collidees, &positions, &coll_points).join()
@@ -585,7 +592,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
             // Second loop tries to find a collision in the other axis
             //  given the changes in position and velocity
             // These bad boys get modified at the end of the loop
-            let mut current_vel = velocity.vel.clone();
+            let mut current_vel = velocity.project_move(time.time_scale());
             let mut current_ent_pos = ent_pos.0.to_vec2().clone();
             loop {
                 debug!("Velocity: {:?}", current_vel);

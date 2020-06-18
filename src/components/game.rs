@@ -46,7 +46,7 @@ impl Component for Health {
 }
 
 #[derive(Default)]
-pub struct Invincibility(pub u32);
+pub struct Invincibility(pub f32);
 impl Component for Invincibility {
     type Storage = DenseVecStorage<Self>;
 }

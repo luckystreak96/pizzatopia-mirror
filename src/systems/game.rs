@@ -6,6 +6,7 @@ use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
 use amethyst::core::math::Vector3;
 use amethyst::core::shrev::{EventChannel, ReaderId};
+use amethyst::core::timing::Time;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{Entities, Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
@@ -26,7 +27,7 @@ use crate::audio::{play_damage_sound, Sounds};
 use crate::components::editor::{EditorCursor, EditorFlag};
 use crate::utils::Vec3;
 
-pub const IFRAMES_PER_HIT: u32 = 90;
+pub const IFRAMES_PER_HIT: f32 = 1.5;
 
 #[derive(SystemDesc)]
 #[system_desc(name(EnemyCollisionSystemDesc))]
@@ -67,7 +68,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                         .get_mut(entities.entity(*entity_id))
                         .expect("Tried to hurt entity with no health component")
                         .0;
-                    if *health > 0 && *iframes == 0 {
+                    if *health > 0 && *iframes == 0.0 {
                         // Don't deal more damage than the character has hp
                         let dmg = min(*damage, *health);
                         *health -= dmg;
@@ -90,12 +91,17 @@ impl<'s> System<'s> for EnemyCollisionSystem {
 pub struct InvincibilitySystem;
 
 impl<'s> System<'s> for InvincibilitySystem {
-    type SystemData = (WriteStorage<'s, Invincibility>, Entities<'s>);
+    type SystemData = (
+        WriteStorage<'s, Invincibility>,
+        Entities<'s>,
+        Read<'s, Time>,
+    );
 
-    fn run(&mut self, (mut invincibilities, entities): Self::SystemData) {
+    fn run(&mut self, (mut invincibilities, entities, time): Self::SystemData) {
         for (mut invinc, _entity) in (&mut invincibilities, &entities).join() {
-            if invinc.0 > 0 {
-                invinc.0 -= 1;
+            if invinc.0 > 0.0 {
+                invinc.0 -= time.delta_seconds();
+                invinc.0 = invinc.0.max(0.0);
             }
         }
     }

@@ -81,7 +81,7 @@ pub const TILE_HEIGHT: f32 = 128.0;
 pub const MAX_FALL_SPEED: f32 = 20.0;
 pub const MAX_RUN_SPEED: f32 = 20.0;
 
-pub const FRICTION: f32 = 0.90;
+pub const FRICTION: f32 = 0.1;
 
 #[derive(Debug, EventReader, Clone)]
 #[reader(MyEventReader)]
@@ -247,16 +247,6 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
         dispatcher_builder.add(InputManagementSystem, "input_management_system", &[]);
         dispatcher_builder.add(
-            ConsoleInputSystem,
-            "console_input_system",
-            &["input_management_system"],
-        );
-        dispatcher_builder.add(
-            systems::PlayerInputSystem,
-            "player_input_system",
-            &["console_input_system"],
-        );
-        dispatcher_builder.add(
             systems::physics::ActorCollisionSystem,
             "actor_collision_system",
             &[],
@@ -265,6 +255,16 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             systems::physics::ApplyGravitySystem,
             "apply_gravity_system",
             &[],
+        );
+        dispatcher_builder.add(
+            ConsoleInputSystem,
+            "console_input_system",
+            &["input_management_system"],
+        );
+        dispatcher_builder.add(
+            systems::PlayerInputSystem,
+            "player_input_system",
+            &["apply_gravity_system"],
         );
         dispatcher_builder.add(
             systems::physics::PlatformCollisionSystem,

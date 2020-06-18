@@ -24,6 +24,27 @@ impl Vec2 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
 
+    pub fn abs(&self) -> Vec2 {
+        Vec2 {
+            x: self.x.abs(),
+            y: self.y.abs(),
+        }
+    }
+
+    pub fn mul(&self, other: &Vec2) -> Vec2 {
+        Vec2 {
+            x: self.x * other.x,
+            y: self.y * other.y,
+        }
+    }
+
+    pub fn mul_f32(&self, val: f32) -> Vec2 {
+        Vec2 {
+            x: self.x * val,
+            y: self.y * val,
+        }
+    }
+
     pub fn normalize(&self) -> Vec2 {
         let magnitude = self.magnitude();
         Vec2 {
@@ -39,10 +60,17 @@ impl Vec2 {
         }
     }
 
-    pub fn add(first: &Vec2, second: &Vec2) -> Vec2 {
+    pub fn add(&self, second: &Vec2) -> Vec2 {
         Vec2 {
-            x: first.x + second.x,
-            y: first.y + second.y,
+            x: self.x + second.x,
+            y: self.y + second.y,
+        }
+    }
+
+    pub fn sub(&self, second: &Vec2) -> Vec2 {
+        Vec2 {
+            x: self.x - second.x,
+            y: self.y - second.y,
         }
     }
 
