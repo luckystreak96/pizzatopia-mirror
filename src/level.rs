@@ -1,4 +1,6 @@
 use crate::animations::{AnimationFactory, AnimationId};
+use crate::components::ai;
+use crate::components::ai::BasicWalkAi;
 use crate::components::editor::{
     EditorFlag, InsertionGameObject, InstanceEntityId, SizeForEditorGrid,
 };
@@ -461,6 +463,8 @@ impl Level {
         // .with(Sticky(false))
         if player {
             builder = builder.with(Player(player));
+        } else {
+            builder = builder.with(BasicWalkAi::default());
         }
         let entity = builder.build();
 
@@ -528,7 +532,8 @@ impl Level {
 
                 world
                     .write_storage::<AnimationHierarchy<Transform>>()
-                    .insert(entity, hierarchy);
+                    .insert(entity, hierarchy)
+                    .expect("Failed to insert AnimationHierarchy");
             }
             _ => {}
         }

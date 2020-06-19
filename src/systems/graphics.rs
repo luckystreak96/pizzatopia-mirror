@@ -358,7 +358,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             entities,
         ): Self::SystemData,
     ) {
-        for (transform, sprite, counter, scale, velocity, entity, gravity) in (
+        for (transform, _sprite, counter, scale, velocity, entity, gravity) in (
             &mut transforms,
             &mut sprites,
             &mut counters,
@@ -377,7 +377,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             let grav_vel =
                 gravitationally_de_adapted_velocity(&velocity.vel, &GravityDirection(grav_dir));
 
-            let mut sprite_number = sprite.sprite_number % 2;
+            // let mut sprite_number = sprite.sprite_number % 2;
             if grav_vel.x != 0.0 {
                 counter.0 = counter.0 + grav_vel.x.abs() as u32;
 
@@ -408,11 +408,11 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     AnimationAction::AbortAnimation,
                     None,
                 );
-                sprite_number = 0;
+                // sprite_number = 0;
             }
             match grav_vel.y != 0.0 {
                 true => {
-                    sprite_number += 2;
+                    // sprite_number += 2;
                     AnimationFactory::set_animation(
                         &sets,
                         &mut controls,

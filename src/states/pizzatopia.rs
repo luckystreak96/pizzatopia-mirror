@@ -267,10 +267,15 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             &["apply_gravity_system"],
         );
         dispatcher_builder.add(
+            systems::ai::BasicWalkAiSystem,
+            "basic_walk_ai_system",
+            &["player_input_system"],
+        );
+        dispatcher_builder.add(
             systems::physics::PlatformCollisionSystem,
             "platform_collision_system",
             &[
-                "player_input_system",
+                "basic_walk_ai_system",
                 "apply_gravity_system",
                 "actor_collision_system",
             ],
