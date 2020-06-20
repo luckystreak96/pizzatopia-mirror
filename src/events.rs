@@ -1,4 +1,4 @@
-use crate::components::game::{SerializedObject, SerializedObjectType};
+use crate::components::game::{SerializedObject, SerializedObjectType, Team};
 use crate::utils::Vec2;
 
 #[derive(Debug, Clone)]
@@ -14,9 +14,10 @@ pub enum Events {
     EntityToInsertionGameObject(u32),
     OpenFilePickerUi,
     HoverGameObject,
+    FireProjectile(Vec2, Vec2, Team),
 }
 
 #[derive(Debug, Clone)]
 pub enum PlayerEvent {
-    Revive(u8),
+    Revive(u32),
 }

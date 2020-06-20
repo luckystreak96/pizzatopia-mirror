@@ -1,6 +1,8 @@
-use crate::components::game::{CameraTarget, CollisionEvent, Health, Invincibility, Player};
+use crate::components::game::{
+    CameraTarget, CollisionEvent, Health, Invincibility, Player, Projectile,
+};
 use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper};
-use crate::components::physics::{GravityDirection, PlatformCuboid, Position, Velocity};
+use crate::components::physics::{Collidee, GravityDirection, PlatformCuboid, Position, Velocity};
 use crate::events::PlayerEvent;
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
@@ -9,7 +11,9 @@ use amethyst::core::shrev::{EventChannel, ReaderId};
 use amethyst::core::timing::Time;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
-use amethyst::ecs::{Entities, Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
+use amethyst::ecs::{
+    Entities, Join, Read, ReadStorage, System, SystemData, World, Write, WriteStorage,
+};
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
 };
@@ -60,25 +64,26 @@ impl<'s> System<'s> for EnemyCollisionSystem {
         for event in event_channel.read(&mut self.reader) {
             match event {
                 CollisionEvent::EnemyCollision(entity_id, damage) => {
-                    let iframes = &mut invincibilities
-                        .get_mut(entities.entity(*entity_id))
-                        .expect("Tried to hurt entity with no iframes component")
-                        .0;
-                    let health = &mut healths
-                        .get_mut(entities.entity(*entity_id))
-                        .expect("Tried to hurt entity with no health component")
-                        .0;
-                    if *health > 0 && *iframes == 0.0 {
-                        // Don't deal more damage than the character has hp
-                        let dmg = min(*damage, *health);
-                        *health -= dmg;
-                        *iframes += IFRAMES_PER_HIT;
-                        play_damage_sound(
-                            &*sounds,
-                            &storage,
-                            audio_output.as_ref().map(|o| o.deref()),
-                        );
-                        warn!("Health is now {}", health);
+                    if let Some(iframes) = &mut invincibilities.get_mut(entities.entity(*entity_id))
+                    {
+                        if let Some(health) = &mut healths.get_mut(entities.entity(*entity_id)) {
+                            if health.0 > 0 && iframes.0 == 0.0 {
+                                // Don't deal more damage than the character has hp
+                                let dmg = min(*damage, health.0);
+                                health.0 -= dmg;
+                                iframes.0 += IFRAMES_PER_HIT;
+                                play_damage_sound(
+                                    &*sounds,
+                                    &storage,
+                                    audio_output.as_ref().map(|o| o.deref()),
+                                );
+                                warn!("Health is now {}", health.0);
+                                if health.0 == 0 {
+                                    let entity = entities.entity(*entity_id);
+                                    entities.delete(entity);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -146,6 +151,28 @@ impl<'s> System<'s> for CameraTargetSystem {
         for (mut lerper, _camera) in (&mut lerpers, &cameras).join() {
             lerper.target.x = position.x;
             lerper.target.y = position.y;
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct ApplyProjectileCollisionSystem;
+
+impl<'s> System<'s> for ApplyProjectileCollisionSystem {
+    type SystemData = (
+        ReadStorage<'s, Collidee>,
+        ReadStorage<'s, Projectile>,
+        Entities<'s>,
+    );
+
+    fn run(&mut self, (collidees, projectiles, entities): Self::SystemData) {
+        for (collidee, _projectile, entity) in (&collidees, &projectiles, &entities).join() {
+            if collidee.horizontal.is_some() || collidee.vertical.is_some() {
+                let result = entities.delete(entity).is_ok();
+                if !result {
+                    error!("Failed to delete projectile entity");
+                }
+            }
         }
     }
 }

@@ -1,11 +1,12 @@
 use crate::animations::{AnimationFactory, AnimationId};
 use crate::components::ai;
-use crate::components::ai::BasicWalkAi;
+use crate::components::ai::{BasicShootAi, BasicWalkAi};
 use crate::components::editor::{
     EditorFlag, InsertionGameObject, InstanceEntityId, SizeForEditorGrid,
 };
 use crate::components::game::{
-    Health, Invincibility, SerializedObject, SerializedObjectType, SpriteRenderData, Tile,
+    Damage, Health, Invincibility, Projectile, SerializedObject, SerializedObjectType,
+    SpriteRenderData, Team, Tile,
 };
 use crate::components::game::{Player, Resettable};
 use crate::components::graphics::SpriteSheetType;
@@ -16,7 +17,8 @@ use crate::components::physics::{
 };
 use crate::states::loading::AssetsDir;
 use crate::states::pizzatopia::{
-    CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, DEPTH_EDITOR, DEPTH_TILES, TILE_HEIGHT, TILE_WIDTH,
+    CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, DEPTH_EDITOR, DEPTH_PROJECTILES, DEPTH_TILES, TILE_HEIGHT,
+    TILE_WIDTH,
 };
 use crate::systems::editor::EditorButtonEventSystem;
 use crate::systems::physics::CollisionDirection;
@@ -229,6 +231,48 @@ impl Level {
             .with(amethyst::core::Hidden)
             .with(scale.clone())
             .with(SizeForEditorGrid(size.clone()))
+            .build();
+
+        return entity.id();
+    }
+
+    pub fn initialize_projectile(world: &mut World, pos: &Vec2, vel: &Vec2, team: &Team) -> u32 {
+        let mut transform = Transform::default();
+        transform.set_translation_xyz(pos.x, pos.y, DEPTH_PROJECTILES);
+
+        let sprite_sheet_type = SpriteSheetType::Tiles;
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(sprite_sheet_type as u8)]
+            .clone();
+        // Assign the sprite
+        let mut sprite_render = SpriteRender {
+            sprite_sheet: sprite_sheet.clone(),
+            sprite_number: 5,
+        };
+
+        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
+
+        let size = Vec2::new(TILE_WIDTH, TILE_HEIGHT);
+        let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
+        let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
+        let mut velocity = Velocity::default();
+        velocity.vel = vel.clone();
+
+        // Data common to both editor and entity
+        let entity = world
+            .create_entity()
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(position.clone())
+            .with(scale.clone())
+            .with(Transparent)
+            .with(AnimationCounter(0))
+            .with(velocity)
+            .with(collision_points)
+            .with(Collidee::new())
+            .with(Projectile)
+            .with(team.clone())
+            .with(Damage(1))
             .build();
 
         return entity.id();
@@ -462,9 +506,13 @@ impl Level {
             .with(Invincibility(0.0));
         // .with(Sticky(false))
         if player {
-            builder = builder.with(Player(player));
+            builder = builder.with(Player(player)).with(Team::GoodGuys);
         } else {
-            builder = builder.with(BasicWalkAi::default());
+            builder = builder
+                .with(BasicWalkAi::default())
+                .with(BasicShootAi::default())
+                .with(Team::BadGuys)
+                .with(Damage(1));
         }
         let entity = builder.build();
 

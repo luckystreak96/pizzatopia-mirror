@@ -4,6 +4,7 @@ use crate::states::editor::EDITOR_GRID_SIZE;
 use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::editor::align_cursor_position_with_grid;
 use crate::utils::{Vec2, Vec3};
+use amethyst::ecs::Entity;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::transform::Transform,
@@ -15,10 +16,23 @@ use derivative::Derivative;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 
+#[derive(Derivative, Debug, Copy, Clone, Serialize, Deserialize)]
+#[derivative(Default)]
+pub enum Team {
+    GoodGuys,
+    BadGuys,
+    #[derivative(Default)]
+    Neutral,
+    Individual(u32),
+}
+impl Component for Team {
+    type Storage = DenseVecStorage<Self>;
+}
+
 #[derive(Debug)]
 pub enum CollisionEvent {
     // Entity id and damage dealt
-    EnemyCollision(u32, u8),
+    EnemyCollision(u32, u32),
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
@@ -34,13 +48,25 @@ impl Component for Tile {
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Projectile;
+impl Component for Projectile {
+    type Storage = NullStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Damage(pub u32);
+impl Component for Damage {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Resettable;
 impl Component for Resettable {
     type Storage = NullStorage<Self>;
 }
 
 #[derive(Default)]
-pub struct Health(pub u8);
+pub struct Health(pub u32);
 impl Component for Health {
     type Storage = DenseVecStorage<Self>;
 }

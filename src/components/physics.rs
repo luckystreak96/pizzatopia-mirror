@@ -133,6 +133,7 @@ impl Component for Grounded {
 #[derivative(Default)]
 pub struct Velocity {
     pub vel: Vec2,
+    pub prev_going_right: bool,
 }
 
 impl Velocity {

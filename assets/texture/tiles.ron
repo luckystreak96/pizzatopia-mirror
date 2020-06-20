@@ -37,5 +37,12 @@ List((
             width: 128,
             height: 128,
         ),
+        // Fireball
+        (
+            x: 384,
+            y: 0,
+            width: 128,
+            height: 128,
+        ),
     ],
 ))

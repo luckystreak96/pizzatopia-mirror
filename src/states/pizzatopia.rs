@@ -72,6 +72,7 @@ pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 9.0;
 
 pub const DEPTH_TILES: f32 = 1.0;
 pub const DEPTH_ACTORS: f32 = DEPTH_TILES + 1.0;
+pub const DEPTH_PROJECTILES: f32 = DEPTH_ACTORS + 0.5;
 pub const DEPTH_EDITOR: f32 = DEPTH_ACTORS + 1.0;
 pub const DEPTH_UI: f32 = DEPTH_EDITOR + 1.0;
 
@@ -175,6 +176,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                     println!("Resetting map...");
                     Level::reinitialize_level(data.world);
                 }
+                Events::FireProjectile(pos, vel, team) => {
+                    Level::initialize_projectile(data.world, pos, vel, team);
+                }
                 _ => {}
             }
         }
@@ -272,6 +276,11 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             &["player_input_system"],
         );
         dispatcher_builder.add(
+            systems::ai::BasicShootAiSystem,
+            "basic_shoot_ai_system",
+            &["player_input_system"],
+        );
+        dispatcher_builder.add(
             systems::physics::PlatformCollisionSystem,
             "platform_collision_system",
             &[
@@ -281,9 +290,14 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             ],
         );
         dispatcher_builder.add(
+            systems::game::ApplyProjectileCollisionSystem,
+            "apply_projectile_collision_system",
+            &["platform_collision_system"],
+        );
+        dispatcher_builder.add(
             systems::physics::ApplyCollisionSystem,
             "apply_collision_system",
-            &["platform_collision_system"],
+            &["apply_projectile_collision_system"],
         );
         dispatcher_builder.add(
             systems::physics::ApplyVelocitySystem,

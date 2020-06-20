@@ -10,8 +10,8 @@ use amethyst::core::Transform;
 use amethyst::ecs::{Entities, Entity};
 use log::{debug, error, info, warn};
 
-use crate::components::game::CollisionEvent;
-use crate::components::game::Player;
+use crate::components::game::{CollisionEvent, Damage, Projectile, Team};
+use crate::components::game::{Health, Player};
 use crate::systems::input::InputManager;
 use amethyst::{
     core::{
@@ -29,6 +29,7 @@ use amethyst::{
     input::{InputHandler, StringBindings},
     prelude::*,
 };
+use num_traits::identities::Zero;
 use rstar::{RTree, AABB};
 use std::time::Instant;
 
@@ -217,16 +218,19 @@ pub struct ApplyVelocitySystem;
 
 impl<'s> System<'s> for ApplyVelocitySystem {
     type SystemData = (
-        ReadStorage<'s, Velocity>,
+        WriteStorage<'s, Velocity>,
         WriteStorage<'s, Position>,
         Read<'s, Time>,
     );
 
-    fn run(&mut self, (velocities, mut positions, time): Self::SystemData) {
-        for (velocity, position) in (&velocities, &mut positions).join() {
+    fn run(&mut self, (mut velocities, mut positions, time): Self::SystemData) {
+        for (velocity, position) in (&mut velocities, &mut positions).join() {
             let projection = velocity.project_move(time.time_scale());
             position.0.x += projection.x;
             position.0.y += projection.y;
+            if !velocity.vel.x.is_zero() {
+                velocity.prev_going_right = velocity.vel.x.is_sign_positive();
+            }
         }
     }
 }
@@ -245,12 +249,9 @@ impl<'s> System<'s> for ApplyGravitySystem {
 
     fn run(&mut self, (mut velocities, grounded, gravities, input, time): Self::SystemData) {
         for (velocity, grounded, gravity) in
-            (&mut velocities, (&grounded).maybe(), (&gravities).maybe()).join()
+            (&mut velocities, (&grounded).maybe(), &gravities).join()
         {
-            let mut grav_dir = CollisionDirection::FromTop;
-            if let Some(grav) = gravity {
-                grav_dir = grav.0;
-            }
+            let mut grav_dir = gravity.0;
 
             let mut grav_vel =
                 gravitationally_de_adapted_velocity(&velocity.vel, &GravityDirection(grav_dir));
@@ -347,14 +348,15 @@ impl<'s> System<'s> for ActorCollisionSystem {
     type SystemData = (
         ReadStorage<'s, Position>,
         ReadStorage<'s, PlatformCollisionPoints>,
-        ReadStorage<'s, Player>,
+        ReadStorage<'s, Team>,
+        ReadStorage<'s, Damage>,
         Entities<'s>,
         Write<'s, EventChannel<CollisionEvent>>,
     );
 
     fn run(
         &mut self,
-        (positions, coll_points, players, entities, mut events_channel): Self::SystemData,
+        (positions, coll_points, teams, damages, entities, mut events_channel): Self::SystemData,
     ) {
         for (ent_pos1, coll_point1, entity1) in (&positions, &coll_points, &entities).join() {
             let pos1 = Vec2::new(ent_pos1.0.x, ent_pos1.0.y);
@@ -371,17 +373,29 @@ impl<'s> System<'s> for ActorCollisionSystem {
                     Self::create_corners_with_coll_points_tl_br(&pos2, coll_point2);
                 if Self::cuboid_intersection(&top_left1, &bottom_right1, &top_left2, &bottom_right2)
                 {
-                    let actor1 = players.get(entity1).is_some();
-                    let actor2 = players.get(entity2).is_some();
-
-                    // One of them is an enemy and the other is a player
-                    // Okay to get hurt
-                    if actor1 ^ actor2 {
-                        let player = match actor1 {
-                            true => entity1,
-                            false => entity2,
-                        };
-                        events_channel.single_write(CollisionEvent::EnemyCollision(player.id(), 1));
+                    let team1 = teams.get(entity1);
+                    let team2 = teams.get(entity2);
+                    if team1.is_some() && team2.is_some() {
+                        match (team1.unwrap(), team2.unwrap()) {
+                            (Team::GoodGuys, Team::GoodGuys) => {}
+                            (Team::BadGuys, Team::BadGuys) => {}
+                            (Team::Neutral, _) => {}
+                            (_, Team::Neutral) => {}
+                            _ => {
+                                if let Some(damage) = damages.get(entity1) {
+                                    events_channel.single_write(CollisionEvent::EnemyCollision(
+                                        entity2.id(),
+                                        damage.0,
+                                    ));
+                                }
+                                if let Some(damage) = damages.get(entity2) {
+                                    events_channel.single_write(CollisionEvent::EnemyCollision(
+                                        entity1.id(),
+                                        damage.0,
+                                    ));
+                                }
+                            }
+                        }
                     }
                 }
             }
