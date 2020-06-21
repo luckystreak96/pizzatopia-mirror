@@ -5,8 +5,8 @@ use crate::components::editor::{
     EditorFlag, InsertionGameObject, InstanceEntityId, SizeForEditorGrid,
 };
 use crate::components::game::{
-    Damage, Health, Invincibility, Projectile, SerializedObject, SerializedObjectType,
-    SpriteRenderData, Team, Tile,
+    Damage, Health, Invincibility, Projectile, Reflect, SerializedObject, SerializedObjectType,
+    SpriteRenderData, Team, Tile, TimedExistence,
 };
 use crate::components::game::{Player, Resettable};
 use crate::components::graphics::SpriteSheetType;
@@ -245,7 +245,7 @@ impl Level {
             [&(sprite_sheet_type as u8)]
             .clone();
         // Assign the sprite
-        let mut sprite_render = SpriteRender {
+        let sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
             sprite_number: 5,
         };
@@ -271,6 +271,48 @@ impl Level {
             .with(collision_points)
             .with(Collidee::new())
             .with(Projectile)
+            .with(TimedExistence(10.0))
+            .with(team.clone())
+            .with(Damage(1))
+            .build();
+
+        return entity.id();
+    }
+
+    pub fn initialize_damage_box(world: &mut World, pos: &Vec2, size: &Vec2, team: &Team) -> u32 {
+        let mut transform = Transform::default();
+        transform.set_translation_xyz(pos.x, pos.y, DEPTH_PROJECTILES);
+
+        let sprite_sheet_type = SpriteSheetType::Tiles;
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(sprite_sheet_type as u8)]
+            .clone();
+        // Assign the sprite
+        let sprite_render = SpriteRender {
+            sprite_sheet: sprite_sheet.clone(),
+            sprite_number: 5,
+        };
+
+        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
+
+        let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
+        let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
+        let velocity = Velocity::default();
+
+        // Data common to both editor and entity
+        let entity = world
+            .create_entity()
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(position.clone())
+            .with(scale.clone())
+            .with(Transparent)
+            .with(AnimationCounter(0))
+            .with(velocity)
+            .with(Reflect)
+            .with(collision_points)
+            .with(Collidee::new())
+            .with(TimedExistence(0.5))
             .with(team.clone())
             .with(Damage(1))
             .build();

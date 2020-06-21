@@ -1,3 +1,4 @@
+use amethyst::core::shrev::EventChannel;
 use amethyst::core::timing::Time;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
@@ -7,14 +8,16 @@ use amethyst::ecs::{
 };
 use amethyst::input::{InputHandler, StringBindings};
 
-use crate::components::game::Health;
 use crate::components::game::Player;
+use crate::components::game::{Health, Team};
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
-use crate::states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT};
+use crate::events::Events;
+use crate::states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::input::InputManager;
 use crate::systems::physics::{
     gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
 };
+use crate::utils::Vec2;
 
 #[derive(SystemDesc)]
 pub struct PlayerInputSystem;
@@ -22,20 +25,33 @@ pub struct PlayerInputSystem;
 impl<'s> System<'s> for PlayerInputSystem {
     type SystemData = (
         WriteStorage<'s, Velocity>,
+        ReadStorage<'s, Position>,
         Read<'s, InputManager>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, Health>,
         ReadStorage<'s, Grounded>,
         ReadStorage<'s, GravityDirection>,
         Write<'s, Time>,
+        Write<'s, EventChannel<Events>>,
     );
 
     fn run(
         &mut self,
-        (mut velocities, input, players, healths, grounded, gravities, mut time): Self::SystemData,
+        (
+            mut velocities,
+            positions,
+            input,
+            players,
+            healths,
+            grounded,
+            gravities,
+            mut time,
+            mut event_channel,
+        ): Self::SystemData,
     ) {
-        for (velocity, _player, health, ground, gravity) in (
+        for (velocity, position, _player, health, ground, gravity) in (
             &mut velocities,
+            &positions,
             &players,
             &healths,
             (&grounded).maybe(),
@@ -51,6 +67,22 @@ impl<'s> System<'s> for PlayerInputSystem {
             let jumping = input.action_status("accept").is_down;
             let release = input.action_just_released("accept");
             let slowing = input.action_status("insert").is_down;
+            let attacking = input.action_single_press("attack").is_down;
+
+            if attacking {
+                let width = TILE_WIDTH;
+                let offset = match velocity.prev_going_right {
+                    true => width / 2.0,
+                    false => -width / 2.0,
+                };
+                let offset = Vec2::new(offset, 0.);
+                let size = Vec2::new(width, TILE_HEIGHT / 2.0);
+                event_channel.single_write(Events::CreateDamageBox(
+                    position.0.to_vec2().add(&offset),
+                    size,
+                    Team::GoodGuys,
+                ));
+            }
 
             if slowing {
                 time.set_time_scale(0.5);

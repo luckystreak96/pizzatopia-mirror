@@ -82,7 +82,7 @@ pub const TILE_HEIGHT: f32 = 128.0;
 pub const MAX_FALL_SPEED: f32 = 20.0;
 pub const MAX_RUN_SPEED: f32 = 20.0;
 
-pub const FRICTION: f32 = 0.1;
+pub const FRICTION: f32 = 0.06;
 
 #[derive(Debug, EventReader, Clone)]
 #[reader(MyEventReader)]
@@ -178,6 +178,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                 }
                 Events::FireProjectile(pos, vel, team) => {
                     Level::initialize_projectile(data.world, pos, vel, team);
+                }
+                Events::CreateDamageBox(pos, size, team) => {
+                    Level::initialize_damage_box(data.world, pos, size, team);
                 }
                 _ => {}
             }
@@ -308,6 +311,12 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             systems::physics::ApplyStickySystem,
             "apply_sticky_system",
             &["apply_velocity_system"],
+        );
+
+        dispatcher_builder.add(
+            systems::game::TimedExistenceSystem,
+            "timed_existence_system",
+            &[],
         );
 
         dispatcher_builder.add(

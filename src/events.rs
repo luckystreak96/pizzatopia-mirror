@@ -14,7 +14,10 @@ pub enum Events {
     EntityToInsertionGameObject(u32),
     OpenFilePickerUi,
     HoverGameObject,
+    // Pos, vel, team
     FireProjectile(Vec2, Vec2, Team),
+    // Pos, size, team
+    CreateDamageBox(Vec2, Vec2, Team),
 }
 
 #[derive(Debug, Clone)]

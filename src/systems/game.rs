@@ -1,5 +1,5 @@
 use crate::components::game::{
-    CameraTarget, CollisionEvent, Health, Invincibility, Player, Projectile,
+    CameraTarget, CollisionEvent, Health, Invincibility, Player, Projectile, Team, TimedExistence,
 };
 use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper};
 use crate::components::physics::{Collidee, GravityDirection, PlatformCuboid, Position, Velocity};
@@ -29,7 +29,7 @@ use amethyst::{
 
 use crate::audio::{play_damage_sound, Sounds};
 use crate::components::editor::{EditorCursor, EditorFlag};
-use crate::utils::Vec3;
+use crate::utils::{Vec2, Vec3};
 
 pub const IFRAMES_PER_HIT: f32 = 1.5;
 
@@ -50,6 +50,9 @@ impl<'s> System<'s> for EnemyCollisionSystem {
     type SystemData = (
         WriteStorage<'s, Health>,
         WriteStorage<'s, Invincibility>,
+        WriteStorage<'s, Team>,
+        WriteStorage<'s, Velocity>,
+        WriteStorage<'s, Position>,
         Entities<'s>,
         Read<'s, EventChannel<CollisionEvent>>,
         Read<'s, AssetStorage<Source>>,
@@ -59,7 +62,18 @@ impl<'s> System<'s> for EnemyCollisionSystem {
 
     fn run(
         &mut self,
-        (mut healths, mut invincibilities, entities, event_channel, storage, sounds, audio_output): Self::SystemData,
+        (
+            mut healths,
+            mut invincibilities,
+            mut teams,
+            mut velocities,
+            mut positions,
+            entities,
+            event_channel,
+            storage,
+            sounds,
+            audio_output,
+        ): Self::SystemData,
     ) {
         for event in event_channel.read(&mut self.reader) {
             match event {
@@ -80,14 +94,53 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                                 warn!("Health is now {}", health.0);
                                 if health.0 == 0 {
                                     let entity = entities.entity(*entity_id);
-                                    entities.delete(entity);
+                                    if let Some(pos) = positions.get_mut(entity) {
+                                        pos.0.y = -999.;
+                                    }
+                                }
+
+                                if let Some(vel) = velocities.get_mut(entities.entity(*entity_id)) {
+                                    let knock_back = Vec2::new(-8., 6.);
+                                    vel.vel = vel.vel.add(&match vel.prev_going_right {
+                                        true => knock_back,
+                                        false => knock_back.mul(&Vec2::new(-1., 1.0)),
+                                    });
                                 }
                             }
                         }
                     }
                 }
+                CollisionEvent::ProjectileReflection(entity_id, team) => {
+                    if let Some(team_comp) = teams.get_mut(entities.entity(*entity_id)) {
+                        if let Some(vel) = velocities.get_mut(entities.entity(*entity_id)) {
+                            *team_comp = *team;
+                            vel.vel = vel.vel.mul_f32(-1.0);
+                        }
+                    }
+                }
             }
-            //println!("Received an event: {:?}", event);
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct TimedExistenceSystem;
+
+impl<'s> System<'s> for TimedExistenceSystem {
+    type SystemData = (
+        WriteStorage<'s, TimedExistence>,
+        Entities<'s>,
+        Read<'s, Time>,
+    );
+
+    fn run(&mut self, (mut times, entities, time): Self::SystemData) {
+        for (timed, entity) in (&mut times, &entities).join() {
+            timed.0 -= time.delta_seconds();
+            if timed.0 <= 0.0 {
+                if let Err(err) = entities.delete(entity) {
+                    error!("Failed to delete TimedExistence entity - {}", err);
+                }
+            }
         }
     }
 }

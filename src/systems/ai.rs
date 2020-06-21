@@ -28,7 +28,7 @@ use amethyst::{
 use crate::audio::{play_damage_sound, Sounds};
 use crate::components::ai::{BasicShootAi, BasicWalkAi};
 use crate::components::editor::{EditorCursor, EditorFlag};
-use crate::utils::Vec3;
+use crate::utils::{Vec2, Vec3};
 use num_traits::identities::Zero;
 
 const WALK_SPEED: f32 = 4.0;
@@ -37,24 +37,39 @@ const PROJECTILE_SPEED: f32 = 12.0;
 #[derive(SystemDesc)]
 pub struct BasicWalkAiSystem;
 
+impl BasicWalkAiSystem {
+    fn lerper(&self, target: f32) -> Lerper {
+        let mut result = Lerper::default();
+        result.target = Vec2::new(target, 0.0);
+        result.amount = 0.25;
+        result.epsilon = 0.05;
+        result
+    }
+}
+
 impl<'s> System<'s> for BasicWalkAiSystem {
     type SystemData = (
         WriteStorage<'s, Velocity>,
         WriteStorage<'s, BasicWalkAi>,
         ReadStorage<'s, Collidee>,
+        Read<'s, Time>,
     );
 
-    fn run(&mut self, (mut velocities, mut ai, collidees): Self::SystemData) {
+    fn run(&mut self, (mut velocities, mut ai, collidees, time): Self::SystemData) {
         for (velocity, ai, collidee) in (&mut velocities, &mut ai, &collidees).join() {
             if let Some(_col) = &collidee.horizontal {
                 ai.going_right = !ai.going_right;
             }
 
-            velocity.vel.x = WALK_SPEED;
-            velocity.vel.x *= match ai.going_right {
-                true => 1.,
-                false => -1.,
-            };
+            let target = WALK_SPEED
+                * match ai.going_right {
+                    true => 1.,
+                    false => -1.,
+                };
+            let result = self
+                .lerper(target)
+                .linear_lerp(velocity.vel, time.time_scale());
+            velocity.vel.x = result.x;
         }
     }
 }

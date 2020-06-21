@@ -10,7 +10,7 @@ use amethyst::core::Transform;
 use amethyst::ecs::{Entities, Entity};
 use log::{debug, error, info, warn};
 
-use crate::components::game::{CollisionEvent, Damage, Projectile, Team};
+use crate::components::game::{CollisionEvent, Damage, Projectile, Reflect, Team};
 use crate::components::game::{Health, Player};
 use crate::systems::input::InputManager;
 use amethyst::{
@@ -251,7 +251,7 @@ impl<'s> System<'s> for ApplyGravitySystem {
         for (velocity, grounded, gravity) in
             (&mut velocities, (&grounded).maybe(), &gravities).join()
         {
-            let mut grav_dir = gravity.0;
+            let grav_dir = gravity.0;
 
             let mut grav_vel =
                 gravitationally_de_adapted_velocity(&velocity.vel, &GravityDirection(grav_dir));
@@ -262,7 +262,7 @@ impl<'s> System<'s> for ApplyGravitySystem {
                     let horizontal_movement = input.action_status("horizontal").axis;
                     // Not moving or trying to move in opposite direction
                     if horizontal_movement == 0.0 || horizontal_movement * grav_vel.x < 0.0 {
-                        if grav_vel.x.abs() <= 0.1 {
+                        if grav_vel.x.abs() <= 0.05 {
                             grav_vel.x = 0.0;
                         } else {
                             // Slow in opposite direction
@@ -350,13 +350,15 @@ impl<'s> System<'s> for ActorCollisionSystem {
         ReadStorage<'s, PlatformCollisionPoints>,
         ReadStorage<'s, Team>,
         ReadStorage<'s, Damage>,
+        ReadStorage<'s, Projectile>,
+        ReadStorage<'s, Reflect>,
         Entities<'s>,
         Write<'s, EventChannel<CollisionEvent>>,
     );
 
     fn run(
         &mut self,
-        (positions, coll_points, teams, damages, entities, mut events_channel): Self::SystemData,
+        (positions, coll_points, teams, damages, projectiles, reflects, entities, mut channel): Self::SystemData,
     ) {
         for (ent_pos1, coll_point1, entity1) in (&positions, &coll_points, &entities).join() {
             let pos1 = Vec2::new(ent_pos1.0.x, ent_pos1.0.y);
@@ -376,23 +378,28 @@ impl<'s> System<'s> for ActorCollisionSystem {
                     let team1 = teams.get(entity1);
                     let team2 = teams.get(entity2);
                     if team1.is_some() && team2.is_some() {
-                        match (team1.unwrap(), team2.unwrap()) {
+                        let team1 = team1.unwrap();
+                        let team2 = team2.unwrap();
+                        match (team1, team2) {
                             (Team::GoodGuys, Team::GoodGuys) => {}
                             (Team::BadGuys, Team::BadGuys) => {}
                             (Team::Neutral, _) => {}
                             (_, Team::Neutral) => {}
                             _ => {
+                                // It's not necessary to check both permutations, the outer loop does this already
                                 if let Some(damage) = damages.get(entity1) {
-                                    events_channel.single_write(CollisionEvent::EnemyCollision(
+                                    channel.single_write(CollisionEvent::EnemyCollision(
                                         entity2.id(),
                                         damage.0,
-                                    ));
+                                    ))
                                 }
-                                if let Some(damage) = damages.get(entity2) {
-                                    events_channel.single_write(CollisionEvent::EnemyCollision(
-                                        entity1.id(),
-                                        damage.0,
-                                    ));
+                                if reflects.get(entity1).is_some()
+                                    && projectiles.get(entity2).is_some()
+                                {
+                                    channel.single_write(CollisionEvent::ProjectileReflection(
+                                        entity2.id(),
+                                        *team1,
+                                    ))
                                 }
                             }
                         }

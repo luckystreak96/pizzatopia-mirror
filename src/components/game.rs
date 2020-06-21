@@ -33,6 +33,7 @@ impl Component for Team {
 pub enum CollisionEvent {
     // Entity id and damage dealt
     EnemyCollision(u32, u32),
+    ProjectileReflection(u32, Team),
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
@@ -42,8 +43,20 @@ impl Component for Player {
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct TimedExistence(pub f32);
+impl Component for TimedExistence {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Tile;
 impl Component for Tile {
+    type Storage = NullStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Reflect;
+impl Component for Reflect {
     type Storage = NullStorage<Self>;
 }
 
