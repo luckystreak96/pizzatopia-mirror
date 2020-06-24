@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialOrd, PartialEq, Hash, Debug, Copy, Clone, Deserialize, Serialize)]
 pub enum AnimationId {
+    None,
     Scale,
     Rotate,
     Translate,
@@ -26,6 +27,36 @@ pub enum SamplerAction {
 
 pub struct AnimationFactory;
 impl AnimationFactory {
+    fn create_attack_rot(world: &World) -> Handle<Animation<Transform>> {
+        let loader = world.read_resource::<Loader>();
+        let mut trans = Transform::default();
+        trans.set_rotation_z_axis(-1.);
+        let rot = trans.rotation().clone();
+        trans.set_rotation_z_axis(0.);
+        let rot2 = trans.rotation().clone();
+        let ar_rot = [rot.coords.x, rot.coords.y, rot.coords.z, rot.coords.w];
+        let ar_stable = [rot2.coords.x, rot2.coords.y, rot2.coords.z, rot2.coords.w];
+        let sampler = loader.load_from_data(
+            Sampler {
+                input: vec![0., 0.175, 0.2],
+                output: vec![
+                    SamplerPrimitive::Vec4(ar_stable),
+                    SamplerPrimitive::Vec4(ar_rot),
+                    SamplerPrimitive::Vec4(ar_stable),
+                ],
+                function: InterpolationFunction::SphericalLinear,
+            },
+            (),
+            &world.read_resource(),
+        );
+        let animation = loader.load_from_data(
+            Animation::new_single(0, TransformChannel::Rotation, sampler),
+            (),
+            &world.read_resource(),
+        );
+        return animation;
+    }
+
     pub fn create_bob(world: &World, amplitude: f32) -> AnimationSet<AnimationId, Transform> {
         let mut anim: AnimationSet<AnimationId, Transform> = AnimationSet::default();
         let loader = world.read_resource::<Loader>();
@@ -48,6 +79,8 @@ impl AnimationFactory {
             &world.read_resource(),
         );
         anim.animations.insert(AnimationId::Animate, animation);
+        anim.animations
+            .insert(AnimationId::Rotate, Self::create_attack_rot(world));
         anim
     }
 

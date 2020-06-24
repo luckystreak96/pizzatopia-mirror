@@ -19,6 +19,7 @@ use crate::states::editor::Editor;
 use crate::states::loading::DrawDebugLines;
 use crate::systems;
 use crate::systems::console::ConsoleInputSystem;
+use crate::systems::game::AnimationCounterSystem;
 use crate::systems::graphics::CollisionDebugLinesSystem;
 use crate::systems::input::{InputManagementSystem, InputManager};
 use crate::systems::physics::CollisionDirection;
@@ -319,6 +320,11 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             &[],
         );
 
+        dispatcher_builder.add(
+            AnimationCounterSystem,
+            "animation_counter_system",
+            &["apply_sticky_system"],
+        );
         dispatcher_builder.add(
             CollisionDebugLinesSystem,
             "collision_debug_lines_system",

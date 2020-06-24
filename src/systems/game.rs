@@ -12,7 +12,7 @@ use amethyst::core::timing::Time;
 use amethyst::core::{SystemDesc, Transform};
 use amethyst::derive::SystemDesc;
 use amethyst::ecs::{
-    Entities, Join, Read, ReadStorage, System, SystemData, World, Write, WriteStorage,
+    Entities, Join, LazyUpdate, Read, ReadStorage, System, SystemData, World, Write, WriteStorage,
 };
 use amethyst::renderer::{
     Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
@@ -30,6 +30,7 @@ use amethyst::{
 use crate::audio::{play_damage_sound, Sounds};
 use crate::components::editor::{EditorCursor, EditorFlag};
 use crate::utils::{Vec2, Vec3};
+use amethyst::prelude::WorldExt;
 
 pub const IFRAMES_PER_HIT: f32 = 1.5;
 
@@ -140,6 +141,31 @@ impl<'s> System<'s> for TimedExistenceSystem {
                 if let Err(err) = entities.delete(entity) {
                     error!("Failed to delete TimedExistence entity - {}", err);
                 }
+            }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct AnimationCounterSystem;
+
+impl<'s> System<'s> for AnimationCounterSystem {
+    type SystemData = (
+        WriteStorage<'s, AnimationCounter>,
+        Read<'s, Time>,
+        Read<'s, LazyUpdate>,
+        Entities<'s>,
+    );
+
+    fn run(&mut self, (mut counters, time, lazy, entities): Self::SystemData) {
+        for (mut counter, entity) in (&mut counters, &entities).join() {
+            counter.count_down -= time.delta_seconds();
+            if counter.count_down <= 0.0 {
+                let clone = counter.clone();
+                lazy.exec_mut(move |world| {
+                    (clone.on_complete)(world);
+                    world.write_storage::<AnimationCounter>().remove(entity);
+                });
             }
         }
     }

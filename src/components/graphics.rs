@@ -12,12 +12,14 @@ use amethyst::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::animations::AnimationId;
 use crate::states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
 use crate::utils::{Vec2, Vec3};
 use derivative::Derivative;
 use log::{info, warn};
 use num_traits::identities::Zero;
 use std::ops::Add;
+use std::sync::Arc;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
@@ -115,7 +117,25 @@ impl Lerper {
     }
 }
 
-pub struct AnimationCounter(pub u32);
+#[derive(Clone)]
+pub struct AnimationCounter {
+    pub count_down: f32,
+    pub animation_type: AnimationId,
+    pub on_complete: Arc<dyn Fn(&mut World) + Send + Sync>,
+}
+impl AnimationCounter {
+    pub fn new(
+        time: f32,
+        animation: AnimationId,
+        on_complete: Arc<dyn Fn(&mut World) + Send + Sync>,
+    ) -> AnimationCounter {
+        AnimationCounter {
+            count_down: time,
+            animation_type: animation,
+            on_complete,
+        }
+    }
+}
 
 impl Component for AnimationCounter {
     type Storage = DenseVecStorage<Self>;

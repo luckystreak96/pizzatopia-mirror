@@ -19,6 +19,7 @@ use amethyst::{
         bundle::SystemBundle,
         ecs::{Read, SystemData, World},
         frame_limiter::FrameRateLimitStrategy,
+        frame_limiter::*,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
         EventReader, SystemDesc, Time,
@@ -45,6 +46,7 @@ use amethyst::{
 use log::{error, warn};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 pub struct AssetsDir(pub PathBuf);
 

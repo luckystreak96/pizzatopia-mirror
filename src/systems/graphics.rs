@@ -335,7 +335,6 @@ impl<'s> System<'s> for SpriteUpdateSystem {
     type SystemData = (
         WriteStorage<'s, Transform>,
         WriteStorage<'s, SpriteRender>,
-        WriteStorage<'s, AnimationCounter>,
         WriteStorage<'s, Scale>,
         ReadStorage<'s, Velocity>,
         ReadStorage<'s, GravityDirection>,
@@ -349,7 +348,6 @@ impl<'s> System<'s> for SpriteUpdateSystem {
         (
             mut transforms,
             mut sprites,
-            mut counters,
             mut scales,
             velocities,
             gravities,
@@ -358,10 +356,9 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             entities,
         ): Self::SystemData,
     ) {
-        for (transform, _sprite, counter, scale, velocity, entity, gravity) in (
+        for (transform, _sprite, scale, velocity, entity, gravity) in (
             &mut transforms,
             &mut sprites,
-            &mut counters,
             &mut scales,
             &velocities,
             &entities,
@@ -379,8 +376,6 @@ impl<'s> System<'s> for SpriteUpdateSystem {
 
             // let mut sprite_number = sprite.sprite_number % 2;
             if grav_vel.x != 0.0 {
-                counter.0 = counter.0 + grav_vel.x.abs() as u32;
-
                 AnimationFactory::set_animation(
                     &sets,
                     &mut controls,
