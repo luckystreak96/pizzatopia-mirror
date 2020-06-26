@@ -2,7 +2,7 @@ use crate::animations::{AnimationAction, AnimationFactory, AnimationId, SamplerA
 use crate::components::editor::{
     EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
 };
-use crate::components::game::Health;
+use crate::components::game::{Health, Player};
 use crate::components::game::{SerializedObjectType, SpriteRenderData};
 use crate::components::graphics::{
     AbsolutePositioning, AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale,
@@ -338,6 +338,8 @@ impl<'s> System<'s> for SpriteUpdateSystem {
         WriteStorage<'s, Scale>,
         ReadStorage<'s, Velocity>,
         ReadStorage<'s, GravityDirection>,
+        ReadStorage<'s, AnimationCounter>,
+        ReadStorage<'s, Player>,
         ReadStorage<'s, AnimationSet<AnimationId, Transform>>,
         WriteStorage<'s, AnimationControlSet<AnimationId, Transform>>,
         Entities<'s>,
@@ -351,11 +353,22 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             mut scales,
             velocities,
             gravities,
+            anim_counters,
+            players,
             sets,
             mut controls,
             entities,
         ): Self::SystemData,
     ) {
+        for (sprite, _player, anim) in (&mut sprites, &players, (&anim_counters).maybe()).join() {
+            if let Some(anim) = anim {
+                if anim.animation_type == AnimationId::None {
+                    sprite.sprite_number = 2;
+                }
+            } else {
+                sprite.sprite_number = 0;
+            }
+        }
         for (transform, _sprite, scale, velocity, entity, gravity) in (
             &mut transforms,
             &mut sprites,
