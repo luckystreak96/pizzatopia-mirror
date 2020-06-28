@@ -40,6 +40,7 @@ impl<'s> System<'s> for PlayerInputSystem {
         ReadStorage<'s, Health>,
         ReadStorage<'s, Grounded>,
         ReadStorage<'s, GravityDirection>,
+        ReadStorage<'s, Ducking>,
         Write<'s, Time>,
         Entities<'s>,
         ReadStorage<'s, AnimationSet<AnimationId, Transform>>,
@@ -57,19 +58,21 @@ impl<'s> System<'s> for PlayerInputSystem {
             healths,
             grounded,
             gravities,
+            duckings,
             mut time,
             entities,
             sets,
             mut controls,
         ): Self::SystemData,
     ) {
-        for (vel, _pos, _player, health, ground, gravity, entity) in (
+        for (vel, _pos, _player, health, ground, gravity, ducking, entity) in (
             &mut velocities,
             &positions,
             &players,
             &healths,
             (&grounded).maybe(),
             (&gravities).maybe(),
+            (&duckings).maybe(),
             &entities,
         )
             .join()
@@ -150,7 +153,6 @@ impl<'s> System<'s> for PlayerInputSystem {
                 time.set_time_scale(1.);
             }
 
-            // Get the grounded status to use auto-complete :)
             let ground: Option<&Grounded> = ground;
             let default_ground = Grounded(false);
             let on_ground = ground.unwrap_or(&default_ground);
@@ -174,9 +176,18 @@ impl<'s> System<'s> for PlayerInputSystem {
                 grav_vel.y *= 0.5;
             }
 
-            let mut scaled_amount = 0.30 * h_move as f32;
+            let mut movement = 0.30;
+            if ducking.is_some() {
+                movement *= 0.5;
+            }
+            let mut scaled_amount = movement * h_move as f32;
             if on_ground {
-                scaled_amount += (grav_vel.x * 0.025).abs() * h_move;
+                let bonus = (grav_vel.x * 0.025).abs() * h_move;
+                if ducking.is_some() {
+                    scaled_amount -= bonus;
+                } else {
+                    scaled_amount += bonus;
+                }
             }
             grav_vel.x += scaled_amount;
 

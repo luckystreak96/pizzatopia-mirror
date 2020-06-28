@@ -338,7 +338,7 @@ impl<'s> System<'s> for ApplyGravitySystem {
                 }
             }
 
-            let mut gravity_vec = Vec2::new(0.0, -0.28);
+            let mut gravity_vec = Vec2::new(0.0, -0.4);
             gravity_vec =
                 gravitationally_adapted_velocity(&gravity_vec, &GravityDirection(grav_dir));
 
