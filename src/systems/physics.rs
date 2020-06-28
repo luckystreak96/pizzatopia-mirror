@@ -259,7 +259,6 @@ impl<'s> System<'s> for DuckTransferSystem {
             (&mut duckings, &mut collisions, &entities, &positions).join()
         {
             if input.action_status("vertical").axis >= threshold {
-                // TODO : Check if un-ducking is legit here
                 let bottom_left = [
                     position.0.x - points.half_size.x,
                     position.0.y - points.half_size.y,
@@ -273,7 +272,6 @@ impl<'s> System<'s> for DuckTransferSystem {
                 if intersections.count() == 0 {
                     points.reset_collision_points();
                     to_remove.push(entity);
-                    warn!("Entity {} stopped ducking.", entity.id());
                 }
             }
         }
@@ -292,7 +290,6 @@ impl<'s> System<'s> for DuckTransferSystem {
                             .insert(entity, Ducking::new(new_half, coll_points.half_size))
                             .expect("Failed to insert Ducking component.");
                         coll_points.shrink_height_collision_points(new_half.y);
-                        warn!("Entity {} started ducking.", entity.id());
                     }
                 }
             }

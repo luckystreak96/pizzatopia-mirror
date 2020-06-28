@@ -13,7 +13,9 @@ use crate::animations::{AnimationAction, AnimationFactory, AnimationId};
 use crate::components::game::Player;
 use crate::components::game::{Health, Team};
 use crate::components::graphics::{AnimationCounter, Scale};
-use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
+use crate::components::physics::{
+    Ducking, GravityDirection, Grounded, PlatformCuboid, Position, Velocity,
+};
 use crate::events::Events;
 use crate::level::Level;
 use crate::states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT, TILE_WIDTH};
@@ -90,10 +92,13 @@ impl<'s> System<'s> for PlayerInputSystem {
                         let pos: Position;
                         let vel: Velocity;
                         let size: Vec2;
+                        let ducking: bool;
                         {
                             let pos_st = world.read_storage::<Position>();
                             let vel_st = world.read_storage::<Velocity>();
                             let size_st = world.read_storage::<Scale>();
+                            let duck_st = world.read_storage::<Ducking>();
+                            ducking = duck_st.contains(entity);
                             let pos_opt = pos_st.get(entity);
                             let vel_opt = vel_st.get(entity);
                             let size_opt = size_st.get(entity);
@@ -106,12 +111,18 @@ impl<'s> System<'s> for PlayerInputSystem {
                         }
                         let width = size.x.abs() * TILE_WIDTH;
                         let height = size.y.abs() * TILE_HEIGHT;
-                        let offset = match vel.prev_going_right {
+                        let offset_x = match vel.prev_going_right {
                             true => width / 2.0,
                             false => -width / 2.0,
                         };
+                        let offset_y = height
+                            * 0.25
+                            * match ducking {
+                                true => -1.,
+                                false => 1.0,
+                            };
                         // Multiply height by one quarter to go from half height to upper body
-                        let offset = Vec2::new(offset, height * 0.25);
+                        let offset = Vec2::new(offset_x, offset_y);
                         let p = pos.0.to_vec2().add(&offset);
                         let s = Vec2::new(width, TILE_HEIGHT / 2.0);
                         let t = Team::GoodGuys;
