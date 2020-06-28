@@ -12,7 +12,7 @@ use amethyst::input::{InputHandler, StringBindings};
 use crate::animations::{AnimationAction, AnimationFactory, AnimationId};
 use crate::components::game::Player;
 use crate::components::game::{Health, Team};
-use crate::components::graphics::AnimationCounter;
+use crate::components::graphics::{AnimationCounter, Scale};
 use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
 use crate::events::Events;
 use crate::level::Level;
@@ -89,23 +89,29 @@ impl<'s> System<'s> for PlayerInputSystem {
                     Arc::new(move |world| {
                         let pos: Position;
                         let vel: Velocity;
+                        let size: Vec2;
                         {
                             let pos_st = world.read_storage::<Position>();
                             let vel_st = world.read_storage::<Velocity>();
+                            let size_st = world.read_storage::<Scale>();
                             let pos_opt = pos_st.get(entity);
                             let vel_opt = vel_st.get(entity);
-                            if pos_opt.is_none() || vel_opt.is_none() {
+                            let size_opt = size_st.get(entity);
+                            if pos_opt.is_none() || vel_opt.is_none() || size_opt.is_none() {
                                 return;
                             }
                             pos = pos_opt.unwrap().clone();
                             vel = vel_opt.unwrap().clone();
+                            size = size_opt.unwrap().0.clone();
                         }
-                        let width = TILE_WIDTH;
+                        let width = size.x.abs() * TILE_WIDTH;
+                        let height = size.y.abs() * TILE_HEIGHT;
                         let offset = match vel.prev_going_right {
                             true => width / 2.0,
                             false => -width / 2.0,
                         };
-                        let offset = Vec2::new(offset, 0.);
+                        // Multiply height by one quarter to go from half height to upper body
+                        let offset = Vec2::new(offset, height * 0.25);
                         let p = pos.0.to_vec2().add(&offset);
                         let s = Vec2::new(width, TILE_HEIGHT / 2.0);
                         let t = Team::GoodGuys;

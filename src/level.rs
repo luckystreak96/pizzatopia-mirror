@@ -310,7 +310,7 @@ impl Level {
             .with(Reflect)
             .with(collision_points)
             .with(Collidee::new())
-            .with(TimedExistence(0.5))
+            .with(TimedExistence(0.1))
             .with(team.clone())
             .with(Damage(1))
             .build();
