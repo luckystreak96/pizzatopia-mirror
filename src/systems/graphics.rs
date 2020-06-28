@@ -9,7 +9,7 @@ use crate::components::graphics::{
     SpriteSheetType,
 };
 use crate::components::physics::{
-    GravityDirection, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
+    Ducking, GravityDirection, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
 };
 use crate::states::loading::DrawDebugLines;
 use crate::states::pizzatopia::{DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
@@ -339,6 +339,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
         ReadStorage<'s, Velocity>,
         ReadStorage<'s, GravityDirection>,
         ReadStorage<'s, AnimationCounter>,
+        ReadStorage<'s, Ducking>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, AnimationSet<AnimationId, Transform>>,
         WriteStorage<'s, AnimationControlSet<AnimationId, Transform>>,
@@ -354,19 +355,30 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             velocities,
             gravities,
             anim_counters,
+            duckings,
             players,
             sets,
             mut controls,
             entities,
         ): Self::SystemData,
     ) {
-        for (sprite, _player, anim) in (&mut sprites, &players, (&anim_counters).maybe()).join() {
-            if let Some(anim) = anim {
-                if anim.animation_type == AnimationId::None {
-                    sprite.sprite_number = 2;
-                }
+        for (sprite, _player, anim, ducking) in (
+            &mut sprites,
+            &players,
+            (&anim_counters).maybe(),
+            (&duckings).maybe(),
+        )
+            .join()
+        {
+            if ducking.is_some() {
+                sprite.sprite_number = 1;
             } else {
                 sprite.sprite_number = 0;
+            }
+            if let Some(anim) = anim {
+                if anim.animation_type == AnimationId::None {
+                    sprite.sprite_number += 2;
+                }
             }
         }
         for (transform, _sprite, scale, velocity, entity, gravity) in (

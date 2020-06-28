@@ -245,20 +245,36 @@ impl<'s> System<'s> for DuckTransferSystem {
         Read<'s, InputManager>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, Grounded>,
+        ReadStorage<'s, Position>,
+        Read<'s, RTree<RTreeEntity>>,
     );
 
     fn run(
         &mut self,
-        (mut duckings, mut collisions, entities, input, players, groundeds): Self::SystemData,
+        (mut duckings, mut collisions, entities, input, players, groundeds, positions, rtree): Self::SystemData,
     ) {
         let threshold = -0.25;
         let mut to_remove = Vec::new();
-        for (_duck, _points, entity) in (&mut duckings, &mut collisions, &entities).join() {
+        for (_duck, points, entity, position) in
+            (&mut duckings, &mut collisions, &entities, &positions).join()
+        {
             if input.action_status("vertical").axis >= threshold {
                 // TODO : Check if un-ducking is legit here
-                // TODO : Reset collision points
-                to_remove.push(entity);
-                warn!("Entity {} stopped ducking.", entity.id());
+                let bottom_left = [
+                    position.0.x - points.half_size.x,
+                    position.0.y - points.half_size.y,
+                ];
+                let top_right = [
+                    position.0.x + points.half_size.x,
+                    position.0.y + points.half_size.y,
+                ];
+                let intersections = rtree
+                    .locate_in_envelope_intersecting(&AABB::from_corners(bottom_left, top_right));
+                if intersections.count() == 0 {
+                    points.reset_collision_points();
+                    to_remove.push(entity);
+                    warn!("Entity {} stopped ducking.", entity.id());
+                }
             }
         }
         for ent in to_remove {
@@ -275,6 +291,7 @@ impl<'s> System<'s> for DuckTransferSystem {
                         duckings
                             .insert(entity, Ducking::new(new_half, coll_points.half_size))
                             .expect("Failed to insert Ducking component.");
+                        coll_points.shrink_height_collision_points(new_half.y);
                         warn!("Entity {} started ducking.", entity.id());
                     }
                 }

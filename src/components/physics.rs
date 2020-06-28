@@ -260,19 +260,49 @@ impl Component for PlatformCollisionPoints {
 }
 impl PlatformCollisionPoints {
     pub fn plus(half_width: f32, half_height: f32) -> PlatformCollisionPoints {
-        let mut vec = Vec::new();
-        let left = CollisionPoint::new(Vec2::new(-half_width, 0.), half_height, false);
-        let right = CollisionPoint::new(Vec2::new(half_width, 0.), half_height, false);
-        let top = CollisionPoint::new(Vec2::new(0., half_height), half_width, true);
-        let bottom = CollisionPoint::new(Vec2::new(0., -half_height), half_width, true);
-        vec.push(left);
-        vec.push(right);
-        vec.push(top);
-        vec.push(bottom);
-        PlatformCollisionPoints {
-            collision_points: vec,
+        let mut result = PlatformCollisionPoints {
+            collision_points: Vec::new(),
             half_size: Vec2::new(half_width, half_height),
-        }
+        };
+        result.reset_collision_points();
+        result
+    }
+
+    pub fn reset_collision_points(&mut self) {
+        self.collision_points.clear();
+        let left = CollisionPoint::new(Vec2::new(-self.half_size.x, 0.), self.half_size.y, false);
+        let right = CollisionPoint::new(Vec2::new(self.half_size.x, 0.), self.half_size.y, false);
+        let top = CollisionPoint::new(Vec2::new(0., self.half_size.y), self.half_size.x, true);
+        let bottom = CollisionPoint::new(Vec2::new(0., -self.half_size.y), self.half_size.x, true);
+        self.collision_points.push(left);
+        self.collision_points.push(right);
+        self.collision_points.push(top);
+        self.collision_points.push(bottom);
+    }
+
+    pub fn shrink_height_collision_points(&mut self, new_half_height: f32) {
+        self.collision_points.clear();
+        let center_height = -self.half_size.y + new_half_height;
+        let bottom = CollisionPoint::new(Vec2::new(0., -self.half_size.y), self.half_size.x, true);
+        let left = CollisionPoint::new(
+            Vec2::new(-self.half_size.x, center_height),
+            new_half_height,
+            false,
+        );
+        let right = CollisionPoint::new(
+            Vec2::new(self.half_size.x, center_height),
+            new_half_height,
+            false,
+        );
+        let top = CollisionPoint::new(
+            Vec2::new(0., center_height + new_half_height),
+            self.half_size.x,
+            true,
+        );
+        self.collision_points.push(left);
+        self.collision_points.push(right);
+        self.collision_points.push(top);
+        self.collision_points.push(bottom);
     }
 }
 
