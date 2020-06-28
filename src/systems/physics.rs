@@ -1,6 +1,6 @@
 use crate::components::physics::{
-    Collidee, CollideeDetails, CollisionPoint, CollisionSideOfBlock, GravityDirection, Grounded,
-    PlatformCollisionPoints, PlatformCuboid, Position, RTreeEntity, Sticky, Velocity,
+    Collidee, CollideeDetails, CollisionPoint, CollisionSideOfBlock, Ducking, GravityDirection,
+    Grounded, PlatformCollisionPoints, PlatformCuboid, Position, RTreeEntity, Sticky, Velocity,
 };
 use crate::events::Events;
 use crate::states::pizzatopia::{FRICTION, MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH};
@@ -230,6 +230,54 @@ impl<'s> System<'s> for ApplyVelocitySystem {
             position.0.y += projection.y;
             if !velocity.vel.x.is_zero() {
                 velocity.prev_going_right = velocity.vel.x.is_sign_positive();
+            }
+        }
+    }
+}
+
+pub struct DuckTransferSystem;
+
+impl<'s> System<'s> for DuckTransferSystem {
+    type SystemData = (
+        WriteStorage<'s, Ducking>,
+        WriteStorage<'s, PlatformCollisionPoints>,
+        Entities<'s>,
+        Read<'s, InputManager>,
+        ReadStorage<'s, Player>,
+        ReadStorage<'s, Grounded>,
+    );
+
+    fn run(
+        &mut self,
+        (mut duckings, mut collisions, entities, input, players, groundeds): Self::SystemData,
+    ) {
+        let threshold = -0.25;
+        let mut to_remove = Vec::new();
+        for (_duck, _points, entity) in (&mut duckings, &mut collisions, &entities).join() {
+            if input.action_status("vertical").axis >= threshold {
+                // TODO : Check if un-ducking is legit here
+                // TODO : Reset collision points
+                to_remove.push(entity);
+                warn!("Entity {} stopped ducking.", entity.id());
+            }
+        }
+        for ent in to_remove {
+            duckings.remove(ent);
+        }
+        for (player, coll_points, entity, grounded) in
+            (&players, &mut collisions, &entities, &groundeds).join()
+        {
+            if player.0 && grounded.0 {
+                if input.action_status("vertical").axis < threshold {
+                    if !duckings.contains(entity) {
+                        let mut new_half = coll_points.half_size;
+                        new_half.y /= 2.0;
+                        duckings
+                            .insert(entity, Ducking::new(new_half, coll_points.half_size))
+                            .expect("Failed to insert Ducking component.");
+                        warn!("Entity {} started ducking.", entity.id());
+                    }
+                }
             }
         }
     }

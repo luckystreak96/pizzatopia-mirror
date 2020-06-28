@@ -73,6 +73,23 @@ impl CollideeDetails {
     }
 }
 
+pub struct Ducking {
+    pub new_half_size: Vec2,
+    pub old_half_size: Vec2,
+}
+impl Ducking {
+    pub fn new(new_half_size: Vec2, old_half_size: Vec2) -> Ducking {
+        Ducking {
+            new_half_size,
+            old_half_size,
+        }
+    }
+}
+
+impl Component for Ducking {
+    type Storage = DenseVecStorage<Self>;
+}
+
 pub struct Collidee {
     pub horizontal: Option<CollideeDetails>,
     pub vertical: Option<CollideeDetails>,

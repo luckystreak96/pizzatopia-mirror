@@ -22,7 +22,7 @@ use crate::systems::console::ConsoleInputSystem;
 use crate::systems::game::AnimationCounterSystem;
 use crate::systems::graphics::CollisionDebugLinesSystem;
 use crate::systems::input::{InputManagementSystem, InputManager};
-use crate::systems::physics::CollisionDirection;
+use crate::systems::physics::{CollisionDirection, DuckTransferSystem};
 use crate::ui::file_picker::{FilePickerButton, FilePickerUi};
 use crate::ui::tile_characteristics::EditorButton;
 use crate::ui::UiStack;
@@ -267,6 +267,11 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
         dispatcher_builder.add(
             ConsoleInputSystem,
             "console_input_system",
+            &["input_management_system"],
+        );
+        dispatcher_builder.add(
+            DuckTransferSystem,
+            "duck_transfer_system",
             &["input_management_system"],
         );
         dispatcher_builder.add(
