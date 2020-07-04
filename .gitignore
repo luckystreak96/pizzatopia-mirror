@@ -9,5 +9,6 @@ thumbs.db
 *.swp
 
 .idea/
+venv/
 
 /*.dll
