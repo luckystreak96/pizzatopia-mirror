@@ -343,6 +343,8 @@ impl<'s> System<'s> for SpriteUpdateSystem {
         ReadStorage<'s, Player>,
         ReadStorage<'s, AnimationSet<AnimationId, Transform>>,
         WriteStorage<'s, AnimationControlSet<AnimationId, Transform>>,
+        ReadStorage<'s, AnimationSet<AnimationId, SpriteRender>>,
+        WriteStorage<'s, AnimationControlSet<AnimationId, SpriteRender>>,
         Entities<'s>,
     );
 
@@ -359,6 +361,8 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             players,
             sets,
             mut controls,
+            sprite_sets,
+            mut sprite_controls,
             entities,
         ): Self::SystemData,
     ) {
@@ -409,6 +413,14 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     AnimationAction::StartAnimationOrSetRate(grav_vel.x.abs()),
                     None,
                 );
+                AnimationFactory::set_sprite_animation(
+                    &sprite_sets,
+                    &mut sprite_controls,
+                    entity,
+                    AnimationId::Animate,
+                    AnimationAction::StartAnimationOrSetRate(grav_vel.x.abs()),
+                    None,
+                );
 
                 let mut cur_scale = &mut scale.0;
                 match grav_vel.x < 0.0 {
@@ -420,6 +432,14 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                     }
                 };
             } else {
+                AnimationFactory::set_sprite_animation(
+                    &sprite_sets,
+                    &mut sprite_controls,
+                    entity,
+                    AnimationId::Animate,
+                    AnimationAction::AbortAnimation,
+                    None,
+                );
                 AnimationFactory::set_animation(
                     &sets,
                     &mut controls,

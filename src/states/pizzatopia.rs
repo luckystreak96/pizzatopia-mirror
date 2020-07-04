@@ -371,6 +371,13 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
         .with_dep(&["transform_reset_system"])
         .build(world, &mut dispatcher_builder)
         .expect("Failed to register animation bundle in pizzatopia");
+        AnimationBundle::<AnimationId, SpriteRender>::new(
+            "sprite_animation_control_system",
+            "sprite_sampler_interpolation_system",
+        )
+        .with_dep(&["transform_reset_system"])
+        .build(world, &mut dispatcher_builder)
+        .expect("Failed to register sprite animation bundle in pizzatopia");
         GameLogicBundle::default()
             .build(world, &mut dispatcher_builder)
             .expect("Failed to register GameLogic bundle.");

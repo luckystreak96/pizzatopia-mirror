@@ -4,6 +4,7 @@ use amethyst::core::Transform;
 use amethyst::ecs::prelude::Entity;
 use amethyst::ecs::{ReadStorage, WriteStorage};
 use amethyst::prelude::{World, WorldExt};
+use amethyst::renderer::SpriteRender;
 use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialOrd, PartialEq, Hash, Debug, Copy, Clone, Deserialize, Serialize)]
@@ -156,6 +157,89 @@ impl AnimationFactory {
         let animation = loader.load_from_data(animation, (), &world.read_resource());
         anim.animations.insert(AnimationId::Animate, animation);
         anim
+    }
+
+    pub fn create_sprite_animation(world: &World) -> AnimationSet<AnimationId, SpriteRender> {
+        let mut anim: AnimationSet<AnimationId, SpriteRender> = AnimationSet::default();
+        let loader = world.read_resource::<Loader>();
+        let sampler = loader.load_from_data(
+            Sampler {
+                input: vec![0., 1.],
+                output: vec![
+                    SpriteRenderPrimitive::SpriteIndex(1),
+                    SpriteRenderPrimitive::SpriteIndex(0),
+                ],
+                function: InterpolationFunction::Step,
+            },
+            (),
+            &world.read_resource(),
+        );
+        let animation = loader.load_from_data(
+            Animation::new_single(0, SpriteRenderChannel::SpriteIndex, sampler),
+            (),
+            &world.read_resource(),
+        );
+        anim.animations.insert(AnimationId::Animate, animation);
+        anim
+    }
+
+    pub fn set_sprite_animation(
+        animation_sets: &ReadStorage<'_, AnimationSet<AnimationId, SpriteRender>>,
+        control_sets: &mut WriteStorage<'_, AnimationControlSet<AnimationId, SpriteRender>>,
+        target_entity: Entity,
+        id: AnimationId,
+        state: AnimationAction,
+        defer: Option<(AnimationId, DeferStartRelation)>,
+    ) {
+        if let Some(animation) = animation_sets
+            .get(target_entity)
+            .and_then(|s| s.get(&id))
+            .cloned()
+        {
+            let sets = control_sets;
+            let control_set =
+                get_animation_set::<AnimationId, SpriteRender>(sets, target_entity).unwrap();
+            let mut state = state;
+            if control_set.has_animation(id) {
+                state = match state {
+                    AnimationAction::StartAnimationOrSetRate(rate) => {
+                        AnimationAction::SetRate(rate)
+                    }
+                    _ => state,
+                };
+            }
+            match state {
+                AnimationAction::StartAnimationOrSetRate(rate) => match defer {
+                    None => {
+                        control_set.add_animation(
+                            id,
+                            &animation,
+                            EndControl::Normal,
+                            rate,
+                            AnimationCommand::Start,
+                        );
+                    }
+
+                    Some((defer_id, defer_relation)) => {
+                        control_set.add_deferred_animation(
+                            id,
+                            &animation,
+                            EndControl::Normal,
+                            rate,
+                            AnimationCommand::Start,
+                            defer_id,
+                            defer_relation,
+                        );
+                    }
+                },
+                AnimationAction::AbortAnimation => {
+                    control_set.abort(id);
+                }
+                AnimationAction::SetRate(rate) => {
+                    control_set.set_rate(id, rate);
+                }
+            }
+        }
     }
 
     pub fn set_animation(

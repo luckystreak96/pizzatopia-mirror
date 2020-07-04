@@ -520,17 +520,21 @@ impl Level {
         let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
 
         let animation = match sprite_sheet_type {
-            SpriteSheetType::Animation => {
-                sprite_render.sprite_number = 3;
-                AnimationFactory::create_walking_animation(world)
-            }
-            _ => AnimationFactory::create_bob(world, 10.),
+            // SpriteSheetType::Animation => {
+            //     sprite_render.sprite_number = 3;
+            //     AnimationFactory::create_walking_animation(world)
+            // }
+            _ => AnimationFactory::create_sprite_animation(world),
+            // _ => AnimationFactory::create_bob(world, 10.),
         };
+
+        let attack_animation = AnimationFactory::create_bob(world, 10.0);
 
         // Data common to both editor and entity
         let mut builder = world
             .create_entity()
             .with(animation)
+            .with(attack_animation)
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(position.clone())
