@@ -92,11 +92,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
             .insert(BTreeMap::<u8, Handle<SpriteSheet>>::new());
 
         self.add_new_sprite_sheet(data.world, "texture/tiles", SpriteSheetType::Tiles as u8);
-        self.add_new_sprite_sheet(
-            data.world,
-            "texture/spritesheet",
-            SpriteSheetType::Didi as u8,
-        );
+        self.add_new_sprite_sheet(data.world, "texture/walk", SpriteSheetType::Didi as u8);
         self.add_new_sprite_sheet(
             data.world,
             "texture/spritesheet2",

@@ -380,9 +380,9 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                 sprite.sprite_number = 0;
             }
             if let Some(anim) = anim {
-                if anim.animation_type == AnimationId::None {
-                    sprite.sprite_number += 2;
-                }
+                // if anim.animation_type == AnimationId::None {
+                //     sprite.sprite_number += 2;
+                // }
             }
         }
         for (transform, _sprite, scale, velocity, entity, gravity) in (

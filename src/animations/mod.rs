@@ -164,9 +164,15 @@ impl AnimationFactory {
         let loader = world.read_resource::<Loader>();
         let sampler = loader.load_from_data(
             Sampler {
-                input: vec![0., 1.],
+                input: vec![0., 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5],
                 output: vec![
                     SpriteRenderPrimitive::SpriteIndex(1),
+                    SpriteRenderPrimitive::SpriteIndex(2),
+                    SpriteRenderPrimitive::SpriteIndex(3),
+                    SpriteRenderPrimitive::SpriteIndex(4),
+                    SpriteRenderPrimitive::SpriteIndex(5),
+                    SpriteRenderPrimitive::SpriteIndex(6),
+                    SpriteRenderPrimitive::SpriteIndex(7),
                     SpriteRenderPrimitive::SpriteIndex(0),
                 ],
                 function: InterpolationFunction::Step,
