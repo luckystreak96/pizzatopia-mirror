@@ -95,6 +95,11 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
         self.add_new_sprite_sheet(data.world, "texture/walk", SpriteSheetType::Didi as u8);
         self.add_new_sprite_sheet(
             data.world,
+            "texture/rolling_hills_bg",
+            SpriteSheetType::RollingHillsBg as u8,
+        );
+        self.add_new_sprite_sheet(
+            data.world,
             "texture/spritesheet2",
             SpriteSheetType::Snap as u8,
         );

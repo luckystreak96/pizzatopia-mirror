@@ -5,17 +5,18 @@ use crate::components::editor::{
 use crate::components::game::{Health, Player};
 use crate::components::game::{SerializedObjectType, SpriteRenderData};
 use crate::components::graphics::{
-    AbsolutePositioning, AnimationCounter, CameraLimit, Lerper, PulseAnimation, Scale,
-    SpriteSheetType,
+    AbsolutePositioning, AnimationCounter, BackgroundParallax, CameraLimit, Lerper, PulseAnimation,
+    Scale, SpriteSheetType,
 };
 use crate::components::physics::{
     Ducking, GravityDirection, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
 };
 use crate::states::loading::DrawDebugLines;
-use crate::states::pizzatopia::{DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
+use crate::states::pizzatopia::{CAM_HEIGHT, CAM_WIDTH, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
 use crate::ui::tile_characteristics::{EditorFieldUiComponents, UiIndex};
 use crate::ui::UiStack;
+use crate::utils::Vec3;
 use amethyst::animation::*;
 use amethyst::assets::{AssetStorage, Handle};
 use amethyst::core::math::Vector3;
@@ -329,6 +330,43 @@ impl<'s> System<'s> for DeadDrawUpdateSystem {
 }
 
 #[derive(SystemDesc)]
+pub struct BackgroundDrawUpdateSystem;
+
+impl<'s> System<'s> for BackgroundDrawUpdateSystem {
+    type SystemData = (
+        WriteStorage<'s, Position>,
+        ReadStorage<'s, Transform>,
+        WriteStorage<'s, BackgroundParallax>,
+        ReadStorage<'s, Camera>,
+    );
+
+    fn run(&mut self, (mut positions, transforms, mut bgs, cameras): Self::SystemData) {
+        let mut translate = Vector3::new(0., 0., 0.);
+        for (transform, _camera) in (&transforms, &cameras).join() {
+            translate = transform.translation().clone();
+        }
+        for (position, bg) in (&mut positions, &mut bgs).join() {
+            let id = bg.0;
+            let ratio = 0.25 / (1. + id as f32);
+            let calc_final_x = |offset_index: i32| -> f32 {
+                return translate.x - (translate.x * ratio) + offset_index as f32 * CAM_WIDTH;
+            };
+            let mut final_x = calc_final_x(bg.1);
+            let off_screen_left = final_x + CAM_WIDTH < translate.x;
+            let off_screen_right = final_x - CAM_WIDTH > translate.x;
+            if off_screen_left {
+                bg.1 += 2;
+            } else if off_screen_right {
+                bg.1 -= 2;
+            }
+            final_x = calc_final_x(bg.1);
+            position.0.x = final_x;
+            position.0.y = translate.y;
+        }
+    }
+}
+
+#[derive(SystemDesc)]
 pub struct SpriteUpdateSystem;
 
 impl<'s> System<'s> for SpriteUpdateSystem {
@@ -366,7 +404,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             entities,
         ): Self::SystemData,
     ) {
-        for (sprite, _player, anim, ducking) in (
+        for (sprite, _player, _anim, ducking) in (
             &mut sprites,
             &players,
             (&anim_counters).maybe(),
@@ -379,11 +417,11 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             } else {
                 sprite.sprite_number = 0;
             }
-            if let Some(anim) = anim {
-                // if anim.animation_type == AnimationId::None {
-                //     sprite.sprite_number += 2;
-                // }
-            }
+            // if let Some(anim) = anim {
+            // if anim.animation_type == AnimationId::None {
+            //     sprite.sprite_number += 2;
+            // }
+            // }
         }
         for (transform, _sprite, scale, velocity, entity, gravity) in (
             &mut transforms,

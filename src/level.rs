@@ -9,16 +9,16 @@ use crate::components::game::{
     SpriteRenderData, Team, Tile, TimedExistence,
 };
 use crate::components::game::{Player, Resettable};
-use crate::components::graphics::SpriteSheetType;
 use crate::components::graphics::{AnimationCounter, CameraLimit, Scale};
+use crate::components::graphics::{BackgroundParallax, SpriteSheetType};
 use crate::components::physics::{
     Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid, Position,
     RTreeEntity, Sticky, Velocity,
 };
 use crate::states::loading::AssetsDir;
 use crate::states::pizzatopia::{
-    CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, DEPTH_EDITOR, DEPTH_PROJECTILES, DEPTH_TILES, TILE_HEIGHT,
-    TILE_WIDTH,
+    CAM_HEIGHT, CAM_WIDTH, DEPTH_ACTORS, DEPTH_BACKGROUND, DEPTH_EDITOR, DEPTH_PROJECTILES,
+    DEPTH_TILES, TILE_HEIGHT, TILE_WIDTH,
 };
 use crate::systems::editor::EditorButtonEventSystem;
 use crate::systems::physics::CollisionDirection;
@@ -236,6 +236,47 @@ impl Level {
         return entity.id();
     }
 
+    pub fn initialize_background(world: &mut World) {
+        let size = Vec2::new(2048. / 2., 1024. / 2.);
+        let scale = Scale(Vec2::new(CAM_WIDTH / size.x, CAM_HEIGHT / size.y));
+
+        // Correctly position the tile.
+        let mut pos = Position(Vec3::new(
+            CAM_WIDTH / 2.0,
+            CAM_HEIGHT / 2.0,
+            DEPTH_BACKGROUND,
+        ));
+
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(SpriteSheetType::RollingHillsBg as u8)]
+            .clone();
+
+        for chain_num in 0..2 {
+            for i in 0..4 {
+                // Assign the sprite
+                let sprite_render = SpriteRender {
+                    sprite_sheet: sprite_sheet.clone(),
+                    sprite_number: i, // grass is the first sprite in the sprite_sheet
+                };
+                pos.0.z = DEPTH_BACKGROUND - 0.1 * i as f32;
+                let mut transform = Transform::default();
+                transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
+                transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
+
+                // Create gameplay entity
+                world
+                    .create_entity()
+                    .with(Transparent)
+                    .with(transform.clone())
+                    .with(pos.clone())
+                    .with(scale.clone())
+                    .with(sprite_render.clone())
+                    .with(BackgroundParallax(i as u32, chain_num))
+                    .build();
+            }
+        }
+    }
+
     pub fn initialize_projectile(world: &mut World, pos: &Vec2, vel: &Vec2, team: &Team) -> u32 {
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, DEPTH_PROJECTILES);
@@ -336,15 +377,14 @@ impl Level {
 
     // Turn the currently-loaded Level asset into entities
     pub(crate) fn load_level(world: &mut World) {
-        let serialized_objects;
-        {
+        let serialized_objects = {
             let asset = &world.read_resource::<AssetStorage<Level>>();
             let level = asset
                 .get(&world.read_resource::<Handle<Level>>().clone())
                 .unwrap_or(&Level::default())
                 .clone();
-            serialized_objects = level.serialized_objects.clone();
-        }
+            level.serialized_objects
+        };
 
         if let Some(serialized_objects) = serialized_objects {
             for mut serialized_object in serialized_objects {
@@ -506,7 +546,7 @@ impl Level {
             [&(sprite_sheet_type as u8)]
             .clone();
         // Assign the sprite
-        let mut sprite_render = SpriteRender {
+        let sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
             sprite_number: 0,
         };

@@ -71,6 +71,7 @@ use std::time::Instant;
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 9.0;
 
+pub const DEPTH_BACKGROUND: f32 = 0.5;
 pub const DEPTH_TILES: f32 = 1.0;
 pub const DEPTH_ACTORS: f32 = DEPTH_TILES + 1.0;
 pub const DEPTH_PROJECTILES: f32 = DEPTH_ACTORS + 0.5;
@@ -110,8 +111,9 @@ impl Default for Pizzatopia<'_, '_> {
 
 impl Pizzatopia<'_, '_> {
     fn initialize_level(&mut self, world: &mut World) {
-        Level::load_level(world);
         initialise_camera(world);
+        Level::load_level(world);
+        Level::initialize_background(world);
     }
 }
 
@@ -136,8 +138,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         dispatcher.setup(data.world);
         self.dispatcher = Some(dispatcher);
 
-        initialise_camera(data.world);
-        Level::load_level(data.world);
+        self.initialize_level(data.world);
 
         data.world.exec(|mut creator: UiCreator<'_>| {
             let mut progress = ProgressCounter::new();
@@ -350,11 +351,16 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             "camera_edge_clamp_system",
             &["lerper_system"],
         );
+        dispatcher_builder.add(
+            systems::graphics::BackgroundDrawUpdateSystem,
+            "background_draw_update_system",
+            &["camera_edge_clamp_system"],
+        );
 
         dispatcher_builder.add(
             systems::graphics::SpriteUpdateSystem,
             "sprite_update_system",
-            &["camera_edge_clamp_system"],
+            &["background_draw_update_system"],
         );
 
         dispatcher_builder.add(

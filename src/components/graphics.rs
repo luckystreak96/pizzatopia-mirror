@@ -174,6 +174,14 @@ impl Component for AbsolutePositioning {
     type Storage = NullStorage<Self>;
 }
 
+#[derive(Default)]
+// sprite index / depth, number in the `seamless` chain
+pub struct BackgroundParallax(pub(crate) u32, pub i32);
+
+impl Component for BackgroundParallax {
+    type Storage = DenseVecStorage<Self>;
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative, EnumIter, EnumCount)]
 #[derivative(Default)]
 pub enum SpriteSheetType {
@@ -183,6 +191,7 @@ pub enum SpriteSheetType {
     Snap,
     Ui,
     Animation,
+    RollingHillsBg,
 }
 
 impl SpriteSheetType {
