@@ -12,3 +12,4 @@ thumbs.db
 venv/
 
 /*.dll
+thread_profile.json

@@ -18,6 +18,8 @@ strum_macros = "0.18.0"
 rstar = "0.8.0"
 
 [features]
- default = ["vulkan", "sdl_controller"]
+ default = ["vulkan", "sdl_controller", "no-slow"]
  vulkan = ["amethyst/vulkan"]
  sdl_controller = ["amethyst/sdl_controller"]
+ profiler = ["amethyst/profiler"]
+ no-slow = ["amethyst/no-slow-safety-checks"]

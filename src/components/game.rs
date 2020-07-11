@@ -1,12 +1,14 @@
-use crate::components::graphics::SpriteSheetType;
+use crate::components::editor::TileLayer;
+use crate::components::graphics::{Scale, SpriteSheetType};
 use crate::components::physics::{Position, Velocity};
 use crate::states::editor::EDITOR_GRID_SIZE;
-use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
+use crate::states::pizzatopia::{DEPTH_ACTORS, DEPTH_TILES, TILE_HEIGHT, TILE_WIDTH};
 use crate::systems::editor::align_cursor_position_with_grid;
 use crate::utils::{Vec2, Vec3};
 use amethyst::ecs::Entity;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
+    core::math::Vector3,
     core::transform::Transform,
     ecs::prelude::{Component, DenseVecStorage, NullStorage},
     prelude::*,
@@ -15,6 +17,7 @@ use amethyst::{
 use derivative::Derivative;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 #[derive(Derivative, Debug, Copy, Clone, Serialize, Deserialize)]
 #[derivative(Default)]
@@ -126,6 +129,8 @@ pub struct SerializedObject {
     pub(crate) size: Option<Vec2>,
     #[derivative(Default(value = "Some(SpriteRenderData::default())"))]
     pub(crate) sprite: Option<SpriteRenderData>,
+    #[derivative(Default(value = "Some(TileLayer::Middle)"))]
+    pub(crate) layer: Option<TileLayer>,
 }
 
 impl SerializedObject {
@@ -170,4 +175,52 @@ pub enum SerializedObjectType {
 
 impl Component for SerializedObjectType {
     type Storage = DenseVecStorage<Self>;
+}
+
+pub struct SerializedBuilder {
+    transform: Transform,
+    sprite_render: SpriteRender,
+    layer: TileLayer,
+    pos: Position,
+    scale: Scale,
+}
+
+impl SerializedBuilder {
+    pub fn build(so: &SerializedObject, world: &mut World) -> SerializedBuilder {
+        let sprite = so.sprite.unwrap_or(SpriteRenderData::default());
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(sprite.sheet as u8)]
+            .clone();
+        let sprite_render = SpriteRender {
+            sprite_sheet: sprite_sheet.clone(),
+            sprite_number: sprite.number,
+        };
+
+        let layer = so.layer.unwrap_or(TileLayer::default());
+
+        // Correctly position the tile.
+        let mut pos = Position(so.pos.unwrap().to_vec3().clone());
+        pos.0.z = match so.object_type {
+            SerializedObjectType::Player { .. } => DEPTH_ACTORS,
+            SerializedObjectType::StaticTile { .. } => DEPTH_TILES,
+        };
+
+        pos.0.z += layer.to_z_offset();
+
+        // Build tile using GameObject
+        let size = so.size.unwrap_or(Vec2::new(TILE_WIDTH, TILE_HEIGHT));
+        let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
+
+        let mut transform = Transform::default();
+        transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
+        transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
+
+        SerializedBuilder {
+            sprite_render,
+            layer,
+            pos,
+            scale,
+            transform,
+        }
+    }
 }

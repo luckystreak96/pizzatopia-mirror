@@ -8,9 +8,13 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 use derivative::Derivative;
+use serde::{Deserialize, Serialize};
+use strum::{EnumCount, IntoEnumIterator};
+use strum_macros::{EnumCount, EnumIter};
 
 #[derive(Default)]
 pub struct EditorFlag;
+
 impl Component for EditorFlag {
     type Storage = NullStorage<Self>;
 }
@@ -37,6 +41,29 @@ impl Component for EditorCursor {
 pub struct RealCursorPosition(pub Vec2);
 
 impl Component for RealCursorPosition {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Derivative, Clone, Copy, Debug, Serialize, Deserialize, EnumIter, EnumCount)]
+#[derivative(Default)]
+pub enum TileLayer {
+    #[derivative(Default)]
+    Middle,
+    Front,
+    Back,
+}
+
+impl TileLayer {
+    pub fn to_z_offset(&self) -> f32 {
+        match *self {
+            TileLayer::Middle => 0.,
+            TileLayer::Front => 5.,
+            TileLayer::Back => -5.,
+        }
+    }
+}
+
+impl Component for TileLayer {
     type Storage = DenseVecStorage<Self>;
 }
 

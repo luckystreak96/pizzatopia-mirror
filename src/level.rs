@@ -2,7 +2,7 @@ use crate::animations::{AnimationFactory, AnimationId};
 use crate::components::ai;
 use crate::components::ai::{BasicShootAi, BasicWalkAi};
 use crate::components::editor::{
-    EditorFlag, InsertionGameObject, InstanceEntityId, SizeForEditorGrid,
+    EditorFlag, InsertionGameObject, InstanceEntityId, SizeForEditorGrid, TileLayer,
 };
 use crate::components::game::{
     Damage, Health, Invincibility, Projectile, Reflect, SerializedObject, SerializedObjectType,
@@ -34,7 +34,7 @@ use amethyst::{
     },
     core::transform::Transform,
     core::transform::*,
-    ecs::prelude::{Component, DenseVecStorage, Join, NullStorage},
+    ecs::prelude::{Component, DenseVecStorage, EntityBuilder, Join, NullStorage},
     ecs::VecStorage,
     error::{format_err, Error, ResultExt},
     prelude::*,
@@ -541,6 +541,9 @@ impl Level {
         let sprite_sheet_type = serialized_object
             .sprite
             .and_then(|sprite| Some(sprite.sheet));
+        let sprite_number = serialized_object
+            .sprite
+            .and_then(|sprite| Some(sprite.number));
         let sprite_sheet_type = sprite_sheet_type.unwrap_or(SpriteSheetType::Didi);
         let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             [&(sprite_sheet_type as u8)]
@@ -548,7 +551,7 @@ impl Level {
         // Assign the sprite
         let sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
-            sprite_number: 0,
+            sprite_number: sprite_number.unwrap_or(0),
         };
 
         let position = Position(Vec3::new(pos.x, pos.y, DEPTH_ACTORS));
