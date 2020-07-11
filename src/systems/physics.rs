@@ -12,10 +12,10 @@ use amethyst::{
     core::Transform,
     ecs::{Entities, Entity},
 };
-use log::{debug, error, info, warn};
+use log::debug;
 
 use crate::{
-    components::game::{CollisionEvent, Damage, Health, Player, Projectile, Reflect, Team},
+    components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team},
     systems::input::InputManager,
 };
 use amethyst::{
@@ -32,11 +32,9 @@ use amethyst::{
         WriteStorage,
     },
     input::{InputHandler, StringBindings},
-    prelude::*,
 };
 use num_traits::identities::Zero;
 use rstar::{RTree, AABB};
-use std::time::Instant;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CollisionDirection {

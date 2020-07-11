@@ -16,7 +16,6 @@ use amethyst::{
     assets::{
         Asset, AssetStorage, Completion, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
         PrefabLoaderSystemDesc, ProcessingState, Processor, Progress, ProgressCounter, RonFormat,
-        Source,
     },
     core::{
         bundle::SystemBundle,
@@ -27,7 +26,7 @@ use amethyst::{
         EventReader, SystemDesc, Time,
     },
     derive::EventReader,
-    ecs::prelude::{Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join},
+    ecs::prelude::{Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity},
     input::{is_key_down, InputHandler, StringBindings, VirtualKeyCode},
     prelude::*,
     renderer::{
@@ -45,7 +44,7 @@ use amethyst::{
     },
     winit::Event,
 };
-use log::{error, warn};
+use log::error;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},

@@ -18,10 +18,10 @@ use crate::{
     utils::{Vec2, Vec3},
 };
 use derivative::Derivative;
-use log::{info, warn};
+
 use num_traits::identities::Zero;
-use std::{ops::Add, sync::Arc};
-use strum::{EnumCount, IntoEnumIterator};
+use std::sync::Arc;
+
 use strum_macros::{EnumCount, EnumIter};
 
 #[derive(Derivative)]

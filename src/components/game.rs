@@ -22,7 +22,7 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 use derivative::Derivative;
-use log::{error, info, warn};
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

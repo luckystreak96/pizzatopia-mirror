@@ -11,11 +11,9 @@ use amethyst::{
         WriteStorage,
     },
     input::{InputHandler, StringBindings},
-    prelude::*,
 };
 
 use crate::{
-    components::physics::Grounded,
     events::{Events, PlayerEvent},
     systems::input::InputManager,
     utils::read_line_from_console,

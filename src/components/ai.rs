@@ -1,15 +1,3 @@
-use crate::{
-    components::{
-        graphics::SpriteSheetType,
-        physics::{Position, Velocity},
-    },
-    states::{
-        editor::EDITOR_GRID_SIZE,
-        pizzatopia::{TILE_HEIGHT, TILE_WIDTH},
-    },
-    systems::editor::align_cursor_position_with_grid,
-    utils::{Vec2, Vec3},
-};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::transform::Transform,
@@ -18,7 +6,7 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 use derivative::Derivative;
-use log::{error, info, warn};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Derivative, Debug, Copy, Clone, Serialize, Deserialize)]

@@ -1,6 +1,6 @@
-use crate::{events::Events, states::pizzatopia::MyEvents};
+use crate::events::Events;
 use amethyst::{
-    ecs::prelude::{DenseVecStorage, Entity},
+    ecs::prelude::Entity,
     prelude::{World, WorldExt},
     ui::UiEvent,
 };

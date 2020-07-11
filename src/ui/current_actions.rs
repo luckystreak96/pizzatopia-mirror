@@ -18,7 +18,7 @@ use crate::{
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::{shrev::EventChannel, transform::Transform, HiddenPropagate},
-    ecs::prelude::{Component, DenseVecStorage, Entity, Join, NullStorage},
+    ecs::prelude::{Component, DenseVecStorage, Entity, NullStorage},
     prelude::{Builder, World, WorldExt},
     renderer::{
         Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture, Transparent,
@@ -29,9 +29,8 @@ use amethyst::{
     },
 };
 use derivative::Derivative;
-use log::{error, warn};
-use num_traits::Zero;
-use std::{collections::BTreeMap, fs, path::PathBuf};
+
+use std::collections::BTreeMap;
 
 use crate::{
     components::graphics::SpriteSheetType, events::Events, ui::file_picker::FilePickerFilename,

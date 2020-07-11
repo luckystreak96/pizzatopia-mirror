@@ -6,14 +6,13 @@ use amethyst::{
         prelude::{Component, DenseVecStorage},
         Entity, WriteStorage,
     },
-    prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     Error,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH},
+    states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH},
     systems::physics::CollisionDirection,
     utils::{Vec2, Vec3},
 };

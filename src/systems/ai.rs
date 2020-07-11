@@ -19,17 +19,6 @@ use amethyst::{
     ecs::{Entities, Join, Read, ReadStorage, System, SystemData, World, Write, WriteStorage},
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
-use log::{error, info, warn};
-use std::{
-    cmp::{max, min},
-    ops::Deref,
-};
-
-use amethyst::{
-    assets::AssetStorage,
-    audio::{output::Output, Source},
-    ecs::ReadExpect,
-};
 
 use crate::{
     audio::{play_damage_sound, Sounds},
@@ -39,7 +28,6 @@ use crate::{
     },
     utils::{Vec2, Vec3},
 };
-use num_traits::identities::Zero;
 
 const WALK_SPEED: f32 = 4.0;
 const PROJECTILE_SPEED: f32 = 12.0;

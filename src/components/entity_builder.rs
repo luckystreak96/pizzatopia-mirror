@@ -47,7 +47,7 @@ pub mod entity_builder {
             transform::{Transform, *},
         },
         ecs::{
-            prelude::{Component, DenseVecStorage, Join, NullStorage},
+            prelude::{Component, DenseVecStorage, NullStorage},
             VecStorage,
         },
         error::{format_err, Error, ResultExt},
@@ -60,11 +60,10 @@ pub mod entity_builder {
         },
         utils::application_root_dir,
     };
-    use derivative::Derivative;
-    use log::{error, info, warn};
-    use rstar::{RTree, RTreeObject, AABB};
-    use serde::{Deserialize, Serialize};
-    use std::{collections::BTreeMap, fs::File, io::Write, ops::Index, path::PathBuf, process::id};
+
+    use log::error;
+
+    use std::collections::BTreeMap;
 
     pub fn entity_to_serialized_object(world: &mut World, id: u32) -> SerializedObject {
         let entity = world.entities().entity(id);

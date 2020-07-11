@@ -26,10 +26,7 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 use log::{error, info, warn};
-use std::{
-    cmp::{max, min},
-    ops::Deref,
-};
+use std::{cmp::min, ops::Deref};
 
 use amethyst::{
     assets::AssetStorage,

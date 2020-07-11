@@ -45,7 +45,7 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
-        ArcThreadPool, EventReader, SystemDesc, Time,
+        ArcThreadPool, EventReader, Time,
     },
     derive::EventReader,
     ecs::prelude::{Component, DenseVecStorage, Dispatcher, DispatcherBuilder, Entity, Join},
@@ -65,10 +65,6 @@ use amethyst::{
     },
     winit::Event,
 };
-use derivative::Derivative;
-use log::{info, warn};
-use serde::{Deserialize, Serialize};
-use std::{borrow::Borrow, io, thread::park_timeout, time::Instant};
 
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 9.0;

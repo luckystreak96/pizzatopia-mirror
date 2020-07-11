@@ -1,5 +1,5 @@
 use crate::{
-    components::game::{SerializedObject, SerializedObjectType, Team},
+    components::game::{SerializedObject, Team},
     utils::Vec2,
 };
 

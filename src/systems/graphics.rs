@@ -39,7 +39,7 @@ use amethyst::{
     },
     ui::UiText,
 };
-use log::info;
+
 use std::collections::BTreeMap;
 
 #[derive(SystemDesc)]

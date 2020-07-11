@@ -44,15 +44,9 @@ use crate::{
     },
     utils::{Vec2, Vec3},
 };
-use amethyst::{
-    assets::Handle, ecs::prelude::ReadExpect, prelude::WorldExt, renderer::SpriteSheet,
-};
-use log::{error, info, warn};
+use amethyst::{assets::Handle, ecs::prelude::ReadExpect, renderer::SpriteSheet};
+
 use num_traits::Zero;
-use std::{
-    collections::BTreeMap,
-    time::{Duration, Instant},
-};
 
 pub const EDITOR_MODIFIERS_ALL: &[&str] = &["modifier1", "modifier2"];
 pub const EDITOR_MODIFIERS_UI: &[&str] = &["modifier1"];

@@ -1,24 +1,19 @@
 use crate::{
     components::{
         editor::{EditorCursor, EditorState, InsertionGameObject},
-        game::{SerializedObject, SerializedObjectType},
+        game::SerializedObjectType,
         physics::Position,
     },
     states::pizzatopia::TILE_HEIGHT,
-    systems::{
-        editor::{EditorEvents, EDITOR_MODIFIERS_UI},
-        input::InputManager,
-    },
+    systems::{editor::EDITOR_MODIFIERS_UI, input::InputManager},
     ui::{with_transparent, UiComponent, COLOR_BLACK},
-    utils::Vec2,
 };
 use amethyst::{
-    assets::{AssetStorage, Handle, Loader},
-    core::{shrev::EventChannel, transform::Transform, HiddenPropagate},
-    ecs::prelude::{Component, DenseVecStorage, Entity, Join, NullStorage},
+    assets::Handle,
+    core::HiddenPropagate,
+    ecs::prelude::{Component, DenseVecStorage, Entity, Join},
     prelude::{Builder, World, WorldExt},
-    renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
-    ui::{Anchor, FontAsset, TtfFormat, UiEvent, UiEventType, UiImage, UiText, UiTransform},
+    ui::{Anchor, FontAsset, UiEvent, UiEventType, UiImage, UiText, UiTransform},
 };
 use derivative::Derivative;
 use num_traits::Zero;

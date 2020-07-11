@@ -1,7 +1,4 @@
-use crate::{
-    components::game::{SerializedObject, SerializedObjectType},
-    utils::Vec2,
-};
+use crate::{components::game::SerializedObject, utils::Vec2};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::{transform::Transform, HiddenPropagate},
@@ -11,7 +8,7 @@ use amethyst::{
 };
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
-use strum::{EnumCount, IntoEnumIterator};
+
 use strum_macros::{EnumCount, EnumIter};
 
 #[derive(Default)]

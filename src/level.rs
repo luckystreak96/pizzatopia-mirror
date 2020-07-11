@@ -51,8 +51,8 @@ use amethyst::{
     utils::application_root_dir,
 };
 use derivative::Derivative;
-use log::{error, info, warn};
-use rstar::{RTree, RTreeObject, AABB};
+use log::{error, warn};
+use rstar::RTree;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs::File, io::Write, ops::Index, path::PathBuf, process::id};
 

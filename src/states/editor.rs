@@ -38,7 +38,7 @@ use crate::{
         current_actions::CurrentActionsUi,
         file_picker::FilePickerUi,
         tile_characteristics::{EditorFieldUiComponents, UiIndex},
-        UiComponent, UiStack,
+        UiStack,
     },
     utils::{Vec2, Vec3},
 };
@@ -48,13 +48,12 @@ use amethyst::{
         PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
     },
     core::{
-        bundle::SystemBundle,
-        ecs::{Read, SystemData, World},
+        ecs::{Read, World},
         frame_limiter::FrameRateLimitStrategy,
         math::Vector3,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
-        ArcThreadPool, EventReader, Hidden, HiddenPropagate, SystemDesc, Time,
+        ArcThreadPool, Hidden, HiddenPropagate, Time,
     },
     derive::EventReader,
     ecs::prelude::{
@@ -84,14 +83,7 @@ use amethyst::{
     },
     winit::Event,
 };
-use log::{error, info, warn};
-use num_traits::AsPrimitive;
-use std::{
-    borrow::Borrow,
-    collections::BTreeMap,
-    io,
-    time::{Duration, Instant},
-};
+use log::{error, warn};
 
 pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
 

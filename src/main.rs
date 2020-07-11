@@ -16,7 +16,7 @@ use amethyst::{
     derive::SystemDesc,
     ecs::{
         prelude::{Entity, ReadExpect, SystemData},
-        DispatcherBuilder, Read, System, World, Write,
+        DispatcherBuilder, Read, World, Write,
     },
     input::{InputBundle, StringBindings},
     prelude::*,
@@ -32,7 +32,6 @@ use amethyst::{
     },
     Error, Logger,
 };
-use log::info;
 
 mod animations;
 mod audio;
@@ -45,15 +44,12 @@ mod systems;
 mod ui;
 mod utils;
 use crate::{
-    audio::initialise_audio,
-    bundles::{GameLogicBundle, GraphicsBundle},
     components::physics::PlatformCuboid,
     level::Level,
     states::{
-        loading::{AssetsDir, LoadingState},
-        pizzatopia::{MyEventReader, MyEvents, Pizzatopia},
+        loading::LoadingState,
+        pizzatopia::{MyEventReader, MyEvents},
     },
-    systems::{console::ConsoleInputSystem, game::EnemyCollisionSystem},
 };
 
 fn main() -> amethyst::Result<()> {
