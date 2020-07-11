@@ -1,25 +1,30 @@
-use crate::audio::initialise_audio;
-use crate::components::graphics::SpriteSheetType;
-use crate::components::graphics::SPRITESHEETTYPE_COUNT;
-use crate::components::physics::PlatformCuboid;
-use crate::level::Level;
-use crate::states::load_level::LoadLevelState;
-use crate::states::pizzatopia::{MyEvents, Pizzatopia};
-use crate::systems::input::InputManager;
-use crate::ui::file_picker::{FilePickerFilename, DIR_LEVELS};
-use crate::ui::UiStack;
-use amethyst::assets::Completion;
-use amethyst::assets::Progress;
+use crate::{
+    audio::initialise_audio,
+    components::{
+        graphics::{SpriteSheetType, SPRITESHEETTYPE_COUNT},
+        physics::PlatformCuboid,
+    },
+    level::Level,
+    states::{
+        load_level::LoadLevelState,
+        pizzatopia::{MyEvents, Pizzatopia},
+    },
+    systems::input::InputManager,
+    ui::{
+        file_picker::{FilePickerFilename, DIR_LEVELS},
+        UiStack,
+    },
+};
 use amethyst::{
     assets::{
-        Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
-        PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
+        Asset, AssetStorage, Completion, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
+        PrefabLoaderSystemDesc, ProcessingState, Processor, Progress, ProgressCounter, RonFormat,
+        Source,
     },
     core::{
         bundle::SystemBundle,
         ecs::{Read, SystemData, World},
-        frame_limiter::FrameRateLimitStrategy,
-        frame_limiter::*,
+        frame_limiter::{FrameRateLimitStrategy, *},
         shrev::{EventChannel, ReaderId},
         transform::Transform,
         EventReader, SystemDesc, Time,
@@ -44,9 +49,11 @@ use amethyst::{
     winit::Event,
 };
 use log::{error, warn};
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 pub struct AssetsDir(pub PathBuf);
 

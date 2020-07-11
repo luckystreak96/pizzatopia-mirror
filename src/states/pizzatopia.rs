@@ -1,32 +1,38 @@
-use crate::animations::AnimationId;
-use crate::audio::{initialise_audio, Sounds};
-use crate::bundles::{GameLogicBundle, GraphicsBundle};
-use crate::components::editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid};
-use crate::components::game::{
-    CameraTarget, CollisionEvent, Health, Invincibility, SerializedObject, SerializedObjectType,
-    Tile,
+use crate::{
+    animations::AnimationId,
+    audio::{initialise_audio, Sounds},
+    bundles::{GameLogicBundle, GraphicsBundle},
+    components::{
+        editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid},
+        entity_builder::entity_builder,
+        game::{
+            CameraTarget, CollisionEvent, Health, Invincibility, Player, Resettable,
+            SerializedObject, SerializedObjectType, Tile,
+        },
+        graphics::{AbsolutePositioning, AnimationCounter, CameraLimit, Lerper, SpriteSheetType},
+        physics::{
+            Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
+            PlatformCuboid, Position, Sticky, Velocity,
+        },
+    },
+    events::Events,
+    level::Level,
+    states::{editor::Editor, loading::DrawDebugLines},
+    systems,
+    systems::{
+        console::ConsoleInputSystem,
+        game::AnimationCounterSystem,
+        graphics::CollisionDebugLinesSystem,
+        input::{InputManagementSystem, InputManager},
+        physics::{CollisionDirection, DuckTransferSystem},
+    },
+    ui::{
+        file_picker::{FilePickerButton, FilePickerUi},
+        tile_characteristics::EditorButton,
+        UiStack,
+    },
+    utils::{Vec2, Vec3},
 };
-use crate::components::game::{Player, Resettable};
-use crate::components::graphics::{AbsolutePositioning, SpriteSheetType};
-use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper};
-use crate::components::physics::{
-    Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
-    PlatformCuboid, Position, Sticky, Velocity,
-};
-use crate::events::Events;
-use crate::level::Level;
-use crate::states::editor::Editor;
-use crate::states::loading::DrawDebugLines;
-use crate::systems;
-use crate::systems::console::ConsoleInputSystem;
-use crate::systems::game::AnimationCounterSystem;
-use crate::systems::graphics::CollisionDebugLinesSystem;
-use crate::systems::input::{InputManagementSystem, InputManager};
-use crate::systems::physics::{CollisionDirection, DuckTransferSystem};
-use crate::ui::file_picker::{FilePickerButton, FilePickerUi};
-use crate::ui::tile_characteristics::EditorButton;
-use crate::ui::UiStack;
-use crate::utils::{Vec2, Vec3};
 use amethyst::{
     animation::*,
     assets::{
@@ -60,19 +66,15 @@ use amethyst::{
     winit::Event,
 };
 use derivative::Derivative;
-use log::info;
-use log::warn;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use std::borrow::Borrow;
-use std::io;
-use std::thread::park_timeout;
-use std::time::Instant;
+use std::{borrow::Borrow, io, thread::park_timeout, time::Instant};
 
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 9.0;
 
 pub const DEPTH_BACKGROUND: f32 = 0.5;
-pub const DEPTH_TILES: f32 = 1.0;
+pub const DEPTH_TILES: f32 = 10.0;
 pub const DEPTH_ACTORS: f32 = DEPTH_TILES + 1.0;
 pub const DEPTH_PROJECTILES: f32 = DEPTH_ACTORS + 0.5;
 pub const DEPTH_EDITOR: f32 = DEPTH_ACTORS + 1.0;
@@ -113,7 +115,7 @@ impl Pizzatopia<'_, '_> {
     fn initialize_level(&mut self, world: &mut World) {
         initialise_camera(world);
         Level::load_level(world);
-        Level::initialize_background(world);
+        entity_builder::initialize_background(world);
     }
 }
 
@@ -179,10 +181,10 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                     Level::reinitialize_level(data.world);
                 }
                 Events::FireProjectile(pos, vel, team) => {
-                    Level::initialize_projectile(data.world, pos, vel, team);
+                    entity_builder::initialize_projectile(data.world, pos, vel, team);
                 }
                 Events::CreateDamageBox(pos, size, team) => {
-                    Level::initialize_damage_box(data.world, pos, size, team);
+                    entity_builder::initialize_damage_box(data.world, pos, size, team);
                 }
                 _ => {}
             }

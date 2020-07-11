@@ -1,20 +1,22 @@
 use amethyst::{
-    assets::ProgressCounter,
-    assets::{AssetStorage, Handle, Loader, PrefabData},
+    assets::{AssetStorage, Handle, Loader, PrefabData, ProgressCounter},
     core::transform::Transform,
     derive::PrefabData,
-    ecs::prelude::{Component, DenseVecStorage},
-    ecs::Entity,
-    ecs::WriteStorage,
+    ecs::{
+        prelude::{Component, DenseVecStorage},
+        Entity, WriteStorage,
+    },
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     Error,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
-use crate::systems::physics::CollisionDirection;
-use crate::utils::{Vec2, Vec3};
+use crate::{
+    states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH},
+    systems::physics::CollisionDirection,
+    utils::{Vec2, Vec3},
+};
 use derivative::Derivative;
 use rstar::{RTreeObject, AABB};
 

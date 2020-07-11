@@ -1,29 +1,31 @@
-use amethyst::animation::*;
-use amethyst::core::shrev::EventChannel;
-use amethyst::core::timing::Time;
-use amethyst::core::{SystemDesc, Transform};
-use amethyst::derive::SystemDesc;
-use amethyst::ecs::Write;
-use amethyst::ecs::{
-    Entities, Join, NullStorage, Read, ReadStorage, System, SystemData, World, WriteStorage,
+use amethyst::{
+    animation::*,
+    core::{shrev::EventChannel, timing::Time, SystemDesc, Transform},
+    derive::SystemDesc,
+    ecs::{
+        Entities, Join, NullStorage, Read, ReadStorage, System, SystemData, World, Write,
+        WriteStorage,
+    },
+    input::{InputHandler, StringBindings},
 };
-use amethyst::input::{InputHandler, StringBindings};
 
-use crate::animations::{AnimationAction, AnimationFactory, AnimationId};
-use crate::components::game::Player;
-use crate::components::game::{Health, Team};
-use crate::components::graphics::{AnimationCounter, Scale};
-use crate::components::physics::{
-    Ducking, GravityDirection, Grounded, PlatformCuboid, Position, Velocity,
+use crate::{
+    animations::{AnimationAction, AnimationFactory, AnimationId},
+    components::{
+        entity_builder::entity_builder,
+        game::{Health, Player, Team},
+        graphics::{AnimationCounter, Scale},
+        physics::{Ducking, GravityDirection, Grounded, PlatformCuboid, Position, Velocity},
+    },
+    events::Events,
+    level::Level,
+    states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT, TILE_WIDTH},
+    systems::{
+        input::InputManager,
+        physics::{gravitationally_adapted_velocity, gravitationally_de_adapted_velocity},
+    },
+    utils::Vec2,
 };
-use crate::events::Events;
-use crate::level::Level;
-use crate::states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT, TILE_WIDTH};
-use crate::systems::input::InputManager;
-use crate::systems::physics::{
-    gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
-};
-use crate::utils::Vec2;
 use amethyst::prelude::WorldExt;
 use std::sync::Arc;
 
@@ -129,7 +131,12 @@ impl<'s> System<'s> for PlayerInputSystem {
                         let p = pos.0.to_vec2().add(&offset);
                         let s = Vec2::new(width, TILE_HEIGHT / 2.0);
                         let t = Team::GoodGuys;
-                        Level::initialize_damage_box(world, &p.clone(), &s.clone(), &t.clone());
+                        entity_builder::initialize_damage_box(
+                            world,
+                            &p.clone(),
+                            &s.clone(),
+                            &t.clone(),
+                        );
                     }),
                 );
                 if !anim.contains(entity) {

@@ -1,9 +1,7 @@
-use crate::events::Events;
-use crate::states::pizzatopia::MyEvents;
-use amethyst::prelude::WorldExt;
+use crate::{events::Events, states::pizzatopia::MyEvents};
 use amethyst::{
     ecs::prelude::{DenseVecStorage, Entity},
-    prelude::World,
+    prelude::{World, WorldExt},
     ui::UiEvent,
 };
 use derivative::Derivative;

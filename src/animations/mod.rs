@@ -1,10 +1,11 @@
-use amethyst::animation::*;
-use amethyst::assets::*;
-use amethyst::core::Transform;
-use amethyst::ecs::prelude::Entity;
-use amethyst::ecs::{ReadStorage, WriteStorage};
-use amethyst::prelude::{World, WorldExt};
-use amethyst::renderer::SpriteRender;
+use amethyst::{
+    animation::*,
+    assets::*,
+    core::Transform,
+    ecs::{prelude::Entity, ReadStorage, WriteStorage},
+    prelude::{World, WorldExt},
+    renderer::SpriteRender,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialOrd, PartialEq, Hash, Debug, Copy, Clone, Deserialize, Serialize)]

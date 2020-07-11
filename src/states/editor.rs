@@ -1,39 +1,47 @@
-use crate::audio::{initialise_audio, Sounds};
-use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject,
-    RealCursorPosition, SizeForEditorGrid,
+use crate::{
+    audio::{initialise_audio, Sounds},
+    components::{
+        editor::{
+            CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject,
+            InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
+        },
+        entity_builder::entity_builder,
+        game::{
+            CameraTarget, CollisionEvent, Health, Invincibility, Player, SerializedObject,
+            SerializedObjectType, SpriteRenderData,
+        },
+        graphics::{AbsolutePositioning, AnimationCounter, PulseAnimation, Scale, SpriteSheetType},
+        physics::{
+            Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
+            PlatformCuboid, Position, Sticky, Velocity,
+        },
+    },
+    events::Events,
+    level::Level,
+    states::{
+        load_level::LoadLevelState,
+        pizzatopia,
+        pizzatopia::{get_camera_center, MyEvents, Pizzatopia, TILE_HEIGHT, TILE_WIDTH},
+    },
+    systems,
+    systems::{
+        console::ConsoleInputSystem,
+        editor::{
+            CursorPositionSystem, CursorSizeSystem, CursorStateSystem, EditorButtonEventSystem,
+            EditorEventHandlingSystem, EditorEvents,
+        },
+        graphics::{CursorColorUpdateSystem, CursorSpriteUpdateSystem, PulseAnimationSystem},
+        input::{InputManagementSystem, InputManager},
+        physics::CollisionDirection,
+    },
+    ui::{
+        current_actions::CurrentActionsUi,
+        file_picker::FilePickerUi,
+        tile_characteristics::{EditorFieldUiComponents, UiIndex},
+        UiComponent, UiStack,
+    },
+    utils::{Vec2, Vec3},
 };
-use crate::components::game::{CameraTarget, Player, SerializedObject, SpriteRenderData};
-use crate::components::game::{CollisionEvent, Health, Invincibility, SerializedObjectType};
-use crate::components::graphics::{AbsolutePositioning, SpriteSheetType};
-use crate::components::graphics::{AnimationCounter, PulseAnimation, Scale};
-use crate::components::physics::{
-    Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
-    PlatformCuboid, Position, Sticky, Velocity,
-};
-use crate::events::Events;
-use crate::level::Level;
-use crate::states::load_level::LoadLevelState;
-use crate::states::pizzatopia;
-use crate::states::pizzatopia::{get_camera_center, MyEvents, Pizzatopia};
-use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
-use crate::systems;
-use crate::systems::console::ConsoleInputSystem;
-use crate::systems::editor::{
-    CursorPositionSystem, CursorSizeSystem, CursorStateSystem, EditorButtonEventSystem,
-    EditorEventHandlingSystem, EditorEvents,
-};
-use crate::systems::graphics::{
-    CursorColorUpdateSystem, CursorSpriteUpdateSystem, PulseAnimationSystem,
-};
-use crate::systems::input::{InputManagementSystem, InputManager};
-use crate::systems::physics::CollisionDirection;
-use crate::ui::current_actions::CurrentActionsUi;
-use crate::ui::file_picker::FilePickerUi;
-use crate::ui::tile_characteristics::{EditorFieldUiComponents, UiIndex};
-use crate::ui::{UiComponent, UiStack};
-use crate::utils::{Vec2, Vec3};
-use amethyst::core::math::Vector3;
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
@@ -43,6 +51,7 @@ use amethyst::{
         bundle::SystemBundle,
         ecs::{Read, SystemData, World},
         frame_limiter::FrameRateLimitStrategy,
+        math::Vector3,
         shrev::{EventChannel, ReaderId},
         transform::Transform,
         ArcThreadPool, EventReader, Hidden, HiddenPropagate, SystemDesc, Time,
@@ -77,10 +86,12 @@ use amethyst::{
 };
 use log::{error, info, warn};
 use num_traits::AsPrimitive;
-use std::borrow::Borrow;
-use std::collections::BTreeMap;
-use std::io;
-use std::time::{Duration, Instant};
+use std::{
+    borrow::Borrow,
+    collections::BTreeMap,
+    io,
+    time::{Duration, Instant},
+};
 
 pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
 
@@ -128,7 +139,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
 
         // data.world.insert(EventChannel::<EditorEvents>::new());
 
-        Self::initialize_cursor(data.world);
+        entity_builder::initialize_cursor(data.world);
 
         Self::set_instance_entities_transparency(data.world, 0.5);
         Self::set_editor_entities_hidden_flag(data.world, false);
@@ -188,10 +199,14 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                 Events::AddGameObject => {
                     let mut serialized_object =
                         data.world.read_resource::<InsertionGameObject>().0.clone();
-                    Level::initialize_serialized_object(data.world, &mut serialized_object, false);
+                    entity_builder::initialize_serialized_object(
+                        data.world,
+                        &mut serialized_object,
+                        false,
+                    );
                 }
                 Events::DeleteGameObject(id) => {
-                    Level::delete_entity(data.world, *id);
+                    Self::delete_entity(data.world, *id);
                 }
                 Events::SaveLevel => {
                     Level::save_level(data.world);
@@ -227,7 +242,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
                         .insert(InsertionGameObject(serialized_object.clone()));
                 }
                 Events::EntityToInsertionGameObject(id) => {
-                    let serialized_object = Level::entity_to_serialized_object(data.world, *id);
+                    let serialized_object =
+                        entity_builder::entity_to_serialized_object(data.world, *id);
                     data.world.insert(InsertionGameObject(serialized_object));
                 }
                 Events::OpenFilePickerUi => {
@@ -428,44 +444,25 @@ impl<'a, 'b> Editor<'a, 'b> {
         }
     }
 
-    fn initialize_cursor(world: &mut World) {
-        let mut transform = Transform::default();
-        let scale = Vec3::new(0.5, 0.5, 1.0);
-        transform.set_scale(Vector3::new(scale.x, scale.y, scale.z));
+    // Remove an entity and its instance entity if it is an editor entity
+    fn delete_entity(world: &mut World, id: u32) {
+        warn!("Deleting tile {:?}!", id);
+        // Get the editor entity
+        let editor_entity = world.entities().entity(id);
 
-        // Correctly position the tile.
-        let mut pos = get_camera_center(world).to_vec3();
-        pos.z = pizzatopia::DEPTH_EDITOR;
-        let pos = Position(pos);
-
-        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
-            [&(SpriteSheetType::Tiles as u8)]
-            .clone();
-        // Assign the sprite
-        let sprite_render = SpriteRender {
-            sprite_sheet: sprite_sheet.clone(),
-            sprite_number: 4,
-        };
-
-        // Create cursor
-        world
-            .create_entity()
-            .with(EditorFlag)
-            .with(EditorCursor::default())
-            .with(Tint(Srgba::new(1.0, 1.0, 1.0, 1.0).into()))
-            .with(RealCursorPosition(pos.0.to_vec2()))
-            .with(PulseAnimation::default())
-            .with(Scale(Vec2::new(scale.x, scale.y)))
-            .with(SizeForEditorGrid(Vec2::new(
-                scale.x * TILE_WIDTH,
-                scale.y * TILE_HEIGHT,
-            )))
-            .with(CursorWasInThisEntity(None))
-            .with(transform.clone())
-            .with(sprite_render.clone())
-            .with(pos.clone())
-            .with(AbsolutePositioning)
-            .with(Transparent)
-            .build();
+        // Delete the instance entity using editor entity
+        if let Some(instance_id) = world.read_storage::<InstanceEntityId>().get(editor_entity) {
+            if let Some(instance_id) = instance_id.0 {
+                let instance_entity = world.entities().entity(instance_id);
+                match world.entities().delete(instance_entity) {
+                    Ok(_) => {}
+                    Err(_) => error!("Error deleting instance entity."),
+                }
+            }
+        }
+        match world.entities().delete(editor_entity) {
+            Ok(_) => {}
+            Err(_) => error!("Error deleting editor entity."),
+        }
     }
 }

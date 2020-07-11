@@ -1,23 +1,29 @@
-use crate::components::game::{CameraTarget, CollisionEvent, Health, Invincibility, Player, Team};
-use crate::components::graphics::{AnimationCounter, CameraLimit, Lerper};
-use crate::components::physics::{Collidee, GravityDirection, PlatformCuboid, Position, Velocity};
-use crate::events::{Events, PlayerEvent};
-use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
-use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
-use amethyst::core::math::Vector3;
-use amethyst::core::shrev::{EventChannel, ReaderId};
-use amethyst::core::timing::Time;
-use amethyst::core::{SystemDesc, Transform};
-use amethyst::derive::SystemDesc;
-use amethyst::ecs::{
-    Entities, Join, Read, ReadStorage, System, SystemData, World, Write, WriteStorage,
+use crate::{
+    components::{
+        game::{CameraTarget, CollisionEvent, Health, Invincibility, Player, Team},
+        graphics::{AnimationCounter, CameraLimit, Lerper},
+        physics::{Collidee, GravityDirection, PlatformCuboid, Position, Velocity},
+    },
+    events::{Events, PlayerEvent},
+    states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH},
+    systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection},
 };
-use amethyst::renderer::{
-    Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
+use amethyst::{
+    core::{
+        math::Vector3,
+        shrev::{EventChannel, ReaderId},
+        timing::Time,
+        SystemDesc, Transform,
+    },
+    derive::SystemDesc,
+    ecs::{Entities, Join, Read, ReadStorage, System, SystemData, World, Write, WriteStorage},
+    renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 use log::{error, info, warn};
-use std::cmp::{max, min};
-use std::ops::Deref;
+use std::{
+    cmp::{max, min},
+    ops::Deref,
+};
 
 use amethyst::{
     assets::AssetStorage,
@@ -25,10 +31,14 @@ use amethyst::{
     ecs::ReadExpect,
 };
 
-use crate::audio::{play_damage_sound, Sounds};
-use crate::components::ai::{BasicShootAi, BasicWalkAi};
-use crate::components::editor::{EditorCursor, EditorFlag};
-use crate::utils::{Vec2, Vec3};
+use crate::{
+    audio::{play_damage_sound, Sounds},
+    components::{
+        ai::{BasicShootAi, BasicWalkAi},
+        editor::{EditorCursor, EditorFlag},
+    },
+    utils::{Vec2, Vec3},
+};
 use num_traits::identities::Zero;
 
 const WALK_SPEED: f32 = 4.0;

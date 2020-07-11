@@ -1,9 +1,15 @@
-use crate::components::graphics::SpriteSheetType;
-use crate::components::physics::{Position, Velocity};
-use crate::states::editor::EDITOR_GRID_SIZE;
-use crate::states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH};
-use crate::systems::editor::align_cursor_position_with_grid;
-use crate::utils::{Vec2, Vec3};
+use crate::{
+    components::{
+        graphics::SpriteSheetType,
+        physics::{Position, Velocity},
+    },
+    states::{
+        editor::EDITOR_GRID_SIZE,
+        pizzatopia::{TILE_HEIGHT, TILE_WIDTH},
+    },
+    systems::editor::align_cursor_position_with_grid,
+    utils::{Vec2, Vec3},
+};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::transform::Transform,

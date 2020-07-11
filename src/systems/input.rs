@@ -1,13 +1,15 @@
-use amethyst::derive::SystemDesc;
-use amethyst::ecs::{
-    Join, NullStorage, Read, ReadStorage, System, SystemData, World, Write, WriteStorage,
+use amethyst::{
+    derive::SystemDesc,
+    ecs::{Join, NullStorage, Read, ReadStorage, System, SystemData, World, Write, WriteStorage},
+    input::{InputHandler, StringBindings},
+    prelude::WorldExt,
 };
-use amethyst::input::{InputHandler, StringBindings};
-use amethyst::prelude::WorldExt;
 use derivative::Derivative;
 use log::{error, warn};
-use std::collections::BTreeMap;
-use std::time::{Duration, Instant};
+use std::{
+    collections::BTreeMap,
+    time::{Duration, Instant},
+};
 
 #[derive(Derivative, Debug, Clone)]
 #[derivative(Default)]

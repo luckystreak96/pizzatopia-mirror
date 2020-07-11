@@ -1,18 +1,23 @@
-use crate::components::physics::{
-    Collidee, CollideeDetails, CollisionPoint, CollisionSideOfBlock, Ducking, GravityDirection,
-    Grounded, PlatformCollisionPoints, PlatformCuboid, Position, RTreeEntity, Sticky, Velocity,
+use crate::{
+    components::physics::{
+        Collidee, CollideeDetails, CollisionPoint, CollisionSideOfBlock, Ducking, GravityDirection,
+        Grounded, PlatformCollisionPoints, PlatformCuboid, Position, RTreeEntity, Sticky, Velocity,
+    },
+    events::Events,
+    states::pizzatopia::{FRICTION, MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH},
+    systems::physics::CollisionDirection::FromTop,
+    utils::{Vec2, Vec3},
 };
-use crate::events::Events;
-use crate::states::pizzatopia::{FRICTION, MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH};
-use crate::systems::physics::CollisionDirection::FromTop;
-use crate::utils::{Vec2, Vec3};
-use amethyst::core::Transform;
-use amethyst::ecs::{Entities, Entity};
+use amethyst::{
+    core::Transform,
+    ecs::{Entities, Entity},
+};
 use log::{debug, error, info, warn};
 
-use crate::components::game::{CollisionEvent, Damage, Projectile, Reflect, Team};
-use crate::components::game::{Health, Player};
-use crate::systems::input::InputManager;
+use crate::{
+    components::game::{CollisionEvent, Damage, Health, Player, Projectile, Reflect, Team},
+    systems::input::InputManager,
+};
 use amethyst::{
     core::{
         bundle::SystemBundle,

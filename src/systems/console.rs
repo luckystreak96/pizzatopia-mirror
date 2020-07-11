@@ -14,10 +14,12 @@ use amethyst::{
     prelude::*,
 };
 
-use crate::components::physics::Grounded;
-use crate::events::{Events, PlayerEvent};
-use crate::systems::input::InputManager;
-use crate::utils::read_line_from_console;
+use crate::{
+    components::physics::Grounded,
+    events::{Events, PlayerEvent},
+    systems::input::InputManager,
+    utils::read_line_from_console,
+};
 
 #[derive(SystemDesc)]
 pub struct ConsoleInputSystem;

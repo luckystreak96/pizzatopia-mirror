@@ -1,5 +1,7 @@
-use crate::components::game::{SerializedObject, SerializedObjectType, Team};
-use crate::utils::Vec2;
+use crate::{
+    components::game::{SerializedObject, SerializedObjectType, Team},
+    utils::Vec2,
+};
 
 #[derive(Debug, Clone)]
 pub enum Events {

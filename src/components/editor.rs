@@ -1,5 +1,7 @@
-use crate::components::game::{SerializedObject, SerializedObjectType};
-use crate::utils::Vec2;
+use crate::{
+    components::game::{SerializedObject, SerializedObjectType},
+    utils::Vec2,
+};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::{transform::Transform, HiddenPropagate},

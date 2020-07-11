@@ -1,16 +1,23 @@
-use crate::components::editor::TileLayer;
-use crate::components::graphics::{Scale, SpriteSheetType};
-use crate::components::physics::{Position, Velocity};
-use crate::states::editor::EDITOR_GRID_SIZE;
-use crate::states::pizzatopia::{DEPTH_ACTORS, DEPTH_TILES, TILE_HEIGHT, TILE_WIDTH};
-use crate::systems::editor::align_cursor_position_with_grid;
-use crate::utils::{Vec2, Vec3};
-use amethyst::ecs::Entity;
+use crate::{
+    components::{
+        editor::TileLayer,
+        graphics::{Scale, SpriteSheetType},
+        physics::{Position, Velocity},
+    },
+    states::{
+        editor::EDITOR_GRID_SIZE,
+        pizzatopia::{DEPTH_ACTORS, DEPTH_TILES, TILE_HEIGHT, TILE_WIDTH},
+    },
+    systems::editor::align_cursor_position_with_grid,
+    utils::{Vec2, Vec3},
+};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
-    core::math::Vector3,
-    core::transform::Transform,
-    ecs::prelude::{Component, DenseVecStorage, NullStorage},
+    core::{math::Vector3, transform::Transform},
+    ecs::{
+        prelude::{Component, DenseVecStorage, NullStorage},
+        Entity,
+    },
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
@@ -177,16 +184,17 @@ impl Component for SerializedObjectType {
     type Storage = DenseVecStorage<Self>;
 }
 
-pub struct SerializedBuilder {
-    transform: Transform,
-    sprite_render: SpriteRender,
-    layer: TileLayer,
-    pos: Position,
-    scale: Scale,
+pub struct SerialHelper {
+    pub(crate) transform: Transform,
+    pub(crate) sprite_render: SpriteRender,
+    pub(crate) layer: TileLayer,
+    pub(crate) pos: Position,
+    pub(crate) scale: Scale,
+    pub(crate) size: Vec2,
 }
 
-impl SerializedBuilder {
-    pub fn build(so: &SerializedObject, world: &mut World) -> SerializedBuilder {
+impl SerialHelper {
+    pub fn build(so: &SerializedObject, world: &mut World) -> SerialHelper {
         let sprite = so.sprite.unwrap_or(SpriteRenderData::default());
         let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             [&(sprite.sheet as u8)]
@@ -215,12 +223,13 @@ impl SerializedBuilder {
         transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
         transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
 
-        SerializedBuilder {
+        SerialHelper {
             sprite_render,
             layer,
             pos,
             scale,
             transform,
+            size,
         }
     }
 }

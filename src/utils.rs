@@ -1,8 +1,6 @@
 use derivative::Derivative;
-use serde::Deserialize;
-use serde::Serialize;
-use std::cmp::Ordering;
-use std::io;
+use serde::{Deserialize, Serialize};
+use std::{cmp::Ordering, io};
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]

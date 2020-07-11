@@ -1,37 +1,44 @@
-use crate::animations::{AnimationAction, AnimationFactory, AnimationId, SamplerAction};
-use crate::components::editor::{
-    EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
+use crate::{
+    animations::{AnimationAction, AnimationFactory, AnimationId, SamplerAction},
+    components::{
+        editor::{EditorCursor, EditorCursorState, EditorState, InsertionGameObject},
+        game::{Health, Player, SerializedObjectType, SpriteRenderData},
+        graphics::{
+            AbsolutePositioning, AnimationCounter, BackgroundParallax, CameraLimit, Lerper,
+            PulseAnimation, Scale, SpriteSheetType,
+        },
+        physics::{
+            Ducking, GravityDirection, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
+        },
+    },
+    states::{
+        loading::DrawDebugLines,
+        pizzatopia::{CAM_HEIGHT, CAM_WIDTH, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH},
+    },
+    systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection},
+    ui::{
+        tile_characteristics::{EditorFieldUiComponents, UiIndex},
+        UiStack,
+    },
+    utils::Vec3,
 };
-use crate::components::game::{Health, Player};
-use crate::components::game::{SerializedObjectType, SpriteRenderData};
-use crate::components::graphics::{
-    AbsolutePositioning, AnimationCounter, BackgroundParallax, CameraLimit, Lerper, PulseAnimation,
-    Scale, SpriteSheetType,
+use amethyst::{
+    animation::*,
+    assets::{AssetStorage, Handle},
+    core::{math::Vector3, timing::Time, SystemDesc, Transform},
+    derive::SystemDesc,
+    ecs::{
+        Entities, Join, Read, ReadExpect, ReadStorage, System, SystemData, World, Write,
+        WriteStorage,
+    },
+    renderer::{
+        debug_drawing::{DebugLines, DebugLinesComponent, DebugLinesParams},
+        palette::Srgba,
+        resources::Tint,
+        Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture,
+    },
+    ui::UiText,
 };
-use crate::components::physics::{
-    Ducking, GravityDirection, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
-};
-use crate::states::loading::DrawDebugLines;
-use crate::states::pizzatopia::{CAM_HEIGHT, CAM_WIDTH, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
-use crate::systems::physics::{gravitationally_de_adapted_velocity, CollisionDirection};
-use crate::ui::tile_characteristics::{EditorFieldUiComponents, UiIndex};
-use crate::ui::UiStack;
-use crate::utils::Vec3;
-use amethyst::animation::*;
-use amethyst::assets::{AssetStorage, Handle};
-use amethyst::core::math::Vector3;
-use amethyst::core::timing::Time;
-use amethyst::core::{SystemDesc, Transform};
-use amethyst::derive::SystemDesc;
-use amethyst::ecs::{
-    Entities, Join, Read, ReadExpect, ReadStorage, System, SystemData, World, Write, WriteStorage,
-};
-use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLinesParams};
-use amethyst::renderer::{
-    palette::Srgba, resources::Tint, Camera, ImageFormat, SpriteRender, SpriteSheet,
-    SpriteSheetFormat, Texture,
-};
-use amethyst::ui::UiText;
 use log::info;
 use std::collections::BTreeMap;
 

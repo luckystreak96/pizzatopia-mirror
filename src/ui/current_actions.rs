@@ -1,20 +1,25 @@
-use crate::components::editor::{EditorCursor, EditorState, InsertionGameObject};
-use crate::components::game::{SerializedObject, SerializedObjectType};
-use crate::components::physics::Position;
-use crate::states::pizzatopia::TILE_HEIGHT;
-use crate::systems::editor::{EditorEvents, EDITOR_MODIFIERS_ALL, EDITOR_MODIFIERS_UI};
-use crate::systems::input::InputManager;
-use crate::ui::{
-    with_transparent, UiComponent, COLOR_BLACK, COLOR_GOLD, COLOR_GOLDEN_RED, COLOR_GRAY,
-    COLOR_RED, COLOR_WHITE,
+use crate::{
+    components::{
+        editor::{EditorCursor, EditorState, InsertionGameObject},
+        game::{SerializedObject, SerializedObjectType},
+        physics::Position,
+    },
+    states::pizzatopia::TILE_HEIGHT,
+    systems::{
+        editor::{EditorEvents, EDITOR_MODIFIERS_ALL, EDITOR_MODIFIERS_UI},
+        input::InputManager,
+    },
+    ui::{
+        with_transparent, UiComponent, COLOR_BLACK, COLOR_GOLD, COLOR_GOLDEN_RED, COLOR_GRAY,
+        COLOR_RED, COLOR_WHITE,
+    },
+    utils::Vec2,
 };
-use crate::utils::Vec2;
-use amethyst::prelude::{Builder, WorldExt};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::{shrev::EventChannel, transform::Transform, HiddenPropagate},
     ecs::prelude::{Component, DenseVecStorage, Entity, Join, NullStorage},
-    prelude::World,
+    prelude::{Builder, World, WorldExt},
     renderer::{
         Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture, Transparent,
     },
@@ -26,13 +31,11 @@ use amethyst::{
 use derivative::Derivative;
 use log::{error, warn};
 use num_traits::Zero;
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::PathBuf;
+use std::{collections::BTreeMap, fs, path::PathBuf};
 
-use crate::components::graphics::SpriteSheetType;
-use crate::events::Events;
-use crate::ui::file_picker::FilePickerFilename;
+use crate::{
+    components::graphics::SpriteSheetType, events::Events, ui::file_picker::FilePickerFilename,
+};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 

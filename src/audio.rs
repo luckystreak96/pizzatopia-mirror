@@ -1,10 +1,6 @@
 use amethyst::{
-    assets::AssetStorage,
-    audio::{output::Output, Source},
-};
-use amethyst::{
-    assets::Loader,
-    audio::{OggFormat, SourceHandle, WavFormat},
+    assets::{AssetStorage, Loader},
+    audio::{output::Output, OggFormat, Source, SourceHandle, WavFormat},
     ecs::{World, WorldExt},
 };
 

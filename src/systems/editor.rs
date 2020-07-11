@@ -1,41 +1,58 @@
-use amethyst::core::shrev::{EventChannel, ReaderId};
-use amethyst::core::{SystemDesc, Transform};
-use amethyst::derive::SystemDesc;
-use amethyst::ecs::{Entities, Entity};
-use amethyst::ecs::{
-    Join, NullStorage, Read, ReadStorage, System, SystemData, World, Write, WriteStorage,
+use amethyst::{
+    core::{
+        shrev::{EventChannel, ReaderId},
+        SystemDesc, Transform,
+    },
+    derive::SystemDesc,
+    ecs::{
+        Entities, Entity, Join, NullStorage, Read, ReadStorage, System, SystemData, World, Write,
+        WriteStorage,
+    },
+    input::{InputHandler, StringBindings},
+    renderer::{
+        debug_drawing::{DebugLines, DebugLinesComponent, DebugLinesParams},
+        palette::Srgba,
+    },
 };
-use amethyst::input::{InputHandler, StringBindings};
-use amethyst::renderer::debug_drawing::{DebugLines, DebugLinesComponent, DebugLinesParams};
-use amethyst::renderer::palette::Srgba;
 
-use crate::components::editor::{
-    CursorWasInThisEntity, EditorCursor, EditorCursorState, EditorState, InsertionGameObject,
-    InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
+use crate::{
+    components::{
+        editor::{
+            CursorWasInThisEntity, EditorCursor, EditorCursorState, EditorState,
+            InsertionGameObject, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
+        },
+        game::{Health, Player, SerializedObject, SerializedObjectType},
+        graphics::{Scale, SpriteSheetType},
+        physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity},
+    },
+    events::Events,
+    level::Level,
+    states::{
+        editor::EDITOR_GRID_SIZE,
+        pizzatopia::{CAM_HEIGHT, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH},
+    },
+    systems::{
+        input::{InputManager, REPEAT_DELAY},
+        physics::{
+            gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
+            ActorCollisionSystem,
+        },
+    },
+    ui::{
+        tile_characteristics::{EditorButton, EditorButtonType, UiIndex},
+        UiStack,
+    },
+    utils::{Vec2, Vec3},
 };
-use crate::components::game::{Health, SerializedObjectType};
-use crate::components::game::{Player, SerializedObject};
-use crate::components::graphics::{Scale, SpriteSheetType};
-use crate::components::physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity};
-use crate::events::Events;
-use crate::level::Level;
-use crate::states::editor::EDITOR_GRID_SIZE;
-use crate::states::pizzatopia::{CAM_HEIGHT, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH};
-use crate::systems::input::{InputManager, REPEAT_DELAY};
-use crate::systems::physics::{
-    gravitationally_adapted_velocity, gravitationally_de_adapted_velocity, ActorCollisionSystem,
+use amethyst::{
+    assets::Handle, ecs::prelude::ReadExpect, prelude::WorldExt, renderer::SpriteSheet,
 };
-use crate::ui::tile_characteristics::{EditorButton, EditorButtonType, UiIndex};
-use crate::ui::UiStack;
-use crate::utils::{Vec2, Vec3};
-use amethyst::assets::Handle;
-use amethyst::ecs::prelude::ReadExpect;
-use amethyst::prelude::WorldExt;
-use amethyst::renderer::SpriteSheet;
 use log::{error, info, warn};
 use num_traits::Zero;
-use std::collections::BTreeMap;
-use std::time::{Duration, Instant};
+use std::{
+    collections::BTreeMap,
+    time::{Duration, Instant},
+};
 
 pub const EDITOR_MODIFIERS_ALL: &[&str] = &["modifier1", "modifier2"];
 pub const EDITOR_MODIFIERS_UI: &[&str] = &["modifier1"];

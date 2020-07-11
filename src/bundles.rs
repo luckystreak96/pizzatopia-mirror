@@ -1,11 +1,13 @@
-use crate::systems;
-use crate::systems::game::EnemyCollisionSystemDesc;
-use crate::systems::game::PlayerEventsSystemDesc;
-use amethyst::core::bundle::SystemBundle;
-use amethyst::core::SystemDesc;
-use amethyst::ecs::DispatcherBuilder;
-use amethyst::prelude::World;
-use amethyst::Error;
+use crate::{
+    systems,
+    systems::game::{EnemyCollisionSystemDesc, PlayerEventsSystemDesc},
+};
+use amethyst::{
+    core::{bundle::SystemBundle, SystemDesc},
+    ecs::DispatcherBuilder,
+    prelude::World,
+    Error,
+};
 
 #[derive(Debug)]
 pub(crate) struct GameLogicBundle;

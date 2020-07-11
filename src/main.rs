@@ -1,23 +1,24 @@
 #![feature(clamp)]
 #![allow(dead_code)]
-#![allow(unused_imports)]
-use amethyst::audio::AudioBundle;
-use amethyst::input::{InputBundle, StringBindings};
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,
         PrefabLoaderSystemDesc, ProcessingState, Processor, ProgressCounter, RonFormat, Source,
     },
-    core::transform::TransformBundle,
+    audio::AudioBundle,
     core::{
         bundle::SystemBundle,
         frame_limiter::FrameRateLimitStrategy,
         shrev::{EventChannel, ReaderId},
+        transform::TransformBundle,
         SystemDesc,
     },
     derive::SystemDesc,
-    ecs::prelude::{Entity, ReadExpect, SystemData},
-    ecs::{DispatcherBuilder, Read, System, World, Write},
+    ecs::{
+        prelude::{Entity, ReadExpect, SystemData},
+        DispatcherBuilder, Read, System, World, Write,
+    },
+    input::{InputBundle, StringBindings},
     prelude::*,
     renderer::{
         plugins::{RenderDebugLines, RenderFlat2D, RenderToWindow},
@@ -43,15 +44,17 @@ mod states;
 mod systems;
 mod ui;
 mod utils;
-use crate::audio::initialise_audio;
-use crate::bundles::{GameLogicBundle, GraphicsBundle};
-use crate::components::physics::PlatformCuboid;
-use crate::level::Level;
-use crate::states::loading::{AssetsDir, LoadingState};
-use crate::states::pizzatopia::MyEventReader;
-use crate::states::pizzatopia::{MyEvents, Pizzatopia};
-use crate::systems::console::ConsoleInputSystem;
-use crate::systems::game::EnemyCollisionSystem;
+use crate::{
+    audio::initialise_audio,
+    bundles::{GameLogicBundle, GraphicsBundle},
+    components::physics::PlatformCuboid,
+    level::Level,
+    states::{
+        loading::{AssetsDir, LoadingState},
+        pizzatopia::{MyEventReader, MyEvents, Pizzatopia},
+    },
+    systems::{console::ConsoleInputSystem, game::EnemyCollisionSystem},
+};
 
 fn main() -> amethyst::Result<()> {
     // Logging for GL stuff

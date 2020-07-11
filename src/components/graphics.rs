@@ -1,25 +1,26 @@
 use amethyst::{
-    assets::ProgressCounter,
-    assets::{AssetStorage, Handle, Loader, PrefabData},
+    assets::{AssetStorage, Handle, Loader, PrefabData, ProgressCounter},
     core::transform::Transform,
     derive::PrefabData,
-    ecs::prelude::{Component, DenseVecStorage, NullStorage},
-    ecs::Entity,
-    ecs::WriteStorage,
+    ecs::{
+        prelude::{Component, DenseVecStorage, NullStorage},
+        Entity, WriteStorage,
+    },
     prelude::*,
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     Error,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::animations::AnimationId;
-use crate::states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH};
-use crate::utils::{Vec2, Vec3};
+use crate::{
+    animations::AnimationId,
+    states::pizzatopia::{CAM_WIDTH, TILE_HEIGHT, TILE_WIDTH},
+    utils::{Vec2, Vec3},
+};
 use derivative::Derivative;
 use log::{info, warn};
 use num_traits::identities::Zero;
-use std::ops::Add;
-use std::sync::Arc;
+use std::{ops::Add, sync::Arc};
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 

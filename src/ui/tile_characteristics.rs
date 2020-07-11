@@ -1,17 +1,22 @@
-use crate::components::editor::{EditorCursor, EditorState, InsertionGameObject};
-use crate::components::game::{SerializedObject, SerializedObjectType};
-use crate::components::physics::Position;
-use crate::states::pizzatopia::TILE_HEIGHT;
-use crate::systems::editor::{EditorEvents, EDITOR_MODIFIERS_UI};
-use crate::systems::input::InputManager;
-use crate::ui::{with_transparent, UiComponent, COLOR_BLACK};
-use crate::utils::Vec2;
-use amethyst::prelude::{Builder, WorldExt};
+use crate::{
+    components::{
+        editor::{EditorCursor, EditorState, InsertionGameObject},
+        game::{SerializedObject, SerializedObjectType},
+        physics::Position,
+    },
+    states::pizzatopia::TILE_HEIGHT,
+    systems::{
+        editor::{EditorEvents, EDITOR_MODIFIERS_UI},
+        input::InputManager,
+    },
+    ui::{with_transparent, UiComponent, COLOR_BLACK},
+    utils::Vec2,
+};
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::{shrev::EventChannel, transform::Transform, HiddenPropagate},
     ecs::prelude::{Component, DenseVecStorage, Entity, Join, NullStorage},
-    prelude::World,
+    prelude::{Builder, World, WorldExt},
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     ui::{Anchor, FontAsset, TtfFormat, UiEvent, UiEventType, UiImage, UiText, UiTransform},
 };
