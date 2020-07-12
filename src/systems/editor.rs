@@ -5,8 +5,8 @@ use amethyst::{
     },
     derive::SystemDesc,
     ecs::{
-        Entities, Entity, Join, NullStorage, Read, ReadStorage, System, SystemData, World, Write,
-        WriteStorage,
+        Entities, Entity, Join, LazyUpdate, NullStorage, Read, ReadStorage, System, SystemData,
+        World, Write, WriteStorage,
     },
     input::{InputHandler, StringBindings},
     renderer::{
@@ -46,7 +46,10 @@ use crate::{
 };
 use amethyst::{assets::Handle, ecs::prelude::ReadExpect, renderer::SpriteSheet};
 
-use crate::components::editor::TileLayer;
+use crate::{
+    components::editor::TileLayer,
+    states::editor::{Editor, EDITOR_LAYER_TRANSPARENCY},
+};
 use log::info;
 use num_traits::Zero;
 use pizzatopia_utils::EnumCycle;
@@ -101,14 +104,20 @@ fn snap_cursor_position_to_grid_corner(position: &mut Vec2) {
 //(&positions, &size_for_editor, &entities, !&cursors).join()
 fn get_tile_at_position(
     pos: &Vec2,
+    current_layer: &TileLayer,
     positions: &WriteStorage<Position>,
     size_for_editor: &ReadStorage<SizeForEditorGrid>,
     cursors: &ReadStorage<EditorCursor>,
     entities: &Entities,
+    layers: &ReadStorage<TileLayer>,
 ) -> Option<(Vec3, Vec2, u32)> {
-    for (position, size, entity, _) in (positions, size_for_editor, entities, !cursors).join() {
+    for (position, size, entity, _, layer) in
+        (positions, size_for_editor, entities, !cursors, layers).join()
+    {
         let cuboid = PlatformCuboid::create(size.0.x, size.0.y);
-        if cuboid.intersects_point(pos, &position.0.to_vec2()) {
+        if cuboid.intersects_point(pos, &position.0.to_vec2())
+            && *layer as usize == *current_layer as usize
+        {
             return Some((position.0.clone(), size.0.clone(), entity.id()));
         }
     }
@@ -125,8 +134,10 @@ impl<'s> System<'s> for CursorPositionSystem {
         Write<'s, DebugLines>,
         Read<'s, InputManager>,
         Read<'s, UiStack>,
+        Read<'s, TileLayer>,
         WriteStorage<'s, Position>,
         ReadStorage<'s, EditorCursor>,
+        ReadStorage<'s, TileLayer>,
         WriteStorage<'s, RealCursorPosition>,
         ReadStorage<'s, SizeForEditorGrid>,
         WriteStorage<'s, CursorWasInThisEntity>,
@@ -141,8 +152,10 @@ impl<'s> System<'s> for CursorPositionSystem {
             mut debug_lines_resource,
             input,
             ui,
+            current_layer,
             mut positions,
             cursors,
+            layers,
             mut real_positions,
             size_for_editor,
             mut prev_block,
@@ -188,10 +201,12 @@ impl<'s> System<'s> for CursorPositionSystem {
 
             let tile_at_cursor = get_tile_at_position(
                 &cursor_position,
+                &current_layer,
                 &positions,
                 &size_for_editor,
                 &cursors,
                 &entities,
+                &layers,
             );
 
             if let Some((position, _size, tile_at_cursor_id)) = tile_at_cursor {
@@ -268,12 +283,17 @@ pub struct CursorStateSystem;
 impl<'s> System<'s> for CursorStateSystem {
     type SystemData = (
         ReadExpect<'s, CursorState>,
+        ReadExpect<'s, TileLayer>,
         WriteStorage<'s, EditorCursor>,
         ReadStorage<'s, SizeForEditorGrid>,
         ReadStorage<'s, Position>,
+        ReadStorage<'s, TileLayer>,
     );
 
-    fn run(&mut self, (cursor_state, mut cursors, size_for_editor, positions): Self::SystemData) {
+    fn run(
+        &mut self,
+        (cursor_state, current_layer, mut cursors, size_for_editor, positions, layers): Self::SystemData,
+    ) {
         let state: CursorState = cursor_state.clone();
         let mut cursor_pos = Vec2::default();
         let mut cursor_size = Vec2::default();
@@ -294,7 +314,12 @@ impl<'s> System<'s> for CursorStateSystem {
             }
             CursorState::EditGameObject | CursorState::InsertMode => {
                 // change the cursor state to overlap if it overlaps
-                for (pos, size, _) in (&positions, &size_for_editor, !&cursors).join() {
+                for (pos, size, _, layer) in
+                    (&positions, &size_for_editor, !&cursors, &layers).join()
+                {
+                    if *current_layer as usize != *layer as usize {
+                        continue;
+                    }
                     let half_size = Vec2::new(size.0.x / 2.0, size.0.y / 2.0);
                     let tl2 = Vec2::new(pos.0.x - half_size.x, pos.0.y + half_size.y);
                     let br2 = Vec2::new(pos.0.x + half_size.x, pos.0.y - half_size.y);
@@ -515,6 +540,7 @@ impl EditorEventHandlingSystem {
 impl<'s> System<'s> for EditorEventHandlingSystem {
     type SystemData = (
         Read<'s, EventChannel<EditorEvents>>,
+        Read<'s, LazyUpdate>,
         Write<'s, EventChannel<Events>>,
         Write<'s, CursorState>,
         Write<'s, TileLayer>,
@@ -528,6 +554,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         &mut self,
         (
             editor_event_channel,
+            lazy_update,
             mut world_events_channel,
             mut cursor_state,
             mut active_layer,
@@ -621,6 +648,17 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         true => layer.next(),
                         false => layer.prev(),
                     };
+                    insertion_serialized_object.0.layer = Some(*active_layer);
+                    lazy_update.exec_mut(|world| {
+                        Editor::set_editor_entities_layer_transparency(
+                            world,
+                            EDITOR_LAYER_TRANSPARENCY,
+                        );
+                        Editor::set_instance_entities_transparency(
+                            world,
+                            EDITOR_LAYER_TRANSPARENCY,
+                        );
+                    });
                     info!("{:?}", *active_layer);
                 }
             };

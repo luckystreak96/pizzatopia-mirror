@@ -51,7 +51,7 @@ use amethyst::{
     utils::application_root_dir,
 };
 use derivative::Derivative;
-use log::{error, warn};
+use log::{error, info, warn};
 use rstar::RTree;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs::File, io::Write, ops::Index, path::PathBuf, process::id};
@@ -116,15 +116,22 @@ impl Level {
 
     pub fn recalculate_collision_tree(world: &mut World) {
         let mut positions = Vec::new();
-        for (entity, pos, platform_cuboid) in (
+        for (entity, pos, platform_cuboid, layer) in (
             &world.entities(),
             &world.read_storage::<Position>(),
             &world.read_storage::<PlatformCuboid>(),
+            &world.read_storage::<TileLayer>(),
         )
             .join()
         {
-            let rtree_entity = RTreeEntity::new(pos.0.to_vec2(), platform_cuboid.to_vec2(), entity);
-            positions.push(rtree_entity);
+            match layer {
+                TileLayer::Middle => {
+                    let rtree_entity =
+                        RTreeEntity::new(pos.0.to_vec2(), platform_cuboid.to_vec2(), entity);
+                    positions.push(rtree_entity);
+                }
+                _ => (),
+            }
         }
         let tree = RTree::bulk_load(positions);
         world.insert(tree);

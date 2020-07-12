@@ -86,6 +86,7 @@ use amethyst::{
 use log::{error, warn};
 
 pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
+pub const EDITOR_LAYER_TRANSPARENCY: f32 = 0.5;
 
 pub(crate) struct Editor<'a, 'b> {
     test_text: Option<Entity>,
@@ -135,6 +136,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         entity_builder::initialize_cursor(data.world);
 
         Self::set_instance_entities_transparency(data.world, 0.5);
+        Self::set_editor_entities_layer_transparency(data.world, EDITOR_LAYER_TRANSPARENCY);
         Self::set_editor_entities_hidden_flag(data.world, false);
     }
 
@@ -393,7 +395,7 @@ impl<'a, 'b> Editor<'a, 'b> {
         prev_target
     }
 
-    fn set_instance_entities_transparency(world: &mut World, transparency: f32) {
+    pub fn set_instance_entities_transparency(world: &mut World, transparency: f32) {
         // make entities transparent
         for (entity, _, _) in (
             &world.entities(),
@@ -406,6 +408,30 @@ impl<'a, 'b> Editor<'a, 'b> {
             storage
                 .insert(entity, Tint(Srgba::new(1.0, 1.0, 1.0, transparency)))
                 .expect("Error inserting Tint to entity in editor mode");
+        }
+    }
+
+    pub fn set_editor_entities_layer_transparency(world: &mut World, transparency: f32) {
+        let current_layer = *world.read_resource::<TileLayer>().clone();
+        // make entities transparent
+        for (entity, _, _, layer) in (
+            &world.entities(),
+            &world.read_storage::<SpriteRender>(),
+            &world.read_storage::<EditorFlag>(),
+            &world.read_storage::<TileLayer>(),
+        )
+            .join()
+        {
+            let storage = &mut world.write_storage::<Tint>();
+            if *layer as usize == current_layer as usize {
+                storage
+                    .insert(entity, Tint(Srgba::new(1.0, 1.0, 1.0, 1.0)))
+                    .expect("Error inserting Tint to entity in editor mode");
+            } else {
+                storage
+                    .insert(entity, Tint(Srgba::new(1.0, 1.0, 1.0, transparency)))
+                    .expect("Error inserting Tint to entity in editor mode");
+            }
         }
     }
 
