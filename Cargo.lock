@@ -2234,9 +2234,27 @@ dependencies = [
  "derivative",
  "log",
  "num-traits 0.1.43",
+ "pizzatopia_utils",
  "ron",
  "rstar",
  "serde",
+ "strum",
+ "strum_macros",
+]
+
+[[package]]
+name = "pizzatopia_derive"
+version = "0.1.0"
+dependencies = [
+ "quote 0.6.13",
+ "syn 0.15.44",
+]
+
+[[package]]
+name = "pizzatopia_utils"
+version = "0.1.0"
+dependencies = [
+ "pizzatopia_derive",
  "strum",
  "strum_macros",
 ]

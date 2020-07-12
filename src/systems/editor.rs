@@ -49,6 +49,7 @@ use amethyst::{assets::Handle, ecs::prelude::ReadExpect, renderer::SpriteSheet};
 use crate::components::editor::TileLayer;
 use log::info;
 use num_traits::Zero;
+use pizzatopia_utils::EnumCycle;
 
 pub const EDITOR_MODIFIERS_ALL: &[&str] = &["modifier1", "modifier2"];
 pub const EDITOR_MODIFIERS_UI: &[&str] = &["modifier1"];

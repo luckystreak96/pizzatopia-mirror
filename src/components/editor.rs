@@ -9,8 +9,7 @@ use amethyst::{
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
-use strum::IntoEnumIterator;
-use strum_macros::{EnumCount, EnumIter};
+use pizzatopia_utils::*;
 
 #[derive(Default)]
 pub struct EditorFlag;
@@ -44,19 +43,14 @@ impl Component for RealCursorPosition {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Derivative, Clone, Copy, Debug, Serialize, Deserialize, EnumIter, EnumCount)]
+#[enum_cycle]
+#[derive(Derivative, Clone, Copy, Debug, Serialize, Deserialize)]
 #[derivative(Default)]
 pub enum TileLayer {
     #[derivative(Default)]
     Middle,
     Front,
     Back,
-}
-
-impl From<usize> for TileLayer {
-    fn from(x: usize) -> Self {
-        TileLayer::iter().nth(x).unwrap()
-    }
 }
 
 impl TileLayer {
@@ -66,25 +60,6 @@ impl TileLayer {
             TileLayer::Front => 5.,
             TileLayer::Back => -5.,
         }
-    }
-
-    pub fn next(&self) -> TileLayer {
-        let mut index = (*self as usize) + 1;
-        if index >= TileLayer::iter().count() {
-            index = 0;
-        }
-
-        return TileLayer::from(index);
-    }
-
-    pub fn prev(&self) -> TileLayer {
-        let mut index = *self as usize;
-        if index <= 0 {
-            index = TileLayer::iter().count();
-        }
-
-        index -= 1;
-        return TileLayer::from(index);
     }
 }
 

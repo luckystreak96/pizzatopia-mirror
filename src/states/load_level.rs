@@ -1,9 +1,6 @@
 use crate::{
     audio::initialise_audio,
-    components::{
-        graphics::{SpriteSheetType, SPRITESHEETTYPE_COUNT},
-        physics::PlatformCuboid,
-    },
+    components::{graphics::SpriteSheetType, physics::PlatformCuboid},
     level::Level,
     states::pizzatopia::{MyEvents, Pizzatopia},
     systems::input::InputManager,

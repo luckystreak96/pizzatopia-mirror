@@ -17,6 +17,7 @@ use amethyst::{
 };
 use derivative::Derivative;
 use num_traits::Zero;
+use pizzatopia_utils::EnumCycle;
 
 #[derive(Derivative)]
 #[derivative(Default)]

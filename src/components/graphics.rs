@@ -22,8 +22,7 @@ use derivative::Derivative;
 use num_traits::identities::Zero;
 use std::sync::Arc;
 
-use strum::IntoEnumIterator;
-use strum_macros::{EnumCount, EnumIter};
+use pizzatopia_utils::*;
 
 #[derive(Derivative)]
 #[derivative(Default)]
@@ -184,7 +183,8 @@ impl Component for BackgroundParallax {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative, EnumIter, EnumCount)]
+#[enum_cycle]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
 pub enum SpriteSheetType {
     #[derivative(Default)]
@@ -194,33 +194,6 @@ pub enum SpriteSheetType {
     Ui,
     Animation,
     RollingHillsBg,
-}
-
-impl SpriteSheetType {
-    pub fn next(&self) -> Self {
-        let mut index = (*self as usize) + 1;
-        if index >= Self::iter().count() {
-            index = 0;
-        }
-
-        return Self::from(index);
-    }
-
-    pub fn prev(&self) -> Self {
-        let mut index = *self as usize;
-        if index <= 0 {
-            index = Self::iter().count();
-        }
-
-        index -= 1;
-        return Self::from(index);
-    }
-}
-
-impl From<usize> for SpriteSheetType {
-    fn from(x: usize) -> Self {
-        SpriteSheetType::iter().nth(x).unwrap()
-    }
 }
 
 impl Component for SpriteSheetType {

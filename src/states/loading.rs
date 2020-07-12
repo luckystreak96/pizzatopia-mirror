@@ -1,9 +1,6 @@
 use crate::{
     audio::initialise_audio,
-    components::{
-        graphics::{SpriteSheetType, SPRITESHEETTYPE_COUNT},
-        physics::PlatformCuboid,
-    },
+    components::{graphics::SpriteSheetType, physics::PlatformCuboid},
     level::Level,
     states::{
         load_level::LoadLevelState,
@@ -130,11 +127,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         data.data.update(&mut data.world);
         if self.progress_counter.is_complete() {
-            warn!(
-                "Number of assets loaded: {}, should be: {}",
-                self.progress_counter.num_assets(),
-                SPRITESHEETTYPE_COUNT,
-            );
             return Trans::Switch(Box::new(LoadLevelState::default()));
         } else {
             Trans::None

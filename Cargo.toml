@@ -6,6 +6,7 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
+pizzatopia_utils = { path = "./pizzatopia_utils/" }
 amethyst = "^0.15"
 #amethyst = {  git = "https://github.com/amethyst/amethyst.git", branch = "master", features = ["vulkan", "no-slow-safety-checks"]}
 log = "0.4.8"
