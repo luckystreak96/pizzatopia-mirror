@@ -1,7 +1,7 @@
 use crate::{
     animations::{AnimationAction, AnimationFactory, AnimationId, SamplerAction},
     components::{
-        editor::{EditorCursor, EditorCursorState, EditorState, InsertionGameObject},
+        editor::{CursorState, EditorCursor, EditorCursorState, InsertionGameObject},
         game::{Health, Player, SerializedObjectType, SpriteRenderData},
         graphics::{
             AbsolutePositioning, AnimationCounter, BackgroundParallax, CameraLimit, Lerper,
@@ -275,7 +275,7 @@ impl<'s> System<'s> for CursorSpriteUpdateSystem {
         WriteStorage<'s, SpriteRender>,
         ReadStorage<'s, EditorCursor>,
         Write<'s, InsertionGameObject>,
-        ReadExpect<'s, EditorState>,
+        ReadExpect<'s, CursorState>,
         ReadExpect<'s, BTreeMap<u8, Handle<SpriteSheet>>>,
         Read<'s, AssetStorage<SpriteSheet>>,
     );
@@ -286,14 +286,14 @@ impl<'s> System<'s> for CursorSpriteUpdateSystem {
             mut sprites,
             cursors,
             mut insertion_serialized_object,
-            editor_state,
+            cursor_state,
             sprite_sheets,
             sheets,
         ): Self::SystemData,
     ) {
         for (sprite, _) in (&mut sprites, &cursors).join() {
-            match *editor_state {
-                EditorState::InsertMode | EditorState::EditGameObject => {
+            match *cursor_state {
+                CursorState::InsertMode | CursorState::EditGameObject => {
                     if insertion_serialized_object.0.sprite.is_none() {
                         insertion_serialized_object.0.sprite =
                             Some(SpriteRenderData::new(SpriteSheetType::Tiles, 0));

@@ -18,7 +18,7 @@ use amethyst::{
 use crate::{
     components::{
         editor::{
-            CursorWasInThisEntity, EditorCursor, EditorCursorState, EditorState,
+            CursorState, CursorWasInThisEntity, EditorCursor, EditorCursorState,
             InsertionGameObject, InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
         },
         game::{Health, Player, SerializedObject, SerializedObjectType},
@@ -46,6 +46,8 @@ use crate::{
 };
 use amethyst::{assets::Handle, ecs::prelude::ReadExpect, renderer::SpriteSheet};
 
+use crate::components::editor::TileLayer;
+use log::info;
 use num_traits::Zero;
 
 pub const EDITOR_MODIFIERS_ALL: &[&str] = &["modifier1", "modifier2"];
@@ -58,8 +60,9 @@ pub enum EditorEvents {
     SaveLevelToFile,
     ChangeInsertionGameObject(u8),
     SetInsertionGameObject(SerializedObject),
-    ChangeState(EditorState),
+    ChangeState(CursorState),
     UiClick(EditorButton),
+    CycleActiveLayer(bool),
 }
 
 pub fn align_cursor_position_with_grid(position: &mut Vec2, size: &Vec2) {
@@ -117,7 +120,7 @@ pub struct CursorPositionSystem;
 impl<'s> System<'s> for CursorPositionSystem {
     type SystemData = (
         Write<'s, EventChannel<Events>>,
-        ReadExpect<'s, EditorState>,
+        ReadExpect<'s, CursorState>,
         Write<'s, DebugLines>,
         Read<'s, InputManager>,
         Read<'s, UiStack>,
@@ -133,7 +136,7 @@ impl<'s> System<'s> for CursorPositionSystem {
         &mut self,
         (
             mut event_channel,
-            editor_state,
+            cursor_state,
             mut debug_lines_resource,
             input,
             ui,
@@ -209,8 +212,8 @@ impl<'s> System<'s> for CursorPositionSystem {
         )
             .join()
         {
-            match *editor_state {
-                EditorState::EditMode => {
+            match *cursor_state {
+                CursorState::EditMode => {
                     display_position.0.x = new_cursor_display_pos.x;
                     display_position.0.y = new_cursor_display_pos.y;
                     cursor_pos.0.x = cursor_position.x;
@@ -263,14 +266,14 @@ pub struct CursorStateSystem;
 
 impl<'s> System<'s> for CursorStateSystem {
     type SystemData = (
-        ReadExpect<'s, EditorState>,
+        ReadExpect<'s, CursorState>,
         WriteStorage<'s, EditorCursor>,
         ReadStorage<'s, SizeForEditorGrid>,
         ReadStorage<'s, Position>,
     );
 
-    fn run(&mut self, (editor_state, mut cursors, size_for_editor, positions): Self::SystemData) {
-        let state: EditorState = editor_state.clone();
+    fn run(&mut self, (cursor_state, mut cursors, size_for_editor, positions): Self::SystemData) {
+        let state: CursorState = cursor_state.clone();
         let mut cursor_pos = Vec2::default();
         let mut cursor_size = Vec2::default();
         let mut cursor_state = EditorCursorState::Normal;
@@ -284,11 +287,11 @@ impl<'s> System<'s> for CursorStateSystem {
         let br1 = Vec2::new(cursor_pos.x + half_size.x, cursor_pos.y - half_size.y);
         // Figure out the cursor state
         match state {
-            EditorState::EditMode => {
+            CursorState::EditMode => {
                 // change the cursor state to NOT_OVERLAPPING
                 cursor_state = EditorCursorState::Normal;
             }
-            EditorState::EditGameObject | EditorState::InsertMode => {
+            CursorState::EditGameObject | CursorState::InsertMode => {
                 // change the cursor state to overlap if it overlaps
                 for (pos, size, _) in (&positions, &size_for_editor, !&cursors).join() {
                     let half_size = Vec2::new(size.0.x / 2.0, size.0.y / 2.0);
@@ -313,7 +316,7 @@ pub struct CursorSizeSystem;
 
 impl<'s> System<'s> for CursorSizeSystem {
     type SystemData = (
-        ReadExpect<'s, EditorState>,
+        ReadExpect<'s, CursorState>,
         ReadExpect<'s, InsertionGameObject>,
         ReadStorage<'s, EditorCursor>,
         WriteStorage<'s, SizeForEditorGrid>,
@@ -325,7 +328,7 @@ impl<'s> System<'s> for CursorSizeSystem {
     fn run(
         &mut self,
         (
-            editor_state,
+            cursor_state,
             insertion_serialized_object,
             cursors,
             mut size_for_editor,
@@ -334,9 +337,9 @@ impl<'s> System<'s> for CursorSizeSystem {
             entities,
         ): Self::SystemData,
     ) {
-        let state: EditorState = editor_state.clone();
+        let state: CursorState = cursor_state.clone();
         match state {
-            EditorState::EditMode => {
+            CursorState::EditMode => {
                 for (prev_block, _) in (&previous_block, &cursors).join() {
                     if let Some(id) = prev_block.0 {
                         let entity = entities.entity(id);
@@ -358,7 +361,7 @@ impl<'s> System<'s> for CursorSizeSystem {
                     }
                 }
             }
-            EditorState::EditGameObject | EditorState::InsertMode => {
+            CursorState::EditGameObject | CursorState::InsertMode => {
                 for (scale, size, _) in (&mut scales, &mut size_for_editor, &cursors).join() {
                     let ser_size = insertion_serialized_object
                         .0
@@ -379,7 +382,7 @@ pub struct EditorButtonEventSystem;
 
 impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
-        ReadExpect<'s, EditorState>,
+        ReadExpect<'s, CursorState>,
         Read<'s, InputManager>,
         Read<'s, UiStack>,
         Write<'s, EventChannel<EditorEvents>>,
@@ -394,6 +397,15 @@ impl<'s> System<'s> for EditorButtonEventSystem {
             return;
         }
 
+        let vertical_with_modifier2 = input
+            .action_single_press("vertical")
+            .including_modifiers(&["modifier2"])
+            .axis;
+        if !vertical_with_modifier2.is_zero() {
+            editor_event_writer
+                .single_write(EditorEvents::CycleActiveLayer(vertical_with_modifier2 > 0.));
+        }
+
         if input.action_single_press("save").is_down {
             editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
         }
@@ -403,7 +415,7 @@ impl<'s> System<'s> for EditorButtonEventSystem {
         }
 
         match *state {
-            EditorState::EditMode => {
+            CursorState::EditMode => {
                 // Controller input
                 if input
                     .action_single_press("cancel")
@@ -417,14 +429,14 @@ impl<'s> System<'s> for EditorButtonEventSystem {
                     .is_down
                 {
                     editor_event_writer
-                        .single_write(EditorEvents::ChangeState(EditorState::EditGameObject));
+                        .single_write(EditorEvents::ChangeState(CursorState::EditGameObject));
                 } else if input
                     .action_single_press("insert")
                     .excluding_modifiers(EDITOR_MODIFIERS_ALL)
                     .is_down
                 {
                     editor_event_writer
-                        .single_write(EditorEvents::ChangeState(EditorState::InsertMode));
+                        .single_write(EditorEvents::ChangeState(CursorState::InsertMode));
                 } else if input
                     .action_single_press("start")
                     .excluding_modifiers(EDITOR_MODIFIERS_ALL)
@@ -433,7 +445,7 @@ impl<'s> System<'s> for EditorButtonEventSystem {
                     global_event_writer.single_write(Events::OpenFilePickerUi);
                 }
             }
-            EditorState::InsertMode => {
+            CursorState::InsertMode => {
                 // Controller input
                 if input
                     .action_single_press("cancel")
@@ -441,7 +453,7 @@ impl<'s> System<'s> for EditorButtonEventSystem {
                     .is_down
                 {
                     editor_event_writer
-                        .single_write(EditorEvents::ChangeState(EditorState::EditMode));
+                        .single_write(EditorEvents::ChangeState(CursorState::EditMode));
                 } else if input
                     .action_single_press("accept")
                     .excluding_modifiers(EDITOR_MODIFIERS_ALL)
@@ -462,14 +474,14 @@ impl<'s> System<'s> for EditorButtonEventSystem {
                     editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(1));
                 }
             }
-            EditorState::EditGameObject => {
+            CursorState::EditGameObject => {
                 if input
                     .action_single_press("cancel")
                     .excluding_modifiers(EDITOR_MODIFIERS_ALL)
                     .is_down
                 {
                     editor_event_writer
-                        .single_write(EditorEvents::ChangeState(EditorState::EditMode));
+                        .single_write(EditorEvents::ChangeState(CursorState::EditMode));
                 } else if input
                     .action_single_press("accept")
                     .excluding_modifiers(EDITOR_MODIFIERS_ALL)
@@ -477,7 +489,7 @@ impl<'s> System<'s> for EditorButtonEventSystem {
                 {
                     editor_event_writer.single_write(EditorEvents::AddGameObject);
                     editor_event_writer
-                        .single_write(EditorEvents::ChangeState(EditorState::EditMode));
+                        .single_write(EditorEvents::ChangeState(CursorState::EditMode));
                 }
             }
         }
@@ -503,7 +515,8 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
     type SystemData = (
         Read<'s, EventChannel<EditorEvents>>,
         Write<'s, EventChannel<Events>>,
-        Write<'s, EditorState>,
+        Write<'s, CursorState>,
+        Write<'s, TileLayer>,
         Write<'s, InsertionGameObject>,
         ReadStorage<'s, EditorCursor>,
         WriteStorage<'s, Position>,
@@ -515,7 +528,8 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
         (
             editor_event_channel,
             mut world_events_channel,
-            mut editor_state,
+            mut cursor_state,
+            mut active_layer,
             mut insertion_serialized_object,
             cursors,
             mut positions,
@@ -568,7 +582,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                 EditorEvents::ChangeState(new_state) => {
                     let mut change = true;
                     match new_state {
-                        EditorState::EditGameObject => {
+                        CursorState::EditGameObject => {
                             for (_cursor, previous_block) in (&cursors, &previous_block).join() {
                                 // Change state if selecting block
                                 if previous_block.0.is_none() {
@@ -581,7 +595,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                                 }
                             }
                         }
-                        EditorState::InsertMode => {
+                        CursorState::InsertMode => {
                             for (position, _cursor) in (&mut positions, &cursors).join() {
                                 let mut pos: Vec2 = position.0.to_vec2();
                                 snap_cursor_position_to_grid_corner(&mut pos);
@@ -596,10 +610,18 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         _ => {}
                     }
                     if change {
-                        *editor_state = new_state.clone();
+                        *cursor_state = new_state.clone();
                     }
                 }
                 EditorEvents::UiClick(_) => {}
+                EditorEvents::CycleActiveLayer(forward) => {
+                    let layer = *active_layer;
+                    *active_layer = match forward {
+                        true => layer.next(),
+                        false => layer.prev(),
+                    };
+                    info!("{:?}", *active_layer);
+                }
             };
         }
     }

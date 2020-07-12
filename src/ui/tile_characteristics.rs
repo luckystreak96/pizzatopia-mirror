@@ -1,6 +1,6 @@
 use crate::{
     components::{
-        editor::{EditorCursor, EditorState, InsertionGameObject},
+        editor::{CursorState, EditorCursor, InsertionGameObject},
         game::SerializedObjectType,
         physics::Position,
     },
@@ -65,10 +65,10 @@ impl UiComponent for EditorFieldUiComponents {
     }
 
     fn should_capture_input(&self, world: &World) -> bool {
-        let state = world.read_resource::<EditorState>();
+        let state = world.read_resource::<CursorState>();
         match *state {
-            EditorState::EditGameObject | EditorState::InsertMode => true,
-            EditorState::EditMode => false,
+            CursorState::EditGameObject | CursorState::InsertMode => true,
+            CursorState::EditMode => false,
         }
     }
 }
@@ -227,12 +227,12 @@ impl EditorFieldUiComponents {
         self.handle_input(world);
         self.update_color(world);
 
-        let state = (*world.read_resource::<EditorState>()).clone();
+        let state = (*world.read_resource::<CursorState>()).clone();
         match state {
-            EditorState::EditMode => {
+            CursorState::EditMode => {
                 self.hide_components(world, 0, 9);
             }
-            EditorState::EditGameObject | EditorState::InsertMode => {
+            CursorState::EditGameObject | CursorState::InsertMode => {
                 self.update_ui_text_general_properties(world);
                 self.update_ui_text_object_specific_properties(world);
             }
@@ -240,10 +240,10 @@ impl EditorFieldUiComponents {
     }
 
     fn handle_input(&mut self, world: &World) {
-        let state = world.read_resource::<EditorState>();
+        let state = world.read_resource::<CursorState>();
         let input = world.read_resource::<InputManager>();
         match *state {
-            EditorState::EditGameObject | EditorState::InsertMode => {
+            CursorState::EditGameObject | CursorState::InsertMode => {
                 let horizontal = input
                     .action_single_press("horizontal")
                     .including_modifiers(EDITOR_MODIFIERS_UI)

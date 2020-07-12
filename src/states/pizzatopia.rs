@@ -3,7 +3,7 @@ use crate::{
     audio::{initialise_audio, Sounds},
     bundles::{GameLogicBundle, GraphicsBundle},
     components::{
-        editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid},
+        editor::{EditorFlag, InstanceEntityId, SizeForEditorGrid, TileLayer},
         entity_builder::entity_builder,
         game::{
             CameraTarget, CollisionEvent, Health, Invincibility, Player, Resettable,
@@ -130,6 +130,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         data.world.register::<InstanceEntityId>();
         data.world.register::<EditorButton>();
         data.world.register::<FilePickerButton>();
+        data.world.register::<TileLayer>();
 
         // setup dispatcher
         let mut dispatcher = Pizzatopia::create_pizzatopia_dispatcher(data.world);

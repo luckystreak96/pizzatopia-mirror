@@ -9,6 +9,7 @@ use amethyst::{
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
+use strum::IntoEnumIterator;
 use strum_macros::{EnumCount, EnumIter};
 
 #[derive(Default)]
@@ -52,6 +53,12 @@ pub enum TileLayer {
     Back,
 }
 
+impl From<usize> for TileLayer {
+    fn from(x: usize) -> Self {
+        TileLayer::iter().nth(x).unwrap()
+    }
+}
+
 impl TileLayer {
     pub fn to_z_offset(&self) -> f32 {
         match *self {
@@ -59,6 +66,25 @@ impl TileLayer {
             TileLayer::Front => 5.,
             TileLayer::Back => -5.,
         }
+    }
+
+    pub fn next(&self) -> TileLayer {
+        let mut index = (*self as usize) + 1;
+        if index >= TileLayer::iter().count() {
+            index = 0;
+        }
+
+        return TileLayer::from(index);
+    }
+
+    pub fn prev(&self) -> TileLayer {
+        let mut index = *self as usize;
+        if index <= 0 {
+            index = TileLayer::iter().count();
+        }
+
+        index -= 1;
+        return TileLayer::from(index);
     }
 }
 
@@ -95,14 +121,14 @@ impl Component for InsertionGameObject {
 }
 
 #[derive(Clone, Debug, Copy, PartialEq)]
-pub enum EditorState {
+pub enum CursorState {
     EditMode,
     EditGameObject,
     InsertMode,
 }
 
-impl Default for EditorState {
+impl Default for CursorState {
     fn default() -> Self {
-        EditorState::EditMode
+        CursorState::EditMode
     }
 }

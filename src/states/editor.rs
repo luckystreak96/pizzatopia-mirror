@@ -2,8 +2,8 @@ use crate::{
     audio::{initialise_audio, Sounds},
     components::{
         editor::{
-            CursorWasInThisEntity, EditorCursor, EditorFlag, EditorState, InsertionGameObject,
-            InstanceEntityId, RealCursorPosition, SizeForEditorGrid,
+            CursorState, CursorWasInThisEntity, EditorCursor, EditorFlag, InsertionGameObject,
+            InstanceEntityId, RealCursorPosition, SizeForEditorGrid, TileLayer,
         },
         entity_builder::entity_builder,
         game::{
@@ -111,7 +111,8 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
             data.world
                 .insert(InsertionGameObject(SerializedObject::default()));
         }
-        data.world.insert(EditorState::EditMode);
+        data.world.insert(CursorState::EditMode);
+        data.world.insert(TileLayer::Middle);
         data.world.insert(UiIndex::default());
         let mut ui_stack = UiStack::default();
         ui_stack

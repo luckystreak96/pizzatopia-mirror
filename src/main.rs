@@ -1,5 +1,6 @@
 #![feature(clamp)]
 #![allow(dead_code)]
+#![allow(unused_imports)]
 use amethyst::{
     assets::{
         Asset, AssetStorage, Format, Handle, Loader, Prefab, PrefabData, PrefabLoader,

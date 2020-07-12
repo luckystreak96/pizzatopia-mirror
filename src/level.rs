@@ -186,7 +186,8 @@ impl Level {
         };
 
         // Serialize
-        let serialized = match ron::ser::to_string(&level) {
+        let config = ron::ser::PrettyConfig::default();
+        let serialized = match ron::ser::to_string_pretty(&level, config) {
             Ok(x) => x,
             Err(e) => {
                 error!("Failed to serialize level for saving: {:?}", e);

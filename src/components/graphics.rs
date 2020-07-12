@@ -22,6 +22,7 @@ use derivative::Derivative;
 use num_traits::identities::Zero;
 use std::sync::Arc;
 
+use strum::IntoEnumIterator;
 use strum_macros::{EnumCount, EnumIter};
 
 #[derive(Derivative)]
@@ -197,29 +198,28 @@ pub enum SpriteSheetType {
 
 impl SpriteSheetType {
     pub fn next(&self) -> Self {
-        let x = *self as u8;
-        Self::from(x + 1)
+        let mut index = (*self as usize) + 1;
+        if index >= Self::iter().count() {
+            index = 0;
+        }
+
+        return Self::from(index);
     }
 
     pub fn prev(&self) -> Self {
-        let x = *self as u8;
-        match x.is_zero() {
-            false => Self::from(x - 1),
-            true => Self::from(x),
+        let mut index = *self as usize;
+        if index <= 0 {
+            index = Self::iter().count();
         }
+
+        index -= 1;
+        return Self::from(index);
     }
 }
 
-impl From<u8> for SpriteSheetType {
-    fn from(x: u8) -> Self {
-        match x {
-            x if x == SpriteSheetType::Tiles as u8 => SpriteSheetType::Tiles,
-            x if x == SpriteSheetType::Didi as u8 => SpriteSheetType::Didi,
-            x if x == SpriteSheetType::Snap as u8 => SpriteSheetType::Snap,
-            x if x == SpriteSheetType::Ui as u8 => SpriteSheetType::Ui,
-            x if x == SpriteSheetType::Animation as u8 => SpriteSheetType::Animation,
-            _ => SpriteSheetType::Animation,
-        }
+impl From<usize> for SpriteSheetType {
+    fn from(x: usize) -> Self {
+        SpriteSheetType::iter().nth(x).unwrap()
     }
 }
 

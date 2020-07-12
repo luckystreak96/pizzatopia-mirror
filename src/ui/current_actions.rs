@@ -1,6 +1,6 @@
 use crate::{
     components::{
-        editor::{EditorCursor, EditorState, InsertionGameObject},
+        editor::{CursorState, EditorCursor, InsertionGameObject},
         game::{SerializedObject, SerializedObjectType},
         physics::Position,
     },
@@ -272,24 +272,24 @@ impl CurrentActionsUi {
     }
 
     pub fn update_component_visibility(&mut self, world: &World) {
-        let state = (*world.read_resource::<EditorState>()).clone();
+        let state = (*world.read_resource::<CursorState>()).clone();
         for action in EditorActions::iter() {
             self.show(action, false);
             match action {
                 EditorActions::EnterInsertMode => match state {
-                    EditorState::EditMode => {
+                    CursorState::EditMode => {
                         self.show(action, true);
                     }
                     _ => {}
                 },
                 EditorActions::EnterEditModeFromInsert => match state {
-                    EditorState::InsertMode => {
+                    CursorState::InsertMode => {
                         self.show(action, true);
                     }
                     _ => {}
                 },
                 EditorActions::EnterEditGameObject => match state {
-                    EditorState::EditMode => {
+                    CursorState::EditMode => {
                         if self.hover_game_object {
                             self.show(action, true);
                         }
@@ -297,30 +297,30 @@ impl CurrentActionsUi {
                     _ => {}
                 },
                 EditorActions::PlaceEditGameObject => match state {
-                    EditorState::EditGameObject => {
+                    CursorState::EditGameObject => {
                         self.show(action, true);
                     }
                     _ => {}
                 },
                 EditorActions::DeleteEditGameObject => match state {
-                    EditorState::EditMode => {
+                    CursorState::EditMode => {
                         if self.hover_game_object {
                             self.show(action, true);
                         }
                     }
-                    EditorState::EditGameObject => {
+                    CursorState::EditGameObject => {
                         self.show(action, true);
                     }
                     _ => {}
                 },
                 EditorActions::InsertModeTile => match state {
-                    EditorState::InsertMode => {
+                    CursorState::InsertMode => {
                         self.show(action, true);
                     }
                     _ => {}
                 },
                 EditorActions::InsertModePlayer => match state {
-                    EditorState::InsertMode => {
+                    CursorState::InsertMode => {
                         self.show(action, true);
                     }
                     _ => {}

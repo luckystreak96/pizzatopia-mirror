@@ -94,6 +94,11 @@ pub mod entity_builder {
             .get(entity)
             .unwrap()
             .clone();
+        let layer = world
+            .read_storage::<TileLayer>()
+            .get(entity)
+            .unwrap_or(&TileLayer::default())
+            .clone();
 
         let mut result: SerializedObject = SerializedObject::default();
         result.size = Some(size);
@@ -102,6 +107,7 @@ pub mod entity_builder {
             sprite_sheet_type.clone(),
             sprite_render.sprite_number,
         ));
+        result.layer = Some(layer);
 
         match object_type {
             SerializedObjectType::StaticTile => {
