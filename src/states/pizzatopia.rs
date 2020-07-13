@@ -361,11 +361,16 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             "sprite_update_system",
             &["background_draw_update_system"],
         );
+        dispatcher_builder.add(
+            systems::graphics::AnimatedTileSystem,
+            "animated_tile_system",
+            &["sprite_update_system"],
+        );
 
         dispatcher_builder.add(
             systems::graphics::TransformResetSystem,
             "transform_reset_system",
-            &["sprite_update_system"],
+            &["animated_tile_system"],
         );
 
         // register a bundle to the builder

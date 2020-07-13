@@ -172,9 +172,28 @@ impl Component for SerializedObject {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
+pub struct AnimatedTile {
+    pub num_frames: usize,
+    pub time_per_frame: f32,
+}
+
+#[derive(Default, Clone, Copy, Debug)]
+pub struct AnimatedTileComp {
+    pub anim: AnimatedTile,
+    pub counter: f32,
+    pub base_sprite: usize,
+}
+impl Component for AnimatedTileComp {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Derivative)]
+#[derivative(Default)]
 pub enum SerializedObjectType {
     #[derivative(Default)]
-    StaticTile,
+    StaticTile {
+        animation: Option<AnimatedTile>,
+    },
     Player {
         is_player: Player,
     },

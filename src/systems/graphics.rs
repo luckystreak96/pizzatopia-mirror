@@ -40,6 +40,7 @@ use amethyst::{
     ui::UiText,
 };
 
+use crate::components::game::AnimatedTileComp;
 use std::collections::BTreeMap;
 
 #[derive(SystemDesc)]
@@ -331,6 +332,32 @@ impl<'s> System<'s> for DeadDrawUpdateSystem {
         for (transform, health) in (&mut transforms, &healths).join() {
             if health.0 == 0 {
                 transform.set_translation_xyz(-9999.0, -9999.0, 0.0);
+            }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct AnimatedTileSystem;
+
+impl<'s> System<'s> for AnimatedTileSystem {
+    type SystemData = (
+        WriteStorage<'s, SpriteRender>,
+        WriteStorage<'s, AnimatedTileComp>,
+        Read<'s, Time>,
+    );
+
+    fn run(&mut self, (mut sprites, mut anims, time): Self::SystemData) {
+        for (sprite, anim) in (&mut sprites, &mut anims).join() {
+            anim.counter += time.delta_seconds();
+            if anim.counter > anim.anim.time_per_frame {
+                anim.counter = 0.0;
+                if anim.anim.num_frames > 0 {
+                    sprite.sprite_number += 1;
+                    if sprite.sprite_number > anim.base_sprite + anim.anim.num_frames - 1 {
+                        sprite.sprite_number = anim.base_sprite;
+                    }
+                }
             }
         }
     }

@@ -291,7 +291,7 @@ impl EditorFieldUiComponents {
 
         // Object-specific properties
         match insertion.0.object_type {
-            SerializedObjectType::StaticTile => {}
+            SerializedObjectType::StaticTile { .. } => {}
             SerializedObjectType::Player { is_player } => {
                 if let Some(text) = ui_text_storage.get_mut(self.labels[counter]) {
                     text.text = format!("Player-controlled: {}", is_player.0);
@@ -424,7 +424,7 @@ impl EditorFieldUiComponents {
             _ => {}
         }
         match insertion_serialized_object.0.object_type {
-            SerializedObjectType::StaticTile => {}
+            SerializedObjectType::StaticTile { .. } => {}
             SerializedObjectType::Player { ref mut is_player } => {
                 if button_info.id == start_id {
                     match button_info.editor_button_type {

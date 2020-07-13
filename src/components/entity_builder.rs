@@ -63,6 +63,7 @@ pub mod entity_builder {
 
     use log::error;
 
+    use crate::components::game::{AnimatedTile, AnimatedTileComp};
     use std::collections::BTreeMap;
 
     pub fn entity_to_serialized_object(world: &mut World, id: u32) -> SerializedObject {
@@ -110,8 +111,8 @@ pub mod entity_builder {
         result.layer = Some(layer);
 
         match object_type {
-            SerializedObjectType::StaticTile => {
-                result.object_type = SerializedObjectType::StaticTile;
+            SerializedObjectType::StaticTile { animation } => {
+                result.object_type = SerializedObjectType::StaticTile { animation };
             }
             SerializedObjectType::Player { is_player: _ } => {
                 let is_player = world.read_storage::<Player>().get(entity).unwrap().clone();
@@ -130,7 +131,7 @@ pub mod entity_builder {
             SerializedObjectType::Player { .. } => {
                 entity_builder::initialize_player(world, serialized_object, ignore_editor)
             }
-            SerializedObjectType::StaticTile => {
+            SerializedObjectType::StaticTile { .. } => {
                 entity_builder::initialize_ground(world, serialized_object)
             }
         }
@@ -140,11 +141,22 @@ pub mod entity_builder {
         let helper = SerialHelper::build(serialized_object, world);
 
         let tile_size = PlatformCuboid::create(helper.size.x, helper.size.y);
+        let anim = match serialized_object.object_type {
+            SerializedObjectType::StaticTile { animation } => animation,
+            _ => None,
+        }
+        .unwrap_or(AnimatedTile::default());
+        let animation = AnimatedTileComp {
+            anim,
+            counter: 0.0,
+            base_sprite: helper.sprite_render.sprite_number,
+        };
 
         // Create gameplay entity
         let entity = world
             .create_entity()
             .with(tile_size.clone())
+            .with(animation)
             //.with(PlatformCuboid::new())
             .with(Transparent)
             .with(helper.layer)
