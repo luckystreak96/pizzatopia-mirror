@@ -55,8 +55,10 @@ impl<'s> System<'s> for CameraEdgeClampSystem {
 
     fn run(&mut self, (mut positions, cameras, camera_limits): Self::SystemData) {
         for (pos, _cam, limit) in (&mut positions, &cameras, &camera_limits).join() {
-            pos.0.x = pos.0.x.clamp(limit.left, limit.right);
-            pos.0.y = pos.0.y.clamp(limit.bottom, limit.top);
+            pos.0.x = pos.0.x.max(limit.left).min(limit.right);
+            // pos.0.x = pos.0.x.clamp(limit.left, limit.right);
+            pos.0.y = pos.0.y.max(limit.bottom).min(limit.top);
+            // pos.0.y = pos.0.y.clamp(limit.bottom, limit.top);
         }
     }
 }
@@ -304,8 +306,11 @@ impl<'s> System<'s> for CursorSpriteUpdateSystem {
                         sprite.sprite_sheet = sheet.clone();
                         if let Some(sheet) = sheets.get(sheet) {
                             sprite_data.number =
-                                sprite_data.number.clamp(0, sheet.sprites.len() - 1);
-                            sprite.sprite_number = sprite_data.number.clamp(0, sprite_data.number);
+                                // sprite_data.number.clamp(0, sheet.sprites.len() - 1);
+                            sprite_data.number.max(0).min(sheet.sprites.len() - 1);
+                            // sprite.sprite_number = sprite_data.number.clamp(0, sprite_data.number);
+                            sprite.sprite_number =
+                                sprite_data.number.max(0).min(sprite_data.number);
                         }
                     }
                 }

@@ -300,7 +300,8 @@ impl EditorFieldUiComponents {
             }
         }
         self.hide_components(world, counter, 9);
-        self.ui_index.index = self.ui_index.index.clamp(0, counter - 1);
+        // self.ui_index.index = self.ui_index.index.clamp(0, counter - 1);
+        self.ui_index.index = self.ui_index.index.max(0).min(counter - 1);
     }
 
     fn update_ui_text_general_properties(&mut self, world: &World) {
