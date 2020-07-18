@@ -359,7 +359,7 @@ impl<'s> System<'s> for AnimatedTileSystem {
                 anim.counter = 0.0;
                 if anim.anim.num_frames > 0 {
                     sprite.sprite_number += 1;
-                    if sprite.sprite_number > anim.base_sprite + anim.anim.num_frames - 1 {
+                    if sprite.sprite_number > anim.base_sprite + anim.anim.num_frames {
                         sprite.sprite_number = anim.base_sprite;
                     }
                 }

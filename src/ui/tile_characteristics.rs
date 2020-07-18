@@ -1,3 +1,5 @@
+use crate::components::game::{AnimatedTile, SpriteRenderData};
+use crate::components::graphics::SpriteSheetType;
 use crate::{
     components::{
         editor::{CursorState, EditorCursor, InsertionGameObject},
@@ -9,15 +11,18 @@ use crate::{
     ui::{with_transparent, UiComponent, COLOR_BLACK},
 };
 use amethyst::{
+    assets::AssetStorage,
     assets::Handle,
     core::HiddenPropagate,
     ecs::prelude::{Component, DenseVecStorage, Entity, Join},
     prelude::{Builder, World, WorldExt},
+    renderer::SpriteSheet,
     ui::{Anchor, FontAsset, UiEvent, UiEventType, UiImage, UiText, UiTransform},
 };
 use derivative::Derivative;
 use num_traits::Zero;
 use pizzatopia_utils::EnumCycle;
+use std::collections::BTreeMap;
 
 #[derive(Derivative)]
 #[derivative(Default)]
@@ -291,7 +296,23 @@ impl EditorFieldUiComponents {
 
         // Object-specific properties
         match insertion.0.object_type {
-            SerializedObjectType::StaticTile { .. } => {}
+            SerializedObjectType::StaticTile { animation } => {
+                if let Some(text) = ui_text_storage.get_mut(self.labels[counter]) {
+                    text.text = format!("Animated: {}", animation.is_some());
+                    counter += 1;
+                }
+                if animation.is_some() {
+                    let animated = animation.unwrap();
+                    if let Some(text) = ui_text_storage.get_mut(self.labels[counter]) {
+                        text.text = format!("Animation length: {}", animated.num_frames);
+                        counter += 1;
+                    }
+                    if let Some(text) = ui_text_storage.get_mut(self.labels[counter]) {
+                        text.text = format!("Animation speed: {}", animated.time_per_frame);
+                        counter += 1;
+                    }
+                }
+            }
             SerializedObjectType::Player { is_player } => {
                 if let Some(text) = ui_text_storage.get_mut(self.labels[counter]) {
                     text.text = format!("Player-controlled: {}", is_player.0);
@@ -366,6 +387,21 @@ pub struct UiIndex {
     pub active: bool,
 }
 
+fn sprite_max(world: &World, sprite: &SpriteRenderData) -> usize {
+    let sheet = {
+        let sprite_sheets = &world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>();
+        let sheet = sprite_sheets.get(&(sprite.sheet as u8)).unwrap();
+        sheet.clone()
+    };
+
+    let sheets = &world.read_resource::<AssetStorage<SpriteSheet>>();
+    if let Some(sheet) = sheets.get(&sheet) {
+        sheet.sprites.len()
+    } else {
+        0
+    }
+}
+
 impl EditorFieldUiComponents {
     fn handle_click(&mut self, world: &World, button_info: &EditorButton) {
         let positions = &mut world.write_storage::<Position>();
@@ -375,7 +411,8 @@ impl EditorFieldUiComponents {
 
         self.ui_index.index = button_info.id;
         self.ui_index.active = true;
-        let start_id = 4;
+        const START_ID: usize = 4;
+        let sprite_render = insertion_serialized_object.0.sprite.clone();
         match button_info.id {
             0..=1 => {
                 let is_x_axis = button_info.id == 0;
@@ -411,7 +448,9 @@ impl EditorFieldUiComponents {
                 if let Some(ref mut sprite) = insertion_serialized_object.0.sprite {
                     sprite.number = match button_info.editor_button_type {
                         EditorButtonType::Label => sprite.number,
-                        EditorButtonType::RightArrow => sprite.number + 1,
+                        EditorButtonType::RightArrow => {
+                            (sprite.number + 1).min(sprite_max(world, sprite) - 1)
+                        }
                         EditorButtonType::LeftArrow => {
                             if !sprite.number.is_zero() {
                                 sprite.number - 1
@@ -425,9 +464,44 @@ impl EditorFieldUiComponents {
             _ => {}
         }
         match insertion_serialized_object.0.object_type {
-            SerializedObjectType::StaticTile { .. } => {}
+            SerializedObjectType::StaticTile { ref mut animation } => {
+                match button_info.editor_button_type {
+                    EditorButtonType::Label => {}
+                    EditorButtonType::RightArrow | EditorButtonType::LeftArrow => {
+                        let sign = match button_info.editor_button_type {
+                            EditorButtonType::LeftArrow => -1,
+                            _ => 1,
+                        };
+                        if button_info.id == START_ID {
+                            if animation.is_some() {
+                                *animation = None;
+                            } else {
+                                *animation = Some(AnimatedTile::default());
+                            }
+                        } else if button_info.id == START_ID + 1 && animation.is_some() {
+                            // NUM ANIMATION TILES
+                            if let Some(ref mut anim) = *animation {
+                                let mut result = sign + anim.num_frames as i32;
+                                if let Some(sprite) = &sprite_render {
+                                    let max = sprite_max(world, sprite) as i32
+                                        - (sprite.number as i32 + 1);
+                                    result = result.max(0).min(max);
+                                }
+                                anim.num_frames = result as usize;
+                            }
+                        } else if button_info.id == START_ID + 2 && animation.is_some() {
+                            // ANIMATION LEN
+                            if let Some(ref mut anim) = *animation {
+                                let mut result = anim.time_per_frame as f32;
+                                result += sign as f32 * 0.1;
+                                anim.time_per_frame = result.max(0.);
+                            }
+                        }
+                    }
+                }
+            }
             SerializedObjectType::Player { ref mut is_player } => {
-                if button_info.id == start_id {
+                if button_info.id == START_ID {
                     match button_info.editor_button_type {
                         EditorButtonType::Label => {}
                         EditorButtonType::RightArrow | EditorButtonType::LeftArrow => {
