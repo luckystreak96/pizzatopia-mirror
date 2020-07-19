@@ -2,10 +2,7 @@
     serialized_objects: Some([
         (
             object_type: StaticTile(
-                animation: Some((
-                    num_frames: 1,
-                    time_per_frame: 1,
-                )),
+                animation: None,
             ),
             pos: Some((
                 x: 768,
@@ -107,7 +104,7 @@
             )),
             sprite: Some((
                 sheet: Tiles,
-                number: 1,
+                number: 0,
             )),
             layer: Some(Middle),
         ),
@@ -1622,6 +1619,69 @@
                 number: 1,
             )),
             layer: Some(Middle),
+        ),
+        (
+            object_type: StaticTile(
+                animation: Some((
+                    num_frames: 1,
+                    time_per_frame: 1.0000001,
+                )),
+            ),
+            pos: Some((
+                x: 1216,
+                y: 768,
+            )),
+            size: Some((
+                x: 128,
+                y: 128,
+            )),
+            sprite: Some((
+                sheet: Tiles,
+                number: 6,
+            )),
+            layer: Some(Front),
+        ),
+        (
+            object_type: StaticTile(
+                animation: Some((
+                    num_frames: 1,
+                    time_per_frame: 1.0000001,
+                )),
+            ),
+            pos: Some((
+                x: 896,
+                y: 768,
+            )),
+            size: Some((
+                x: 128,
+                y: 128,
+            )),
+            sprite: Some((
+                sheet: Tiles,
+                number: 6,
+            )),
+            layer: Some(Front),
+        ),
+        (
+            object_type: StaticTile(
+                animation: Some((
+                    num_frames: 1,
+                    time_per_frame: 1.0000001,
+                )),
+            ),
+            pos: Some((
+                x: 1664,
+                y: 768,
+            )),
+            size: Some((
+                x: 128,
+                y: 128,
+            )),
+            sprite: Some((
+                sheet: Tiles,
+                number: 6,
+            )),
+            layer: Some(Front),
         ),
     ]),
 )
