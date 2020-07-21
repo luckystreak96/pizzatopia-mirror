@@ -500,11 +500,12 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                 );
 
                 let mut cur_scale = &mut scale.0;
-                match grav_vel.x < 0.0 {
-                    true => {
+                match velocity.prev_going_right {
+                    // match grav_vel.x < 0.0 {
+                    false => {
                         cur_scale.x = -1.0 * cur_scale.x.abs();
                     }
-                    false => {
+                    true => {
                         cur_scale.x = cur_scale.x.abs();
                     }
                 };

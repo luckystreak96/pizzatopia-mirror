@@ -27,6 +27,7 @@ use crate::{
     utils::Vec2,
 };
 use amethyst::prelude::WorldExt;
+use num_traits::identities::Zero;
 use std::sync::Arc;
 
 #[derive(SystemDesc)]
@@ -129,7 +130,7 @@ impl<'s> System<'s> for PlayerInputSystem {
                         // Multiply height by one quarter to go from half height to upper body
                         let offset = Vec2::new(offset_x, offset_y);
                         let p = pos.0.to_vec2().add(&offset);
-                        let s = Vec2::new(width, TILE_HEIGHT / 2.0);
+                        let s = Vec2::new(width, TILE_HEIGHT / 4.0);
                         let t = Team::GoodGuys;
                         entity_builder::initialize_damage_box(
                             world,
@@ -152,6 +153,10 @@ impl<'s> System<'s> for PlayerInputSystem {
                         None,
                     );
                 }
+            }
+
+            if !h_move.is_zero() {
+                vel.prev_going_right = h_move > 0.;
             }
 
             if slowing {

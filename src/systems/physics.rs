@@ -231,9 +231,9 @@ impl<'s> System<'s> for ApplyVelocitySystem {
             let projection = velocity.project_move(time.time_scale());
             position.0.x += projection.x;
             position.0.y += projection.y;
-            if !velocity.vel.x.is_zero() {
-                velocity.prev_going_right = velocity.vel.x.is_sign_positive();
-            }
+            // if !velocity.vel.x.is_zero() {
+            //     velocity.prev_going_right = velocity.vel.x.is_sign_positive();
+            // }
         }
     }
 }

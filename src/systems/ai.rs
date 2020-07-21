@@ -59,6 +59,8 @@ impl<'s> System<'s> for BasicWalkAiSystem {
                 ai.going_right = !ai.going_right;
             }
 
+            velocity.prev_going_right = ai.going_right;
+
             let target = WALK_SPEED
                 * match ai.going_right {
                     true => 1.,
