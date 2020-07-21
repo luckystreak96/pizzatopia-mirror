@@ -47,7 +47,7 @@ pub mod entity_builder {
             transform::{Transform, *},
         },
         ecs::{
-            prelude::{Component, DenseVecStorage, NullStorage},
+            prelude::{Component, DenseVecStorage, Entity, NullStorage},
             VecStorage,
         },
         error::{format_err, Error, ResultExt},
@@ -65,6 +65,7 @@ pub mod entity_builder {
 
     use crate::components::game::{AnimatedTile, AnimatedTileComp};
     use std::collections::BTreeMap;
+    use crate::components::physics::ChildTo;
 
     pub fn entity_to_serialized_object(world: &mut World, id: u32) -> SerializedObject {
         let entity = world.entities().entity(id);
@@ -354,7 +355,13 @@ pub mod entity_builder {
         return entity.id();
     }
 
-    pub fn initialize_damage_box(world: &mut World, pos: &Vec2, size: &Vec2, team: &Team) -> u32 {
+    pub fn initialize_damage_box(
+        world: &mut World,
+        parent: Option<Entity>,
+        pos: &Vec2,
+        size: &Vec2,
+        team: &Team,
+    ) -> u32 {
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, DEPTH_PROJECTILES);
 
@@ -372,10 +379,10 @@ pub mod entity_builder {
 
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
-        let velocity = Velocity::default();
+        let velocity: Velocity = Velocity::default();
 
         // Data common to both editor and entity
-        let entity = world
+        let mut entity = world
             .create_entity()
             .with(transform.clone())
             .with(sprite_render.clone())
@@ -388,8 +395,15 @@ pub mod entity_builder {
             .with(Collidee::new())
             .with(TimedExistence(0.2))
             .with(team.clone())
-            .with(Damage(1))
-            .build();
+            .with(Damage(1));
+        if let Some(parent) = parent {
+            let parent = ChildTo{
+                parent: parent,
+                offset: pos.clone(),
+            };
+            entity = entity.with(parent);
+        }
+        let entity = entity.build();
 
         return entity.id();
     }

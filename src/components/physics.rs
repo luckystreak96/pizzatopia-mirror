@@ -45,6 +45,14 @@ impl CollisionSideOfBlock {
     }
 }
 
+pub struct ChildTo {
+    pub parent: Entity,
+    pub offset: Vec2,
+}
+impl Component for ChildTo {
+    type Storage = DenseVecStorage<Self>;
+}
+
 pub struct CollideeDetails {
     pub name: String,
     pub position: Vec2,

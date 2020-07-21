@@ -14,6 +14,7 @@ use amethyst::{
 };
 use log::debug;
 
+use crate::components::physics::ChildTo;
 use crate::{
     components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team},
     systems::input::InputManager,
@@ -234,6 +235,41 @@ impl<'s> System<'s> for ApplyVelocitySystem {
             // if !velocity.vel.x.is_zero() {
             //     velocity.prev_going_right = velocity.vel.x.is_sign_positive();
             // }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct ChildPositionSystem;
+
+impl<'s> System<'s> for ChildPositionSystem {
+    type SystemData = (
+        ReadStorage<'s, Velocity>,
+        ReadStorage<'s, ChildTo>,
+        WriteStorage<'s, Position>,
+        Entities<'s>,
+    );
+
+    fn run(&mut self, (velocities, children, mut positions, entities): Self::SystemData) {
+        for (child, entity) in (&children, &entities).join() {
+            let going_right = velocities
+                .get(child.parent)
+                .unwrap_or(&Velocity::default())
+                .prev_going_right;
+            let parent_pos = positions
+                .get(child.parent)
+                .unwrap_or(&Position(Vec3::default()))
+                .0
+                .to_vec2();
+
+            let position = positions.get_mut(entity).unwrap();
+            let offset_x = child.offset.x
+                * match going_right {
+                    true => 1.,
+                    false => -1.,
+                };
+            position.0.x = offset_x + parent_pos.x;
+            position.0.y = child.offset.y + parent_pos.y;
         }
     }
 }

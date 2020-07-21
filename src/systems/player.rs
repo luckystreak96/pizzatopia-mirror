@@ -27,6 +27,7 @@ use crate::{
     utils::Vec2,
 };
 use amethyst::prelude::WorldExt;
+use log::error;
 use num_traits::identities::Zero;
 use std::sync::Arc;
 
@@ -95,8 +96,8 @@ impl<'s> System<'s> for PlayerInputSystem {
                     0.15,
                     AnimationId::None,
                     Arc::new(move |world| {
-                        let pos: Position;
-                        let vel: Velocity;
+                        // let pos: Position;
+                        // let vel: Velocity;
                         let size: Vec2;
                         let ducking: bool;
                         {
@@ -111,16 +112,13 @@ impl<'s> System<'s> for PlayerInputSystem {
                             if pos_opt.is_none() || vel_opt.is_none() || size_opt.is_none() {
                                 return;
                             }
-                            pos = pos_opt.unwrap().clone();
-                            vel = vel_opt.unwrap().clone();
+                            // pos = pos_opt.unwrap().clone();
+                            // vel = vel_opt.unwrap().clone();
                             size = size_opt.unwrap().0.clone();
                         }
                         let width = size.x.abs() * TILE_WIDTH;
                         let height = size.y.abs() * TILE_HEIGHT;
-                        let offset_x = match vel.prev_going_right {
-                            true => width / 2.0,
-                            false => -width / 2.0,
-                        };
+                        let offset_x = width / 2.;
                         let offset_y = height
                             * 0.25
                             * match ducking {
@@ -129,11 +127,13 @@ impl<'s> System<'s> for PlayerInputSystem {
                             };
                         // Multiply height by one quarter to go from half height to upper body
                         let offset = Vec2::new(offset_x, offset_y);
-                        let p = pos.0.to_vec2().add(&offset);
+                        // let p = pos.0.to_vec2().add(&offset);
+                        let p = offset;
                         let s = Vec2::new(width, TILE_HEIGHT / 4.0);
                         let t = Team::GoodGuys;
                         entity_builder::initialize_damage_box(
                             world,
+                            Some(entity),
                             &p.clone(),
                             &s.clone(),
                             &t.clone(),

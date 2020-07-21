@@ -180,8 +180,14 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
                 Events::FireProjectile(pos, vel, team) => {
                     entity_builder::initialize_projectile(data.world, pos, vel, team);
                 }
-                Events::CreateDamageBox(pos, size, team) => {
-                    entity_builder::initialize_damage_box(data.world, pos, size, team);
+                Events::CreateDamageBox(parent, pos, size, team) => {
+                    entity_builder::initialize_damage_box(
+                        data.world,
+                        parent.clone(),
+                        pos,
+                        size,
+                        team,
+                    );
                 }
                 _ => {}
             }
@@ -314,9 +320,14 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             &["apply_collision_system"],
         );
         dispatcher_builder.add(
+            systems::physics::ChildPositionSystem,
+            "child_position_system",
+            &["apply_velocity_system"],
+        );
+        dispatcher_builder.add(
             systems::physics::ApplyStickySystem,
             "apply_sticky_system",
-            &["apply_velocity_system"],
+            &["child_position_system"],
         );
 
         dispatcher_builder.add(

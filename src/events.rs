@@ -2,6 +2,7 @@ use crate::{
     components::game::{SerializedObject, Team},
     utils::Vec2,
 };
+use amethyst::ecs::prelude::Entity;
 
 #[derive(Debug, Clone)]
 pub enum Events {
@@ -19,7 +20,7 @@ pub enum Events {
     // Pos, vel, team
     FireProjectile(Vec2, Vec2, Team),
     // Pos, size, team
-    CreateDamageBox(Vec2, Vec2, Team),
+    CreateDamageBox(Option<Entity>, Vec2, Vec2, Team),
 }
 
 #[derive(Debug, Clone)]
