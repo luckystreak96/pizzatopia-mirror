@@ -91,7 +91,7 @@ impl<'s> System<'s> for PlayerInputSystem {
 
             if attacking {
                 let animation = AnimationCounter::new(
-                    0.2,
+                    0.15,
                     AnimationId::None,
                     Arc::new(move |world| {
                         let pos: Position;

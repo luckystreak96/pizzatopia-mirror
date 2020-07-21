@@ -210,6 +210,8 @@ pub mod entity_builder {
         let animation = AnimationFactory::create_sprite_animation(world);
         let attack_animation = AnimationFactory::create_bob(world, 10.0);
 
+        let scale = Scale(Vec2::new(1., 1.));
+
         // Data common to both editor and entity
         let mut builder = world
             .create_entity()
@@ -218,7 +220,7 @@ pub mod entity_builder {
             .with(helper.transform.clone())
             .with(helper.sprite_render.clone())
             .with(helper.pos.clone())
-            .with(helper.scale.clone())
+            .with(scale.clone())
             .with(helper.layer)
             .with(Transparent)
             .with(GravityDirection(CollisionDirection::FromTop))
@@ -256,7 +258,7 @@ pub mod entity_builder {
                 .with(helper.layer)
                 .with(helper.sprite_render.clone())
                 .with(helper.pos.clone().with_depth(helper.pos.0.z + 1.0))
-                .with(helper.scale.clone())
+                .with(scale.clone())
                 .with(Transparent)
                 .with(Resettable)
                 .with(InstanceEntityId(Some(entity.id())))
@@ -384,7 +386,7 @@ pub mod entity_builder {
             .with(Reflect)
             .with(collision_points)
             .with(Collidee::new())
-            .with(TimedExistence(0.1))
+            .with(TimedExistence(0.2))
             .with(team.clone())
             .with(Damage(1))
             .build();

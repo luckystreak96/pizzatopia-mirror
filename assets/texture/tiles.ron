@@ -58,5 +58,19 @@ List((
             width: 128,
             height: 128,
         ),
+        // Grass3
+        (
+            x: 0,
+            y: 256,
+            width: 128,
+            height: 128,
+        ),
+        // Grass4
+        (
+            x: 128,
+            y: 256,
+            width: 128,
+            height: 128,
+        ),
     ],
 ))
