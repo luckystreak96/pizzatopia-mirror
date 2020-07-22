@@ -63,6 +63,7 @@ pub mod entity_builder {
 
     use log::error;
 
+    use crate::components::ai::BasicAttackAi;
     use crate::components::game::{AnimatedTile, AnimatedTileComp, Block};
     use crate::components::physics::ChildTo;
     use std::collections::BTreeMap;
@@ -236,20 +237,23 @@ pub mod entity_builder {
             builder = builder.with(Player(player)).with(Team::GoodGuys);
         } else {
             builder = builder
-                .with(BasicWalkAi::default())
-                .with(BasicShootAi::default())
+                // .with(BasicWalkAi::default())
+                // .with(BasicShootAi::default())
+                .with(BasicAttackAi::default())
                 .with(Team::BadGuys)
                 .with(Damage(1));
         }
         let entity = builder.build();
 
-        initialize_shield(
-            world,
-            Some(entity),
-            &Vec2::new(helper.size.x / 2., helper.size.y / 4.),
-            &Vec2::new(TILE_WIDTH / 4., TILE_HEIGHT / 2.),
-            &Team::GoodGuys,
-        );
+        if player {
+            initialize_shield(
+                world,
+                Some(entity),
+                &Vec2::new(helper.size.x / 2., helper.size.y / 4.),
+                &Vec2::new(TILE_WIDTH / 4., TILE_HEIGHT / 2.),
+                &Team::GoodGuys,
+            );
+        }
 
         // create editor entity
         if !ignore_editor {
@@ -451,6 +455,7 @@ pub mod entity_builder {
             .with(velocity)
             .with(Reflect)
             .with(collision_points)
+            .with(Projectile)
             .with(Collidee::new())
             .with(TimedExistence(0.2))
             .with(team.clone())

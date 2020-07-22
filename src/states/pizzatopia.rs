@@ -298,6 +298,11 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             &["player_input_system"],
         );
         dispatcher_builder.add(
+            systems::ai::BasicAttackAiSystem,
+            "basic_attack_ai_system",
+            &["player_input_system"],
+        );
+        dispatcher_builder.add(
             systems::physics::PlatformCollisionSystem,
             "platform_collision_system",
             &[

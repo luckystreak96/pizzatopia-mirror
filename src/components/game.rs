@@ -39,11 +39,12 @@ impl Component for Team {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum CollisionEvent {
-    // Entity id and damage dealt
-    EnemyCollision(u32, u32),
+    // (Entity getting hit id, entity hitting id, damage dealt)
+    EnemyCollision(u32, u32, u32),
     ProjectileReflection(u32, Team),
+    ProjectileBlock(u32),
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]

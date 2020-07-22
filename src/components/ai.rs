@@ -25,3 +25,11 @@ pub struct BasicShootAi {
 impl Component for BasicShootAi {
     type Storage = DenseVecStorage<Self>;
 }
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct BasicAttackAi {
+    pub counter: f32,
+}
+impl Component for BasicAttackAi {
+    type Storage = DenseVecStorage<Self>;
+}

@@ -87,7 +87,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
     ) {
         for event in event_channel.read(&mut self.reader) {
             match event {
-                CollisionEvent::EnemyCollision(entity_id, damage) => {
+                CollisionEvent::EnemyCollision(entity_id, _hitter, damage) => {
                     if let Some(iframes) = &mut invincibilities.get_mut(entities.entity(*entity_id))
                     {
                         if let Some(health) = &mut healths.get_mut(entities.entity(*entity_id)) {
@@ -127,6 +127,11 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                             vel.vel = vel.vel.mul_f32(-1.0);
                         }
                     }
+                }
+                CollisionEvent::ProjectileBlock(entity_id) => {
+                    entities
+                        .delete(entities.entity(*entity_id))
+                        .expect("Failed to delete blocked projectile.");
                 }
             }
         }

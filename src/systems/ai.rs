@@ -16,10 +16,14 @@ use amethyst::{
         SystemDesc, Transform,
     },
     derive::SystemDesc,
-    ecs::{Entities, Join, Read, ReadStorage, System, SystemData, World, Write, WriteStorage},
+    ecs::{
+        Entities, Join, LazyUpdate, Read, ReadStorage, System, SystemData, World, Write,
+        WriteStorage,
+    },
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 
+use crate::components::ai::BasicAttackAi;
 use crate::{
     audio::{play_damage_sound, Sounds},
     components::{
@@ -108,6 +112,34 @@ impl<'s> System<'s> for BasicShootAiSystem {
                     velocity,
                     team.clone(),
                 ));
+            }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct BasicAttackAiSystem;
+
+impl<'s> System<'s> for BasicAttackAiSystem {
+    type SystemData = (
+        WriteStorage<'s, BasicAttackAi>,
+        ReadStorage<'s, Team>,
+        Write<'s, EventChannel<Events>>,
+        Read<'s, Time>,
+        Entities<'s>,
+    );
+
+    fn run(&mut self, (mut shoot_ai, teams, mut events_channel, time, entities): Self::SystemData) {
+        for (shoot, team, entity) in (&mut shoot_ai, &teams, &entities).join() {
+            shoot.counter += time.delta_seconds();
+
+            if shoot.counter > 2.0 {
+                shoot.counter = 0.0;
+
+                let parent = Some(entity);
+                let pos = Vec2::new(TILE_WIDTH / 1.5, TILE_HEIGHT / 4.);
+                let size = Vec2::new(TILE_WIDTH, TILE_HEIGHT / 4.);
+                events_channel.single_write(Events::CreateDamageBox(parent, pos, size, *team));
             }
         }
     }

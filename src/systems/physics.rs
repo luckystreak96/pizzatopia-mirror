@@ -37,6 +37,7 @@ use amethyst::{
 };
 use num_traits::identities::Zero;
 use rstar::{RTree, AABB};
+use std::collections::HashSet;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CollisionDirection {
@@ -473,14 +474,26 @@ impl<'s> System<'s> for ActorCollisionSystem {
         ReadStorage<'s, Damage>,
         ReadStorage<'s, Projectile>,
         ReadStorage<'s, Reflect>,
+        ReadStorage<'s, Block>,
         Entities<'s>,
         Write<'s, EventChannel<CollisionEvent>>,
     );
 
     fn run(
         &mut self,
-        (positions, coll_points, teams, damages, projectiles, reflects, entities, mut channel): Self::SystemData,
+        (
+            positions,
+            coll_points,
+            teams,
+            damages,
+            projectiles,
+            reflects,
+            blocks,
+            entities,
+            mut channel,
+        ): Self::SystemData,
     ) {
+        let mut result = Vec::new();
         for (ent_pos1, coll_point1, entity1) in (&positions, &coll_points, &entities).join() {
             let pos1 = Vec2::new(ent_pos1.0.x, ent_pos1.0.y);
             let (top_left1, bottom_right1) =
@@ -509,24 +522,47 @@ impl<'s> System<'s> for ActorCollisionSystem {
                             _ => {
                                 // It's not necessary to check both permutations, the outer loop does this already
                                 if let Some(damage) = damages.get(entity1) {
-                                    channel.single_write(CollisionEvent::EnemyCollision(
+                                    result.push(CollisionEvent::EnemyCollision(
                                         entity2.id(),
+                                        entity1.id(),
                                         damage.0,
-                                    ))
+                                    ));
                                 }
                                 if reflects.get(entity1).is_some()
                                     && projectiles.get(entity2).is_some()
                                 {
-                                    channel.single_write(CollisionEvent::ProjectileReflection(
+                                    result.push(CollisionEvent::ProjectileReflection(
                                         entity2.id(),
                                         *team1,
-                                    ))
+                                    ));
+                                }
+                                if blocks.get(entity1).is_some()
+                                    && projectiles.get(entity2).is_some()
+                                {
+                                    result.push(CollisionEvent::ProjectileBlock(entity2.id()));
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+        let block_ids: HashSet<u32> = result
+            .iter()
+            .map(|e| match e {
+                CollisionEvent::ProjectileBlock(id) => *id,
+                _ => 999999999,
+            })
+            .collect();
+        let no_collide_when_block: Vec<&CollisionEvent> = result
+            .iter()
+            .filter(|e| match e {
+                CollisionEvent::EnemyCollision(_, projectile, _) => !block_ids.contains(projectile),
+                _ => true,
+            })
+            .collect();
+        for event in no_collide_when_block {
+            channel.single_write(*event);
         }
     }
 }
