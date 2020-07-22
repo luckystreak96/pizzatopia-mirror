@@ -71,6 +71,12 @@ impl Component for Reflect {
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Block;
+impl Component for Block {
+    type Storage = NullStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Projectile;
 impl Component for Projectile {
     type Storage = NullStorage<Self>;

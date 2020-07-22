@@ -63,9 +63,9 @@ pub mod entity_builder {
 
     use log::error;
 
-    use crate::components::game::{AnimatedTile, AnimatedTileComp};
-    use std::collections::BTreeMap;
+    use crate::components::game::{AnimatedTile, AnimatedTileComp, Block};
     use crate::components::physics::ChildTo;
+    use std::collections::BTreeMap;
 
     pub fn entity_to_serialized_object(world: &mut World, id: u32) -> SerializedObject {
         let entity = world.entities().entity(id);
@@ -243,6 +243,14 @@ pub mod entity_builder {
         }
         let entity = builder.build();
 
+        initialize_shield(
+            world,
+            Some(entity),
+            &Vec2::new(helper.size.x / 2., helper.size.y / 4.),
+            &Vec2::new(TILE_WIDTH / 4., TILE_HEIGHT / 2.),
+            &Team::GoodGuys,
+        );
+
         // create editor entity
         if !ignore_editor {
             world
@@ -355,6 +363,57 @@ pub mod entity_builder {
         return entity.id();
     }
 
+    pub fn initialize_shield(
+        world: &mut World,
+        parent: Option<Entity>,
+        pos: &Vec2,
+        size: &Vec2,
+        team: &Team,
+    ) -> u32 {
+        let mut transform = Transform::default();
+        transform.set_translation_xyz(pos.x, pos.y, DEPTH_PROJECTILES);
+
+        let sprite_sheet_type = SpriteSheetType::Tiles;
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(sprite_sheet_type as u8)]
+            .clone();
+        // Assign the sprite
+        let sprite_render = SpriteRender {
+            sprite_sheet: sprite_sheet.clone(),
+            sprite_number: 0,
+        };
+
+        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
+
+        let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
+        let collision_points = PlatformCollisionPoints::plus(size.x / 2., size.y / 2.);
+        let velocity: Velocity = Velocity::default();
+
+        // Data common to both editor and entity
+        let mut entity = world
+            .create_entity()
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(position.clone())
+            .with(scale.clone())
+            .with(Transparent)
+            .with(velocity)
+            .with(Block)
+            .with(collision_points)
+            .with(Collidee::new())
+            .with(team.clone());
+        if let Some(parent) = parent {
+            let parent = ChildTo {
+                parent: parent,
+                offset: pos.clone(),
+            };
+            entity = entity.with(parent);
+        }
+        let entity = entity.build();
+
+        return entity.id();
+    }
+
     pub fn initialize_damage_box(
         world: &mut World,
         parent: Option<Entity>,
@@ -397,7 +456,7 @@ pub mod entity_builder {
             .with(team.clone())
             .with(Damage(1));
         if let Some(parent) = parent {
-            let parent = ChildTo{
+            let parent = ChildTo {
                 parent: parent,
                 offset: pos.clone(),
             };

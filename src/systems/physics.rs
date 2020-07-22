@@ -14,6 +14,7 @@ use amethyst::{
 };
 use log::debug;
 
+use crate::components::game::Block;
 use crate::components::physics::ChildTo;
 use crate::{
     components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team},
@@ -247,15 +248,22 @@ impl<'s> System<'s> for ChildPositionSystem {
         ReadStorage<'s, Velocity>,
         ReadStorage<'s, ChildTo>,
         WriteStorage<'s, Position>,
+        ReadStorage<'s, Ducking>,
+        ReadStorage<'s, Block>,
         Entities<'s>,
     );
 
-    fn run(&mut self, (velocities, children, mut positions, entities): Self::SystemData) {
+    fn run(
+        &mut self,
+        (velocities, children, mut positions, duckings, blockers, entities): Self::SystemData,
+    ) {
         for (child, entity) in (&children, &entities).join() {
             let going_right = velocities
                 .get(child.parent)
                 .unwrap_or(&Velocity::default())
                 .prev_going_right;
+            let ducking = duckings.get(child.parent).is_some();
+            let blocking = blockers.get(entity).is_some();
             let parent_pos = positions
                 .get(child.parent)
                 .unwrap_or(&Position(Vec3::default()))
@@ -268,8 +276,20 @@ impl<'s> System<'s> for ChildPositionSystem {
                     true => 1.,
                     false => -1.,
                 };
+            let offset_y = {
+                match blocking {
+                    true => {
+                        child.offset.y
+                            * match ducking {
+                                true => -1.,
+                                false => 1.,
+                            }
+                    }
+                    false => child.offset.y,
+                }
+            };
             position.0.x = offset_x + parent_pos.x;
-            position.0.y = child.offset.y + parent_pos.y;
+            position.0.y = offset_y + parent_pos.y;
         }
     }
 }

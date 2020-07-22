@@ -1,3 +1,4 @@
+use crate::components::game::Block;
 use crate::{
     animations::AnimationId,
     audio::{initialise_audio, Sounds},
@@ -124,6 +125,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         data.world.register::<CameraTarget>();
         data.world.register::<SpriteSheetType>();
         data.world.register::<Tile>();
+        data.world.register::<Block>();
         // Created in Pizzatopia and system in Editor
         data.world.register::<SizeForEditorGrid>();
         // Created in Pizzatopia and system in Editor
