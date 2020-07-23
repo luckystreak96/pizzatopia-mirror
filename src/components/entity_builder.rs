@@ -64,7 +64,9 @@ pub mod entity_builder {
     use log::error;
 
     use crate::components::ai::BasicAttackAi;
-    use crate::components::game::{AnimatedTile, AnimatedTileComp, Block};
+    use crate::components::game::{
+        AnimatedTile, AnimatedTileComp, Block, Drops, PicksThingsUp, Pickup,
+    };
     use crate::components::physics::ChildTo;
     use std::collections::BTreeMap;
 
@@ -231,16 +233,18 @@ pub mod entity_builder {
             .with(collision_points)
             .with(Collidee::new())
             .with(Health(5))
+            .with(PicksThingsUp::default())
             .with(Invincibility(0.0));
         // .with(Sticky(false))
         if player {
             builder = builder.with(Player(player)).with(Team::GoodGuys);
         } else {
             builder = builder
-                // .with(BasicWalkAi::default())
-                // .with(BasicShootAi::default())
-                .with(BasicAttackAi::default())
+                .with(BasicWalkAi::default())
+                .with(BasicShootAi::default())
+                // .with(BasicAttackAi::default())
                 .with(Team::BadGuys)
+                .with(Drops(10))
                 .with(Damage(1));
         }
         let entity = builder.build();
@@ -325,6 +329,49 @@ pub mod entity_builder {
         }
     }
 
+    pub fn initialize_pickup(world: &mut World, pos: &Vec2, vel: &Vec2) -> u32 {
+        let mut transform = Transform::default();
+        transform.set_translation_xyz(pos.x, pos.y, DEPTH_PROJECTILES);
+
+        let sprite_sheet_type = SpriteSheetType::Tiles;
+        let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
+            [&(sprite_sheet_type as u8)]
+            .clone();
+        // Assign the sprite
+        let sprite_render = SpriteRender {
+            sprite_sheet: sprite_sheet.clone(),
+            sprite_number: 2,
+        };
+
+        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
+
+        let size = Vec2::new(TILE_WIDTH / 2., TILE_HEIGHT / 2.);
+        let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
+        let collision_points = PlatformCollisionPoints::plus(size.x / 2., size.y / 2.);
+        let mut velocity = Velocity::default();
+        velocity.vel = vel.clone();
+
+        // Data common to both editor and entity
+        let entity = world
+            .create_entity()
+            .with(transform.clone())
+            .with(sprite_render.clone())
+            .with(position.clone())
+            .with(scale.clone())
+            .with(Transparent)
+            .with(velocity)
+            .with(collision_points)
+            .with(Collidee::new())
+            .with(TimedExistence(20.0))
+            .with(Team::Neutral)
+            .with(GravityDirection::default())
+            .with(Grounded(false))
+            .with(Pickup)
+            .build();
+
+        return entity.id();
+    }
+
     pub fn initialize_projectile(world: &mut World, pos: &Vec2, vel: &Vec2, team: &Team) -> u32 {
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, DEPTH_PROJECTILES);
@@ -341,7 +388,7 @@ pub mod entity_builder {
 
         let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
 
-        let size = Vec2::new(TILE_WIDTH, TILE_HEIGHT);
+        let size = Vec2::new(TILE_WIDTH / 3.0, TILE_HEIGHT / 3.0);
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
         let mut velocity = Velocity::default();

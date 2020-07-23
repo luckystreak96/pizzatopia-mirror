@@ -1,4 +1,4 @@
-use crate::components::game::Block;
+use crate::components::game::{Block, Drops, PicksThingsUp, Pickup};
 use crate::{
     animations::AnimationId,
     audio::{initialise_audio, Sounds},
@@ -83,7 +83,7 @@ pub const TILE_HEIGHT: f32 = 128.0;
 pub const MAX_FALL_SPEED: f32 = 20.0;
 pub const MAX_RUN_SPEED: f32 = 20.0;
 
-pub const FRICTION: f32 = 0.06;
+pub const FRICTION: f32 = 0.16;
 
 #[derive(Debug, EventReader, Clone)]
 #[reader(MyEventReader)]
@@ -126,6 +126,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         data.world.register::<SpriteSheetType>();
         data.world.register::<Tile>();
         data.world.register::<Block>();
+        data.world.register::<Pickup>();
+        data.world.register::<PicksThingsUp>();
+        data.world.register::<Drops>();
         // Created in Pizzatopia and system in Editor
         data.world.register::<SizeForEditorGrid>();
         // Created in Pizzatopia and system in Editor

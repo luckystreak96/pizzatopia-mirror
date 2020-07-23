@@ -473,24 +473,6 @@
                 animation: None,
             ),
             pos: Some((
-                x: 0,
-                y: 128,
-            )),
-            size: Some((
-                x: 128,
-                y: 128,
-            )),
-            sprite: Some((
-                sheet: Tiles,
-                number: 8,
-            )),
-            layer: Some(Back),
-        ),
-        (
-            object_type: StaticTile(
-                animation: None,
-            ),
-            pos: Some((
                 x: 128,
                 y: 128,
             )),
@@ -1997,6 +1979,42 @@
                 number: 8,
             )),
             layer: Some(Back),
+        ),
+        (
+            object_type: StaticTile(
+                animation: None,
+            ),
+            pos: Some((
+                x: 0,
+                y: 128,
+            )),
+            size: Some((
+                x: 128,
+                y: 128,
+            )),
+            sprite: Some((
+                sheet: Tiles,
+                number: 9,
+            )),
+            layer: Some(Middle),
+        ),
+        (
+            object_type: StaticTile(
+                animation: None,
+            ),
+            pos: Some((
+                x: 0,
+                y: 256,
+            )),
+            size: Some((
+                x: 128,
+                y: 128,
+            )),
+            sprite: Some((
+                sheet: Tiles,
+                number: 8,
+            )),
+            layer: Some(Middle),
         ),
     ]),
 )

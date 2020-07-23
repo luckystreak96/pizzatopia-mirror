@@ -178,7 +178,7 @@ impl Component for Sticky {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct GravityDirection(pub CollisionDirection);
 
 impl Component for GravityDirection {

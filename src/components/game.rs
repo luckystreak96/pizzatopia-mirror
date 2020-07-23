@@ -45,11 +45,33 @@ pub enum CollisionEvent {
     EnemyCollision(u32, u32, u32),
     ProjectileReflection(u32, Team),
     ProjectileBlock(u32),
+    // Picker, pickee
+    ItemCollect(u32, u32),
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Player(pub bool);
 impl Component for Player {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Pickup;
+impl Component for Pickup {
+    type Storage = NullStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct PicksThingsUp {
+    pub amount_gathered: u32,
+}
+impl Component for PicksThingsUp {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Drops(pub u32);
+impl Component for Drops {
     type Storage = DenseVecStorage<Self>;
 }
 

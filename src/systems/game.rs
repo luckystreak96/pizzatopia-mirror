@@ -34,14 +34,18 @@ use amethyst::{
     ecs::ReadExpect,
 };
 
+use crate::components::entity_builder::entity_builder::initialize_pickup;
+use crate::components::game::{Drops, PicksThingsUp};
+use crate::events::Events;
 use crate::{
     audio::{play_damage_sound, Sounds},
     components::editor::{EditorCursor, EditorFlag},
     utils::{Vec2, Vec3},
 };
 use amethyst::prelude::WorldExt;
+use rand::{random, Rng};
 
-pub const IFRAMES_PER_HIT: f32 = 1.5;
+pub const IFRAMES_PER_HIT: f32 = 1.;
 
 #[derive(SystemDesc)]
 #[system_desc(name(EnemyCollisionSystemDesc))]
@@ -63,8 +67,10 @@ impl<'s> System<'s> for EnemyCollisionSystem {
         WriteStorage<'s, Team>,
         WriteStorage<'s, Velocity>,
         WriteStorage<'s, Position>,
+        WriteStorage<'s, PicksThingsUp>,
         Entities<'s>,
         Read<'s, EventChannel<CollisionEvent>>,
+        Read<'s, LazyUpdate>,
         Read<'s, AssetStorage<Source>>,
         ReadExpect<'s, Sounds>,
         Option<Read<'s, Output>>,
@@ -78,8 +84,10 @@ impl<'s> System<'s> for EnemyCollisionSystem {
             mut teams,
             mut velocities,
             mut positions,
+            mut pickers,
             entities,
             event_channel,
+            lazy,
             storage,
             sounds,
             audio_output,
@@ -87,7 +95,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
     ) {
         for event in event_channel.read(&mut self.reader) {
             match event {
-                CollisionEvent::EnemyCollision(entity_id, _hitter, damage) => {
+                CollisionEvent::EnemyCollision(entity_id, hitter, damage) => {
                     if let Some(iframes) = &mut invincibilities.get_mut(entities.entity(*entity_id))
                     {
                         if let Some(health) = &mut healths.get_mut(entities.entity(*entity_id)) {
@@ -105,13 +113,36 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                                 if health.0 == 0 {
                                     let entity = entities.entity(*entity_id);
                                     if let Some(pos) = positions.get_mut(entity) {
+                                        let pos_clone = pos.clone();
+                                        lazy.exec_mut(move |world| {
+                                            let drops = {
+                                                let drops = world.read_storage::<Drops>();
+                                                let amount = drops.get(entity).unwrap_or(&Drops(0));
+                                                amount.0
+                                            };
+                                            for _i in 0..drops {
+                                                let mut rng = rand::thread_rng();
+                                                let x_vel: f32 = rng.gen_range(-2.0, 2.0);
+                                                let y_vel: f32 = rng.gen_range(7.0, 15.0);
+                                                initialize_pickup(
+                                                    world,
+                                                    &pos_clone.0.to_vec2(),
+                                                    &Vec2::new(x_vel, y_vel),
+                                                );
+                                            }
+                                        });
                                         pos.0.y = -999.;
                                     }
                                 }
 
-                                if let Some(vel) = velocities.get_mut(entities.entity(*entity_id)) {
-                                    let knock_back = Vec2::new(-8., 6.);
-                                    vel.vel = vel.vel.add(&match vel.prev_going_right {
+                                let hitter = entities.entity(*hitter);
+                                let hitee = entities.entity(*entity_id);
+                                if let Some(vel) = velocities.get_mut(hitee) {
+                                    let hitter_pos = positions.get(hitter).unwrap().clone();
+                                    let hitee_pos = positions.get(hitee).unwrap().clone();
+                                    let going_right = hitter_pos.0.x < hitee_pos.0.x;
+                                    let knock_back = Vec2::new(8., 6.);
+                                    vel.vel = vel.vel.add(&match going_right {
                                         true => knock_back,
                                         false => knock_back.mul(&Vec2::new(-1., 1.0)),
                                     });
@@ -132,6 +163,14 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                     entities
                         .delete(entities.entity(*entity_id))
                         .expect("Failed to delete blocked projectile.");
+                }
+                CollisionEvent::ItemCollect(character_id, item_id) => {
+                    let picker = pickers.get_mut(entities.entity(*character_id)).unwrap();
+                    picker.amount_gathered += 1;
+                    info!("Picked up item! New amount: {:?}", picker.amount_gathered);
+                    entities
+                        .delete(entities.entity(*item_id))
+                        .expect("Failed to delete pickup");
                 }
             }
         }

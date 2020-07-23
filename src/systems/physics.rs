@@ -14,7 +14,7 @@ use amethyst::{
 };
 use log::debug;
 
-use crate::components::game::Block;
+use crate::components::game::{Block, PicksThingsUp, Pickup};
 use crate::components::physics::ChildTo;
 use crate::{
     components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team},
@@ -35,12 +35,15 @@ use amethyst::{
     },
     input::{InputHandler, StringBindings},
 };
+use derivative::Derivative;
 use num_traits::identities::Zero;
 use rstar::{RTree, AABB};
 use std::collections::HashSet;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Derivative)]
+#[derivative(Default)]
 pub enum CollisionDirection {
+    #[derivative(Default)]
     FromTop,
     FromLeft,
     FromBottom,
@@ -475,6 +478,8 @@ impl<'s> System<'s> for ActorCollisionSystem {
         ReadStorage<'s, Projectile>,
         ReadStorage<'s, Reflect>,
         ReadStorage<'s, Block>,
+        ReadStorage<'s, PicksThingsUp>,
+        ReadStorage<'s, Pickup>,
         Entities<'s>,
         Write<'s, EventChannel<CollisionEvent>>,
     );
@@ -489,6 +494,8 @@ impl<'s> System<'s> for ActorCollisionSystem {
             projectiles,
             reflects,
             blocks,
+            pickers,
+            pickeds,
             entities,
             mut channel,
         ): Self::SystemData,
@@ -518,7 +525,16 @@ impl<'s> System<'s> for ActorCollisionSystem {
                             (Team::GoodGuys, Team::GoodGuys) => {}
                             (Team::BadGuys, Team::BadGuys) => {}
                             (Team::Neutral, _) => {}
-                            (_, Team::Neutral) => {}
+                            (_, Team::Neutral) => {
+                                let picker = pickers.get(entity1).is_some();
+                                let picked = pickeds.get(entity2).is_some();
+                                if picker && picked {
+                                    result.push(CollisionEvent::ItemCollect(
+                                        entity1.id(),
+                                        entity2.id(),
+                                    ))
+                                }
+                            }
                             _ => {
                                 // It's not necessary to check both permutations, the outer loop does this already
                                 if let Some(damage) = damages.get(entity1) {

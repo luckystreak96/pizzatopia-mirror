@@ -24,6 +24,7 @@ use amethyst::{
 };
 
 use crate::components::ai::BasicAttackAi;
+use crate::components::physics::Grounded;
 use crate::{
     audio::{play_damage_sound, Sounds},
     components::{
@@ -43,7 +44,7 @@ impl BasicWalkAiSystem {
     fn lerper(&self, target: f32) -> Lerper {
         let mut result = Lerper::default();
         result.target = Vec2::new(target, 0.0);
-        result.amount = 0.25;
+        result.amount = 0.5;
         result.epsilon = 0.05;
         result
     }
@@ -54,26 +55,33 @@ impl<'s> System<'s> for BasicWalkAiSystem {
         WriteStorage<'s, Velocity>,
         WriteStorage<'s, BasicWalkAi>,
         ReadStorage<'s, Collidee>,
+        ReadStorage<'s, Grounded>,
         Read<'s, Time>,
     );
 
-    fn run(&mut self, (mut velocities, mut ai, collidees, time): Self::SystemData) {
-        for (velocity, ai, collidee) in (&mut velocities, &mut ai, &collidees).join() {
+    fn run(&mut self, (mut velocities, mut ai, collidees, groundeds, time): Self::SystemData) {
+        for (velocity, ai, collidee, grounded) in
+            (&mut velocities, &mut ai, &collidees, (&groundeds).maybe()).join()
+        {
             if let Some(_col) = &collidee.horizontal {
                 ai.going_right = !ai.going_right;
             }
 
             velocity.prev_going_right = ai.going_right;
 
-            let target = WALK_SPEED
-                * match ai.going_right {
-                    true => 1.,
-                    false => -1.,
-                };
-            let result = self
-                .lerper(target)
-                .linear_lerp(velocity.vel, time.time_scale());
-            velocity.vel.x = result.x;
+            if let Some(grounded) = grounded {
+                if grounded.0 {
+                    let target = WALK_SPEED
+                        * match ai.going_right {
+                            true => 1.,
+                            false => -1.,
+                        };
+                    let result = self
+                        .lerper(target)
+                        .linear_lerp(velocity.vel, time.time_scale());
+                    velocity.vel.x = result.x;
+                }
+            }
         }
     }
 }
@@ -107,11 +115,13 @@ impl<'s> System<'s> for BasicShootAiSystem {
                 };
             if shoot.counter > 2.0 {
                 shoot.counter = 0.0;
-                events_channel.single_write(Events::FireProjectile(
-                    pos.0.to_vec2(),
-                    velocity,
-                    team.clone(),
-                ));
+
+                let mut pos = pos.0.to_vec2();
+                pos.y += match rand::random() {
+                    true => TILE_HEIGHT / 4.0,
+                    false => -TILE_HEIGHT / 4.,
+                };
+                events_channel.single_write(Events::FireProjectile(pos, velocity, team.clone()));
             }
         }
     }

@@ -1,3 +1,4 @@
+use crate::components::game::Drops;
 use crate::{
     components::game::{SerializedObject, Team},
     utils::Vec2,
@@ -19,7 +20,7 @@ pub enum Events {
     HoverGameObject,
     // Pos, vel, team
     FireProjectile(Vec2, Vec2, Team),
-    // Pos, size, team
+    // Parent, Pos, size, team
     CreateDamageBox(Option<Entity>, Vec2, Vec2, Team),
 }
 

@@ -2235,6 +2235,7 @@ dependencies = [
  "log",
  "num-traits 0.1.43",
  "pizzatopia_utils",
+ "rand 0.7.3",
  "ron",
  "rstar",
  "serde",
