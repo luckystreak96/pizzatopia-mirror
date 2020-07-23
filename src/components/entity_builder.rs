@@ -241,7 +241,7 @@ pub mod entity_builder {
         } else {
             builder = builder
                 .with(BasicWalkAi::default())
-                .with(BasicShootAi::default())
+                // .with(BasicShootAi::default())
                 // .with(BasicAttackAi::default())
                 .with(Team::BadGuys)
                 .with(Drops(10))
@@ -362,7 +362,7 @@ pub mod entity_builder {
             .with(velocity)
             .with(collision_points)
             .with(Collidee::new())
-            .with(TimedExistence(20.0))
+            .with(TimedExistence(10.0))
             .with(Team::Neutral)
             .with(GravityDirection::default())
             .with(Grounded(false))

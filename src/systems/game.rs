@@ -109,6 +109,53 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                                     &storage,
                                     audio_output.as_ref().map(|o| o.deref()),
                                 );
+
+                                if dmg > 0 {
+                                    let entity = entities.entity(*entity_id);
+                                    if let Some(pos) = positions.get(entity) {
+                                        let pos_clone = pos.clone();
+                                        lazy.exec_mut(move |world| {
+                                            let player = {
+                                                let storage = world.read_storage::<Player>();
+                                                let player =
+                                                    storage.get(entity).unwrap_or(&Player(false));
+                                                player.0
+                                            };
+                                            if player {
+                                                let drops = {
+                                                    let mut storage =
+                                                        world.write_storage::<PicksThingsUp>();
+                                                    let mut def = PicksThingsUp::default();
+                                                    let picked_up =
+                                                        storage.get_mut(entity).unwrap_or(&mut def);
+                                                    let total_dropped;
+                                                    if picked_up.amount_gathered <= 2 {
+                                                        total_dropped = picked_up.amount_gathered;
+                                                        picked_up.amount_gathered = 0;
+                                                    } else {
+                                                        total_dropped = 2;
+                                                        picked_up.amount_gathered -= 2;
+                                                    }
+                                                    total_dropped
+                                                };
+                                                for _i in 0..drops {
+                                                    let mut rng = rand::thread_rng();
+                                                    let x_vel: f32 = rng.gen_range(-4.0, 4.0);
+                                                    let y_vel: f32 = rng.gen_range(7.0, 15.0);
+                                                    initialize_pickup(
+                                                        world,
+                                                        &pos_clone
+                                                            .0
+                                                            .to_vec2()
+                                                            .add(&Vec2::new(0.0, TILE_HEIGHT)),
+                                                        &Vec2::new(x_vel, y_vel),
+                                                    );
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+
                                 warn!("Health is now {}", health.0);
                                 if health.0 == 0 {
                                     let entity = entities.entity(*entity_id);
