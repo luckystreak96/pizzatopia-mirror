@@ -1,7 +1,7 @@
 [package]
 name = "pizzatopia"
 version = "0.0.1"
-authors = []
+authors = ["Yanik Lyth <yanik.lyth@gmail.com>"]
 edition = "2018"
 build = "build.rs"
 
