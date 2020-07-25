@@ -2014,7 +2014,7 @@
                 sheet: Tiles,
                 number: 8,
             )),
-            layer: Some(Middle),
+            layer: Some(Back),
         ),
     ]),
 )

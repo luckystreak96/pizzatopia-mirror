@@ -1,9 +1,7 @@
 use crate::components::game::Drops;
-use crate::{
-    components::game::{SerializedObject, Team},
-    utils::Vec2,
-};
+use crate::components::game::{SerializedObject, Team};
 use amethyst::ecs::prelude::Entity;
+use ultraviolet::Vec2;
 
 #[derive(Debug, Clone)]
 pub enum Events {

@@ -2,10 +2,7 @@ use amethyst::{
     assets::{AssetStorage, Handle, Loader, PrefabData, ProgressCounter},
     core::transform::Transform,
     derive::PrefabData,
-    ecs::{
-        prelude::{Component, DenseVecStorage},
-        Entity, WriteStorage,
-    },
+    ecs::{prelude::*, Entity, WriteStorage},
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     Error,
 };
@@ -14,10 +11,29 @@ use serde::{Deserialize, Serialize};
 use crate::{
     states::pizzatopia::{TILE_HEIGHT, TILE_WIDTH},
     systems::physics::CollisionDirection,
-    utils::{Vec2, Vec3},
 };
 use derivative::Derivative;
 use rstar::{RTreeObject, AABB};
+use std::ops::Mul;
+use ultraviolet::Vec2;
+
+#[derive(Copy, Clone, Default)]
+pub struct MoveIntent {
+    pub vec: Vec2,
+}
+impl Component for MoveIntent {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Copy, Clone, Derivative)]
+#[derivative(Default)]
+pub struct Orientation {
+    #[derivative(Default(value = "Vec2::new(-1.0, 0.0)"))]
+    pub vec: Vec2,
+}
+impl Component for Orientation {
+    type Storage = DenseVecStorage<Self>;
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CollisionSideOfBlock {
@@ -155,23 +171,6 @@ impl Component for Grounded {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Derivative, Copy, Clone)]
-#[derivative(Default)]
-pub struct Velocity {
-    pub vel: Vec2,
-    pub prev_going_right: bool,
-}
-
-impl Velocity {
-    pub fn project_move(&self, time_scale: f32) -> Vec2 {
-        self.vel.mul_f32(time_scale)
-    }
-}
-
-impl Component for Velocity {
-    type Storage = DenseVecStorage<Self>;
-}
-
 pub struct Sticky(pub bool);
 
 impl Component for Sticky {
@@ -217,27 +216,22 @@ impl RTreeObject for RTreeEntity {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Derivative)]
+#[derive(Debug, Clone, Copy, Derivative)]
 #[derivative(Default)]
-pub struct Position(pub Vec3);
-
-impl Position {
-    pub fn with_depth(&self, depth: f32) -> Position {
-        let mut vec3 = self.0;
-        vec3.z = depth;
-        Position(vec3)
-    }
-
-    pub fn with_append_xyz(&self, x: f32, y: f32, z: f32) -> Position {
-        let mut vec3 = self.0;
-        vec3.x = x;
-        vec3.y = y;
-        vec3.z = z;
-        Position(vec3)
-    }
+pub struct Position(pub Vec2);
+impl Component for Position {
+    type Storage = DenseVecStorage<Self>;
 }
 
-impl Component for Position {
+#[derive(Debug, Clone, Copy, Derivative)]
+#[derivative(Default)]
+pub struct Velocity(pub Vec2);
+impl Velocity {
+    pub fn project_move(&self, delta_time: f32) -> Vec2 {
+        self.0.mul(delta_time)
+    }
+}
+impl Component for Velocity {
     type Storage = DenseVecStorage<Self>;
 }
 

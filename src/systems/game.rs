@@ -4,7 +4,7 @@ use crate::{
             CameraTarget, CollisionEvent, Health, Invincibility, Player, Projectile, Team,
             TimedExistence,
         },
-        graphics::{AnimationCounter, CameraLimit, Lerper},
+        graphics::{AnimationCounter, CameraLimit},
         physics::{Collidee, GravityDirection, PlatformCuboid, Position, Velocity},
     },
     events::PlayerEvent,
@@ -36,14 +36,16 @@ use amethyst::{
 
 use crate::components::entity_builder::entity_builder::initialize_pickup;
 use crate::components::game::{Drops, PicksThingsUp};
+use crate::components::graphics::Pan;
 use crate::events::Events;
 use crate::{
     audio::{play_damage_sound, Sounds},
     components::editor::{EditorCursor, EditorFlag},
-    utils::{Vec2, Vec3},
 };
 use amethyst::prelude::WorldExt;
 use rand::{random, Rng};
+use std::ops::{Add, Mul};
+use ultraviolet::Vec2;
 
 pub const IFRAMES_PER_HIT: f32 = 1.;
 
@@ -146,8 +148,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                                                         world,
                                                         &pos_clone
                                                             .0
-                                                            .to_vec2()
-                                                            .add(&Vec2::new(0.0, TILE_HEIGHT)),
+                                                            .add(Vec2::new(0.0, TILE_HEIGHT)),
                                                         &Vec2::new(x_vel, y_vel),
                                                     );
                                                 }
@@ -173,7 +174,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                                                 let y_vel: f32 = rng.gen_range(7.0, 15.0);
                                                 initialize_pickup(
                                                     world,
-                                                    &pos_clone.0.to_vec2(),
+                                                    &pos_clone.0,
                                                     &Vec2::new(x_vel, y_vel),
                                                 );
                                             }
@@ -188,11 +189,11 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                                     let hitter_pos = positions.get(hitter).unwrap().clone();
                                     let hitee_pos = positions.get(hitee).unwrap().clone();
                                     let going_right = hitter_pos.0.x < hitee_pos.0.x;
-                                    let knock_back = Vec2::new(8., 6.);
-                                    vel.vel = vel.vel.add(&match going_right {
+                                    let knock_back = Vec2::new(8., 4.);
+                                    vel.0 = match going_right {
                                         true => knock_back,
-                                        false => knock_back.mul(&Vec2::new(-1., 1.0)),
-                                    });
+                                        false => knock_back.mul(Vec2::new(-1., 1.0)),
+                                    };
                                 }
                             }
                         }
@@ -202,7 +203,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                     if let Some(team_comp) = teams.get_mut(entities.entity(*entity_id)) {
                         if let Some(vel) = velocities.get_mut(entities.entity(*entity_id)) {
                             *team_comp = *team;
-                            vel.vel = vel.vel.mul_f32(-1.0);
+                            vel.0 = vel.0.mul(-1.0);
                         }
                     }
                 }
@@ -296,7 +297,7 @@ pub struct CameraTargetSystem;
 
 impl<'s> System<'s> for CameraTargetSystem {
     type SystemData = (
-        WriteStorage<'s, Lerper>,
+        WriteStorage<'s, Pan>,
         ReadStorage<'s, Camera>,
         ReadStorage<'s, Position>,
         ReadStorage<'s, CameraTarget>,
@@ -307,19 +308,19 @@ impl<'s> System<'s> for CameraTargetSystem {
 
     fn run(
         &mut self,
-        (mut lerpers, cameras, positions, targets, players, cursors, editor_flag): Self::SystemData,
+        (mut pans, cameras, positions, targets, players, cursors, editor_flag): Self::SystemData,
     ) {
-        let mut position = Vec3::default();
+        let mut position = Vec2::default();
         for (_camera, target) in (&cameras, &targets).join() {
             match target {
                 CameraTarget::Player => {
                     for (_player, player_pos, _) in (&players, &positions, !&editor_flag).join() {
-                        position = player_pos.0.clone();
+                        position = player_pos.0;
                     }
                 }
                 CameraTarget::Cursor => {
                     for (_cursor, cursor_pos) in (&cursors, &positions).join() {
-                        position = cursor_pos.0.clone();
+                        position = cursor_pos.0;
                     }
                 }
                 CameraTarget::GameObject(_) => {
@@ -327,9 +328,8 @@ impl<'s> System<'s> for CameraTargetSystem {
                 }
             };
         }
-        for (mut lerper, _camera) in (&mut lerpers, &cameras).join() {
-            lerper.target.x = position.x;
-            lerper.target.y = position.y;
+        for (mut pan, _camera) in (&mut pans, &cameras).join() {
+            pan.destination = position;
         }
     }
 }

@@ -6,7 +6,6 @@ use crate::{
     events::Events,
     states::pizzatopia::{FRICTION, MAX_FALL_SPEED, MAX_RUN_SPEED, TILE_WIDTH},
     systems::physics::CollisionDirection::FromTop,
-    utils::{Vec2, Vec3},
 };
 use amethyst::{
     core::Transform,
@@ -15,7 +14,7 @@ use amethyst::{
 use log::debug;
 
 use crate::components::game::{Block, PicksThingsUp, Pickup};
-use crate::components::physics::ChildTo;
+use crate::components::physics::{ChildTo, MoveIntent, Orientation};
 use crate::{
     components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team},
     systems::input::InputManager,
@@ -36,9 +35,12 @@ use amethyst::{
     input::{InputHandler, StringBindings},
 };
 use derivative::Derivative;
+use log::info;
 use num_traits::identities::Zero;
 use rstar::{RTree, AABB};
 use std::collections::HashSet;
+use std::ops::Sub;
+use ultraviolet::{Lerp, Vec2, Vec3};
 
 #[derive(Debug, Copy, Clone, PartialEq, Derivative)]
 #[derivative(Default)]
@@ -77,7 +79,7 @@ impl<'s> System<'s> for ApplyStickySystem {
         {
             if sticky.0 {
                 let prev_gravity = gravity.0;
-                let mut collidee_velocity = velocity.vel.clone();
+                let mut collidee_velocity = velocity.0;
                 gravity.0 = match CollisionDirection::is_horizontal(&gravity.0) {
                     true => match &collidee.vertical {
                         Some(x) => {
@@ -107,23 +109,23 @@ impl<'s> System<'s> for ApplyStickySystem {
                 let lean_off_ledge = collidee.current_collision_points() == 0
                     && collidee.prev_collision_points() == 1;
                 let is_following_gravity = match gravity.0 {
-                    CollisionDirection::FromTop => velocity.vel.y < 0.0,
-                    CollisionDirection::FromBottom => velocity.vel.y > 0.0,
-                    CollisionDirection::FromLeft => velocity.vel.x > 0.0,
-                    CollisionDirection::FromRight => velocity.vel.x < 0.0,
+                    CollisionDirection::FromTop => velocity.0.y < 0.0,
+                    CollisionDirection::FromBottom => velocity.0.y > 0.0,
+                    CollisionDirection::FromLeft => velocity.0.x > 0.0,
+                    CollisionDirection::FromRight => velocity.0.x < 0.0,
                 };
                 if lean_off_ledge && is_following_gravity {
                     // Change gravity
                     gravity.0 = match gravity.0 {
                         CollisionDirection::FromTop | CollisionDirection::FromBottom => {
-                            if velocity.vel.x > 0.0 {
+                            if velocity.0.x > 0.0 {
                                 CollisionDirection::FromRight
                             } else {
                                 CollisionDirection::FromLeft
                             }
                         }
                         CollisionDirection::FromLeft | CollisionDirection::FromRight => {
-                            if velocity.vel.y > 0.0 {
+                            if velocity.0.y > 0.0 {
                                 CollisionDirection::FromTop
                             } else {
                                 CollisionDirection::FromBottom
@@ -139,17 +141,17 @@ impl<'s> System<'s> for ApplyStickySystem {
                 if prev_gravity != gravity.0 {
                     // Only keep movement momentum if not jumping off platform
                     if collidee_velocity.x == 0.0 || collidee_velocity.y == 0.0 || lean_off_ledge {
-                        velocity.vel =
+                        velocity.0 =
                             adapt_sticky_velocity(&collidee_velocity, &prev_gravity, &gravity.0);
                         if lean_off_ledge {
                             match gravity.0 {
-                                CollisionDirection::FromBottom => velocity.vel.y = TILE_WIDTH / 4.0,
-                                CollisionDirection::FromTop => velocity.vel.y = -TILE_WIDTH / 4.0,
-                                CollisionDirection::FromLeft => velocity.vel.x = TILE_WIDTH / 4.0,
-                                CollisionDirection::FromRight => velocity.vel.x = -TILE_WIDTH / 4.0,
+                                CollisionDirection::FromBottom => velocity.0.y = TILE_WIDTH / 4.0,
+                                CollisionDirection::FromTop => velocity.0.y = -TILE_WIDTH / 4.0,
+                                CollisionDirection::FromLeft => velocity.0.x = TILE_WIDTH / 4.0,
+                                CollisionDirection::FromRight => velocity.0.x = -TILE_WIDTH / 4.0,
                             }
                         }
-                        //                        println!("Changed vel from {:?} to {:?}", collidee_velocity, velocity.vel);
+                        //                        println!("Changed vel from {:?} to {:?}", collidee_velocity, velocity.0);
                     }
                 }
             }
@@ -237,9 +239,6 @@ impl<'s> System<'s> for ApplyVelocitySystem {
             let projection = velocity.project_move(time.time_scale());
             position.0.x += projection.x;
             position.0.y += projection.y;
-            // if !velocity.vel.x.is_zero() {
-            //     velocity.prev_going_right = velocity.vel.x.is_sign_positive();
-            // }
         }
     }
 }
@@ -249,7 +248,7 @@ pub struct ChildPositionSystem;
 
 impl<'s> System<'s> for ChildPositionSystem {
     type SystemData = (
-        ReadStorage<'s, Velocity>,
+        ReadStorage<'s, Orientation>,
         ReadStorage<'s, ChildTo>,
         WriteStorage<'s, Position>,
         ReadStorage<'s, Ducking>,
@@ -259,24 +258,23 @@ impl<'s> System<'s> for ChildPositionSystem {
 
     fn run(
         &mut self,
-        (velocities, children, mut positions, duckings, blockers, entities): Self::SystemData,
+        (orientations, children, mut positions, duckings, blockers, entities): Self::SystemData,
     ) {
         for (child, entity) in (&children, &entities).join() {
-            let going_right = velocities
+            let orientation = orientations
                 .get(child.parent)
-                .unwrap_or(&Velocity::default())
-                .prev_going_right;
+                .unwrap_or(&Orientation::default())
+                .vec;
             let ducking = duckings.get(child.parent).is_some();
             let blocking = blockers.get(entity).is_some();
             let parent_pos = positions
                 .get(child.parent)
-                .unwrap_or(&Position(Vec3::default()))
-                .0
-                .to_vec2();
+                .unwrap_or(&Position(Vec2::default()))
+                .0;
 
             let position = positions.get_mut(entity).unwrap();
             let offset_x = child.offset.x
-                * match going_right {
+                * match orientation.x > 0. {
                     true => 1.,
                     false => -1.,
                 };
@@ -366,34 +364,39 @@ pub struct ApplyGravitySystem;
 impl<'s> System<'s> for ApplyGravitySystem {
     type SystemData = (
         WriteStorage<'s, Velocity>,
+        ReadStorage<'s, MoveIntent>,
         ReadStorage<'s, Grounded>,
         ReadStorage<'s, GravityDirection>,
-        Read<'s, InputManager>,
         Read<'s, Time>,
     );
 
-    fn run(&mut self, (mut velocities, grounded, gravities, input, time): Self::SystemData) {
-        for (velocity, grounded, gravity) in
-            (&mut velocities, (&grounded).maybe(), &gravities).join()
+    fn run(&mut self, (mut velocities, move_intents, grounded, gravities, time): Self::SystemData) {
+        for (velocity, intent, grounded, gravity) in (
+            &mut velocities,
+            (&move_intents).maybe(),
+            (&grounded).maybe(),
+            &gravities,
+        )
+            .join()
         {
             let grav_dir = gravity.0;
 
             let mut grav_vel =
-                gravitationally_de_adapted_velocity(&velocity.vel, &GravityDirection(grav_dir));
+                gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
 
             // Apply friction and slow down
             if let Some(ground) = grounded {
                 if ground.0 {
-                    let horizontal_movement = input.action_status("horizontal").axis;
                     // Not moving or trying to move in opposite direction
-                    if horizontal_movement == 0.0 || horizontal_movement * grav_vel.x < 0.0 {
-                        if grav_vel.x.abs() <= 0.05 {
+                    if intent.is_none()
+                        || intent.unwrap().vec.x.is_zero()
+                        || intent.unwrap().vec.x * grav_vel.x < 0.0
+                    {
+                        if grav_vel.x.abs() <= 0.5 {
                             grav_vel.x = 0.0;
-                        } else {
-                            // Slow in opposite direction
-                            grav_vel.x -= grav_vel.x * FRICTION * time.time_scale();
                         }
-                        velocity.vel = gravitationally_adapted_velocity(
+                        grav_vel = grav_vel.lerp(Vec2::default(), time.delta_seconds() * 6.0);
+                        velocity.0 = gravitationally_adapted_velocity(
                             &grav_vel,
                             &GravityDirection(grav_dir),
                         );
@@ -405,14 +408,14 @@ impl<'s> System<'s> for ApplyGravitySystem {
             gravity_vec =
                 gravitationally_adapted_velocity(&gravity_vec, &GravityDirection(grav_dir));
 
-            velocity.vel.x += gravity_vec.x * time.time_scale();
-            velocity.vel.y += gravity_vec.y * time.time_scale();
+            velocity.0.x += gravity_vec.x * time.time_scale();
+            velocity.0.y += gravity_vec.y * time.time_scale();
 
             // Limit speed
-            velocity.vel.x = f32::min(velocity.vel.x, MAX_RUN_SPEED);
-            velocity.vel.x = f32::max(velocity.vel.x, -MAX_RUN_SPEED);
+            velocity.0.x = f32::min(velocity.0.x, MAX_RUN_SPEED);
+            velocity.0.x = f32::max(velocity.0.x, -MAX_RUN_SPEED);
 
-            velocity.vel.y = f32::max(velocity.vel.y, -MAX_FALL_SPEED);
+            velocity.0.y = f32::max(velocity.0.y, -MAX_FALL_SPEED);
         }
     }
 }
@@ -787,7 +790,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
             //  given the changes in position and velocity
             // These bad boys get modified at the end of the loop
             let mut current_vel = velocity.project_move(time.time_scale());
-            let mut current_ent_pos = ent_pos.0.to_vec2().clone();
+            let mut current_ent_pos = ent_pos.0;
             loop {
                 debug!("Velocity: {:?}", current_vel);
                 // We want the shortest distance collision of all points
@@ -830,7 +833,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                         // delta so if we go through the corner of a block we still check
                         // Must stay gt or eq to the max speed that will be reached
                         let delta = TILE_WIDTH;
-                        let platform_position = plat_pos.0.to_vec2();
+                        let platform_position = plat_pos.0;
                         let point_vel_pos = Vec2::new(
                             col_point.point.x + ent_pos.0.x + current_vel.x,
                             col_point.point.y + ent_pos.0.y + current_vel.y,
@@ -858,8 +861,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                                 let (mut point_of_collision, side) = point_of_collision.unwrap();
 
                                 // find the distance to the point to see if another collision was closer
-                                let distance_to_point_vec =
-                                    Vec2::subtract(&point_pos, &point_of_collision);
+                                let distance_to_point_vec = point_pos.sub(point_of_collision);
                                 let cur_distance_to_collision = (distance_to_point_vec.x.powi(2)
                                     + distance_to_point_vec.y.powi(2))
                                 .sqrt();
@@ -872,8 +874,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
 
                                 // Calculate the vertical/horizontal correction to be applied
                                 let mut correction = 0.01;
-                                let mut new_velocity =
-                                    Vec2::subtract(&current_vel, &distance_to_point_vec);
+                                let mut new_velocity = current_vel.sub(distance_to_point_vec);
                                 match side.clone() {
                                     CollisionSideOfBlock::Top => {
                                         new_velocity.y = 0.0;
@@ -906,10 +907,7 @@ impl<'s> System<'s> for PlatformCollisionSystem {
                                     half_size: Vec2::new(cuboid.half_width, cuboid.half_height),
                                     correction,
                                     distance: cur_distance_to_collision,
-                                    new_collider_pos: Vec2::subtract(
-                                        &point_of_collision,
-                                        &col_point.point,
-                                    ),
+                                    new_collider_pos: point_of_collision.sub(col_point.point),
                                     old_collider_vel: current_vel.clone(),
                                     new_collider_vel: new_velocity,
                                     side: side.clone(),
@@ -988,7 +986,7 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                     }
                     _ => {}
                 }
-                velocity.vel.y = cdee.correction;
+                velocity.0.y = cdee.correction;
             }
 
             if let Some(cdee) = &collidee.horizontal {
@@ -1005,7 +1003,7 @@ impl<'s> System<'s> for ApplyCollisionSystem {
                     }
                     _ => {}
                 }
-                velocity.vel.x = cdee.correction;
+                velocity.0.x = cdee.correction;
             }
         }
     }

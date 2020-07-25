@@ -4,8 +4,8 @@ use crate::{
         editor::{CursorState, EditorCursor, EditorCursorState, InsertionGameObject},
         game::{Health, Player, SerializedObjectType, SpriteRenderData},
         graphics::{
-            AbsolutePositioning, AnimationCounter, BackgroundParallax, CameraLimit, Lerper,
-            PulseAnimation, Scale, SpriteSheetType,
+            AnimationCounter, BackgroundParallax, CameraLimit, PulseAnimation, Scale,
+            SpriteSheetType,
         },
         physics::{
             Ducking, GravityDirection, PlatformCollisionPoints, PlatformCuboid, Position, Velocity,
@@ -20,7 +20,6 @@ use crate::{
         tile_characteristics::{EditorFieldUiComponents, UiIndex},
         UiStack,
     },
-    utils::Vec3,
 };
 use amethyst::{
     animation::*,
@@ -41,7 +40,10 @@ use amethyst::{
 };
 
 use crate::components::game::AnimatedTileComp;
+use crate::components::graphics::Pan;
+use crate::components::physics::Orientation;
 use std::collections::BTreeMap;
+use ultraviolet::{Lerp, Vec2, Vec3};
 
 #[derive(SystemDesc)]
 pub struct CameraEdgeClampSystem;
@@ -57,79 +59,49 @@ impl<'s> System<'s> for CameraEdgeClampSystem {
         for (pos, _cam, limit) in (&mut positions, &cameras, &camera_limits).join() {
             pos.0.x = pos.0.x.max(limit.left).min(limit.right);
             // pos.0.x = pos.0.x.clamp(limit.left, limit.right);
-            pos.0.y = pos.0.y.max(limit.bottom).min(limit.top);
+            pos.0.y = pos.0.y.max(limit.bottom);
             // pos.0.y = pos.0.y.clamp(limit.bottom, limit.top);
         }
     }
 }
 
 #[derive(SystemDesc)]
-pub struct LerperSystem;
+pub struct PanSystem;
 
-impl<'s> System<'s> for LerperSystem {
+impl<'s> System<'s> for PanSystem {
     type SystemData = (
-        WriteStorage<'s, Lerper>,
         WriteStorage<'s, Position>,
+        ReadStorage<'s, Pan>,
         Read<'s, Time>,
     );
 
-    fn run(&mut self, (mut lerpers, mut positions, time): Self::SystemData) {
-        for (lerper, mut position) in (&mut lerpers, &mut positions).join() {
-            let mut pos = lerper
-                .lerp(position.0.to_vec2(), time.time_scale())
-                .to_vec3();
-            pos.z = position.0.z;
-            position.0 = pos;
+    fn run(&mut self, (mut positions, pans, time): Self::SystemData) {
+        for (mut position, pan) in (&mut positions, &pans).join() {
+            position.0 = position
+                .0
+                .lerp(pan.destination, pan.speed_factor * time.delta_seconds());
         }
     }
 }
 
 #[derive(SystemDesc)]
-// This system is necessary only for use with animations.
-// Animations set the trans/rot/scale, so we need to adapt after the fact.
-// Cleanest way to do this : reset -> animate -> add your pos/rot/scale -> draw system will do the rest properly
-pub struct TransformResetSystem;
+pub struct TransformUpdateSystem;
 
-impl<'s> System<'s> for TransformResetSystem {
-    type SystemData = WriteStorage<'s, Transform>;
-
-    fn run(&mut self, mut transforms: Self::SystemData) {
-        for transform in (&mut transforms).join() {
-            *transform = Transform::default();
-        }
-    }
-}
-
-#[derive(SystemDesc)]
-pub struct PositionUpdateSystem;
-
-impl<'s> System<'s> for PositionUpdateSystem {
-    type SystemData = (WriteStorage<'s, Transform>, ReadStorage<'s, Position>);
-
-    fn run(&mut self, (mut transforms, positions): Self::SystemData) {
-        for (transform, position) in (&mut transforms, &positions).join() {
-            transform.prepend_translation_x(position.0.x);
-            transform.prepend_translation_y(position.0.y);
-            transform.prepend_translation_z(position.0.z);
-        }
-    }
-}
-
-#[derive(SystemDesc)]
-pub struct AbsolutePositionUpdateSystem;
-
-impl<'s> System<'s> for AbsolutePositionUpdateSystem {
+impl<'s> System<'s> for TransformUpdateSystem {
     type SystemData = (
         WriteStorage<'s, Transform>,
         ReadStorage<'s, Position>,
-        ReadStorage<'s, AbsolutePositioning>,
+        ReadStorage<'s, Scale>,
     );
 
-    fn run(&mut self, (mut transforms, positions, is_abs_pos): Self::SystemData) {
-        for (transform, position, _abs) in (&mut transforms, &positions, &is_abs_pos).join() {
+    fn run(&mut self, (mut transforms, positions, scales): Self::SystemData) {
+        for (transform, position, scale) in (&mut transforms, &positions, (&scales).maybe()).join()
+        {
             transform.set_translation_x(position.0.x);
             transform.set_translation_y(position.0.y);
-            transform.set_translation_z(position.0.z);
+            if let Some(scale) = scale {
+                transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
+            }
         }
     }
 }
@@ -196,19 +168,6 @@ impl<'s> System<'s> for CollisionDebugLinesSystem {
                     Srgba::new(1., 0., 0., 1.),
                 );
             }
-        }
-    }
-}
-
-#[derive(SystemDesc)]
-pub struct ScaleDrawUpdateSystem;
-
-impl<'s> System<'s> for ScaleDrawUpdateSystem {
-    type SystemData = (WriteStorage<'s, Transform>, ReadStorage<'s, Scale>);
-
-    fn run(&mut self, (mut transforms, scales): Self::SystemData) {
-        for (transform, scale) in (&mut transforms, &scales).join() {
-            transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
         }
     }
 }
@@ -374,15 +333,14 @@ pub struct BackgroundDrawUpdateSystem;
 impl<'s> System<'s> for BackgroundDrawUpdateSystem {
     type SystemData = (
         WriteStorage<'s, Position>,
-        ReadStorage<'s, Transform>,
         WriteStorage<'s, BackgroundParallax>,
         ReadStorage<'s, Camera>,
     );
 
-    fn run(&mut self, (mut positions, transforms, mut bgs, cameras): Self::SystemData) {
-        let mut translate = Vector3::new(0., 0., 0.);
-        for (transform, _camera) in (&transforms, &cameras).join() {
-            translate = transform.translation().clone();
+    fn run(&mut self, (mut positions, mut bgs, cameras): Self::SystemData) {
+        let mut translate = Vec2::new(0., 0.);
+        for (position, _camera) in (&positions, &cameras).join() {
+            translate = position.0;
         }
         for (position, bg) in (&mut positions, &mut bgs).join() {
             let id = bg.0;
@@ -414,6 +372,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
         WriteStorage<'s, SpriteRender>,
         WriteStorage<'s, Scale>,
         ReadStorage<'s, Velocity>,
+        ReadStorage<'s, Orientation>,
         ReadStorage<'s, GravityDirection>,
         ReadStorage<'s, AnimationCounter>,
         ReadStorage<'s, Ducking>,
@@ -432,6 +391,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             mut sprites,
             mut scales,
             velocities,
+            orientations,
             gravities,
             anim_counters,
             duckings,
@@ -462,11 +422,12 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             // }
             // }
         }
-        for (transform, _sprite, scale, velocity, entity, gravity) in (
+        for (transform, _sprite, scale, velocity, orientation, entity, gravity) in (
             &mut transforms,
             &mut sprites,
             &mut scales,
             &velocities,
+            &orientations,
             &entities,
             (&gravities).maybe(),
         )
@@ -478,18 +439,18 @@ impl<'s> System<'s> for SpriteUpdateSystem {
             }
 
             let grav_vel =
-                gravitationally_de_adapted_velocity(&velocity.vel, &GravityDirection(grav_dir));
+                gravitationally_de_adapted_velocity(&velocity.0, &GravityDirection(grav_dir));
 
             // let mut sprite_number = sprite.sprite_number % 2;
             if grav_vel.x != 0.0 {
-                AnimationFactory::set_animation(
-                    &sets,
-                    &mut controls,
-                    entity,
-                    AnimationId::Animate,
-                    AnimationAction::StartAnimationOrSetRate(grav_vel.x.abs()),
-                    None,
-                );
+                // AnimationFactory::set_animation(
+                //     &sets,
+                //     &mut controls,
+                //     entity,
+                //     AnimationId::Animate,
+                //     AnimationAction::StartAnimationOrSetRate(grav_vel.x.abs()),
+                //     None,
+                // );
                 AnimationFactory::set_sprite_animation(
                     &sprite_sets,
                     &mut sprite_controls,
@@ -500,7 +461,7 @@ impl<'s> System<'s> for SpriteUpdateSystem {
                 );
 
                 let mut cur_scale = &mut scale.0;
-                match velocity.prev_going_right {
+                match orientation.vec.x > 0. {
                     // match grav_vel.x < 0.0 {
                     false => {
                         cur_scale.x = -1.0 * cur_scale.x.abs();

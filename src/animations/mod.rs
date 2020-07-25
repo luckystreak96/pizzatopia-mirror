@@ -8,7 +8,7 @@ use amethyst::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Eq, PartialOrd, PartialEq, Hash, Debug, Copy, Clone, Deserialize, Serialize)]
+#[derive(Eq, PartialOrd, PartialEq, Hash, Debug, Copy, Clone)]
 pub enum AnimationId {
     None,
     Scale,

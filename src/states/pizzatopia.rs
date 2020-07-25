@@ -1,4 +1,5 @@
 use crate::components::game::{Block, Drops, PicksThingsUp, Pickup};
+use crate::components::graphics::Pan;
 use crate::{
     animations::AnimationId,
     audio::{initialise_audio, Sounds},
@@ -10,7 +11,7 @@ use crate::{
             CameraTarget, CollisionEvent, Health, Invincibility, Player, Resettable,
             SerializedObject, SerializedObjectType, Tile,
         },
-        graphics::{AbsolutePositioning, AnimationCounter, CameraLimit, Lerper, SpriteSheetType},
+        graphics::{AnimationCounter, CameraLimit, SpriteSheetType},
         physics::{
             Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
             PlatformCuboid, Position, Sticky, Velocity,
@@ -32,7 +33,6 @@ use crate::{
         tile_characteristics::EditorButton,
         UiStack,
     },
-    utils::{Vec2, Vec3},
 };
 use amethyst::{
     animation::*,
@@ -66,6 +66,7 @@ use amethyst::{
     },
     winit::Event,
 };
+use ultraviolet::Vec2;
 
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
 pub const CAM_HEIGHT: f32 = TILE_HEIGHT * 9.0;
@@ -83,7 +84,7 @@ pub const TILE_HEIGHT: f32 = 128.0;
 pub const MAX_FALL_SPEED: f32 = 20.0;
 pub const MAX_RUN_SPEED: f32 = 20.0;
 
-pub const FRICTION: f32 = 0.16;
+pub const FRICTION: f32 = 1.0;
 
 #[derive(Debug, EventReader, Clone)]
 #[reader(MyEventReader)]
@@ -234,18 +235,22 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
 fn initialise_camera(world: &mut World) {
     // Setup camera in a way that our screen covers whole arena and (0, 0) is in the bottom left.
     let mut transform = Transform::default();
-    let pos = Position(Vec3::new(CAM_WIDTH * 0.5, CAM_HEIGHT * 0.5, 2000.0));
-    transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
+    let pos = Position(Vec2::new(CAM_WIDTH * 0.5, CAM_HEIGHT * 0.5));
+    // 1500 gives us a visible range of -500 -> 1500
+    transform.set_translation_xyz(pos.0.x, pos.0.y, 1500.);
+    let pan = Pan {
+        destination: pos.0,
+        speed_factor: 4.0,
+    };
 
     world
         .create_entity()
         .with(Camera::standard_2d(CAM_WIDTH, CAM_HEIGHT))
         .with(transform)
         .with(pos)
-        .with(AbsolutePositioning)
         .with(CameraTarget::Player)
         .with(CameraLimit::default())
-        .with(Lerper::default())
+        .with(pan)
         .build();
 }
 
@@ -362,7 +367,7 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             &["apply_velocity_system"],
         );
         dispatcher_builder.add(
-            systems::graphics::LerperSystem,
+            systems::graphics::PanSystem,
             "lerper_system",
             &["camera_target_system"],
         );
@@ -388,49 +393,32 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             &["sprite_update_system"],
         );
 
-        dispatcher_builder.add(
-            systems::graphics::TransformResetSystem,
-            "transform_reset_system",
-            &["animated_tile_system"],
-        );
-
-        // register a bundle to the builder
         AnimationBundle::<AnimationId, Transform>::new(
             "animation_control_system",
             "sampler_interpolation_system",
         )
-        .with_dep(&["transform_reset_system"])
+        .with_dep(&["animated_tile_system"])
         .build(world, &mut dispatcher_builder)
         .expect("Failed to register animation bundle in pizzatopia");
         AnimationBundle::<AnimationId, SpriteRender>::new(
             "sprite_animation_control_system",
             "sprite_sampler_interpolation_system",
         )
-        .with_dep(&["transform_reset_system"])
+        .with_dep(&["animated_tile_system"])
         .build(world, &mut dispatcher_builder)
         .expect("Failed to register sprite animation bundle in pizzatopia");
         GameLogicBundle::default()
             .build(world, &mut dispatcher_builder)
             .expect("Failed to register GameLogic bundle.");
         dispatcher_builder.add(
-            systems::graphics::PositionUpdateSystem,
-            "position_update_system",
-            &["sampler_interpolation_system"],
-        );
-        dispatcher_builder.add(
-            systems::graphics::AbsolutePositionUpdateSystem,
-            "absolute_position_update_system",
-            &["position_update_system"],
-        );
-        dispatcher_builder.add(
-            systems::graphics::ScaleDrawUpdateSystem,
-            "scale_draw_update_system",
-            &["absolute_position_update_system"],
+            systems::graphics::TransformUpdateSystem,
+            "transform_update_system",
+            &["sprite_sampler_interpolation_system"],
         );
         dispatcher_builder.add(
             systems::graphics::DeadDrawUpdateSystem,
             "dead_draw_update_system",
-            &["scale_draw_update_system"],
+            &["transform_update_system"],
         );
 
         dispatcher_builder

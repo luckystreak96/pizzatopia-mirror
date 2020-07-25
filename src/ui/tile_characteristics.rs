@@ -417,7 +417,7 @@ impl EditorFieldUiComponents {
             0..=1 => {
                 let is_x_axis = button_info.id == 0;
                 for (pos, _, _) in (positions, entities, cursors).join() {
-                    let mut position = pos.0.to_vec2();
+                    let mut position = pos.0;
                     match button_info.editor_button_type {
                         EditorButtonType::RightArrow => {
                             insertion_serialized_object

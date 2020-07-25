@@ -9,6 +9,7 @@ use amethyst::{
     input::{InputHandler, StringBindings},
 };
 
+use crate::components::physics::{MoveIntent, Orientation};
 use crate::{
     animations::{AnimationAction, AnimationFactory, AnimationId},
     components::{
@@ -24,12 +25,12 @@ use crate::{
         input::InputManager,
         physics::{gravitationally_adapted_velocity, gravitationally_de_adapted_velocity},
     },
-    utils::Vec2,
 };
 use amethyst::prelude::WorldExt;
 use log::error;
 use num_traits::identities::Zero;
 use std::sync::Arc;
+use ultraviolet::Vec2;
 
 #[derive(SystemDesc)]
 pub struct PlayerInputSystem;
@@ -37,6 +38,8 @@ pub struct PlayerInputSystem;
 impl<'s> System<'s> for PlayerInputSystem {
     type SystemData = (
         WriteStorage<'s, Velocity>,
+        WriteStorage<'s, Orientation>,
+        WriteStorage<'s, MoveIntent>,
         WriteStorage<'s, AnimationCounter>,
         ReadStorage<'s, Position>,
         Read<'s, InputManager>,
@@ -55,6 +58,8 @@ impl<'s> System<'s> for PlayerInputSystem {
         &mut self,
         (
             mut velocities,
+            mut orientations,
+            mut move_intents,
             mut anim,
             positions,
             input,
@@ -69,14 +74,16 @@ impl<'s> System<'s> for PlayerInputSystem {
             mut controls,
         ): Self::SystemData,
     ) {
-        for (vel, _pos, _player, health, ground, gravity, ducking, entity) in (
+        for (vel, intent, _pos, _player, health, ground, gravity, ducking, orientation, entity) in (
             &mut velocities,
+            &mut move_intents,
             &positions,
             &players,
             &healths,
             (&grounded).maybe(),
             (&gravities).maybe(),
             (&duckings).maybe(),
+            (&mut orientations).maybe(),
             &entities,
         )
             .join()
@@ -84,8 +91,16 @@ impl<'s> System<'s> for PlayerInputSystem {
             if health.0 == 0 {
                 continue;
             }
-            // Controller input
-            let h_move = input.action_status("horizontal").axis;
+
+            {
+                // Controller input
+                let h_move = input.action_status("horizontal").axis;
+                let v_move = input.action_status("vertical").axis;
+
+                intent.vec.x = h_move;
+                intent.vec.y = v_move;
+            }
+
             let jumping = input.action_status("accept").is_down;
             let release = input.action_just_released("accept");
             let slowing = input.action_status("insert").is_down;
@@ -101,20 +116,14 @@ impl<'s> System<'s> for PlayerInputSystem {
                         let size: Vec2;
                         let ducking: bool;
                         {
-                            let pos_st = world.read_storage::<Position>();
-                            let vel_st = world.read_storage::<Velocity>();
                             let size_st = world.read_storage::<Scale>();
                             let duck_st = world.read_storage::<Ducking>();
                             ducking = duck_st.contains(entity);
-                            let pos_opt = pos_st.get(entity);
-                            let vel_opt = vel_st.get(entity);
                             let size_opt = size_st.get(entity);
-                            if pos_opt.is_none() || vel_opt.is_none() || size_opt.is_none() {
+                            if size_opt.is_none() {
                                 return;
                             }
-                            // pos = pos_opt.unwrap().clone();
-                            // vel = vel_opt.unwrap().clone();
-                            size = size_opt.unwrap().0.clone();
+                            size = size_opt.unwrap().0;
                         }
                         let width = size.x.abs() * TILE_WIDTH;
                         let height = size.y.abs() * TILE_HEIGHT;
@@ -155,8 +164,11 @@ impl<'s> System<'s> for PlayerInputSystem {
                 }
             }
 
-            if !h_move.is_zero() {
-                vel.prev_going_right = h_move > 0.;
+            if !intent.vec.x.is_zero() && orientation.is_some() {
+                orientation.unwrap().vec.x = match intent.vec.x > 0. {
+                    true => 1.0,
+                    false => -1.0,
+                };
             }
 
             if slowing {
@@ -170,7 +182,7 @@ impl<'s> System<'s> for PlayerInputSystem {
             let on_ground = ground.unwrap_or(&default_ground);
             let on_ground = on_ground.0;
 
-            let mut grav_vel = vel.vel.clone();
+            let mut grav_vel = vel.0.clone();
             if let Some(grav) = gravity {
                 grav_vel = gravitationally_de_adapted_velocity(&grav_vel, &grav);
             }
@@ -192,9 +204,9 @@ impl<'s> System<'s> for PlayerInputSystem {
             if ducking.is_some() {
                 movement *= 0.5;
             }
-            let mut scaled_amount = movement * h_move as f32;
+            let mut scaled_amount = movement * intent.vec.x as f32;
             if on_ground {
-                let bonus = (grav_vel.x * 0.025).abs() * h_move;
+                let bonus = (grav_vel.x * 0.025).abs() * intent.vec.x;
                 if ducking.is_some() {
                     scaled_amount -= bonus;
                 } else {
@@ -204,7 +216,7 @@ impl<'s> System<'s> for PlayerInputSystem {
             grav_vel.x += scaled_amount;
 
             if let Some(grav) = gravity {
-                vel.vel = gravitationally_adapted_velocity(&grav_vel, &grav);
+                vel.0 = gravitationally_adapted_velocity(&grav_vel, &grav);
             }
         }
     }

@@ -1,4 +1,4 @@
-use crate::{components::game::SerializedObject, utils::Vec2};
+use crate::components::game::SerializedObject;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
     core::{transform::Transform, HiddenPropagate},
@@ -10,6 +10,7 @@ use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
 use pizzatopia_utils::*;
+use ultraviolet::Vec2;
 
 #[derive(Default)]
 pub struct EditorFlag;

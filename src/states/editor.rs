@@ -10,7 +10,7 @@ use crate::{
             CameraTarget, CollisionEvent, Health, Invincibility, Player, SerializedObject,
             SerializedObjectType, SpriteRenderData,
         },
-        graphics::{AbsolutePositioning, AnimationCounter, PulseAnimation, Scale, SpriteSheetType},
+        graphics::{AnimationCounter, PulseAnimation, Scale, SpriteSheetType},
         physics::{
             Collidee, CollisionSideOfBlock, GravityDirection, Grounded, PlatformCollisionPoints,
             PlatformCuboid, Position, Sticky, Velocity,
@@ -336,11 +336,6 @@ impl<'a, 'b> Editor<'a, 'b> {
 
         // Graphics
         dispatcher_builder.add(
-            systems::graphics::ScaleDrawUpdateSystem,
-            "scale_draw_update_system",
-            &["editor_event_handling_system"],
-        );
-        dispatcher_builder.add(
             CursorSpriteUpdateSystem,
             "cursor_sprite_update_system",
             &["editor_event_handling_system"],
@@ -355,20 +350,16 @@ impl<'a, 'b> Editor<'a, 'b> {
             "camera_target_system",
             &["editor_event_handling_system"],
         );
+        dispatcher_builder.add(PulseAnimationSystem, "pulse_animation_system", &[]);
         dispatcher_builder.add(
-            PulseAnimationSystem,
-            "pulse_animation_system",
-            &["scale_draw_update_system"],
-        );
-        dispatcher_builder.add(
-            systems::graphics::LerperSystem,
-            "lerper_system",
+            systems::graphics::PanSystem,
+            "pan_system",
             &["camera_target_system"],
         );
         dispatcher_builder.add(
-            systems::graphics::AbsolutePositionUpdateSystem,
-            "absolute_position_update_system",
-            &["lerper_system"],
+            systems::graphics::TransformUpdateSystem,
+            "transform_update_system",
+            &["pan_system"],
         );
 
         dispatcher_builder

@@ -126,8 +126,7 @@ impl Level {
         {
             match layer {
                 TileLayer::Middle => {
-                    let rtree_entity =
-                        RTreeEntity::new(pos.0.to_vec2(), platform_cuboid.to_vec2(), entity);
+                    let rtree_entity = RTreeEntity::new(pos.0, platform_cuboid.to_vec2(), entity);
                     positions.push(rtree_entity);
                 }
                 _ => (),

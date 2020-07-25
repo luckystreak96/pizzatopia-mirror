@@ -23,7 +23,7 @@ use crate::{
         },
         game::{Health, Player, SerializedObject, SerializedObjectType},
         graphics::{Scale, SpriteSheetType},
-        physics::{GravityDirection, Grounded, PlatformCuboid, Position, Velocity},
+        physics::{GravityDirection, Grounded, PlatformCuboid, Position},
     },
     events::Events,
     level::Level,
@@ -42,7 +42,6 @@ use crate::{
         tile_characteristics::{EditorButton, EditorButtonType, UiIndex},
         UiStack,
     },
-    utils::{Vec2, Vec3},
 };
 use amethyst::{assets::Handle, ecs::prelude::ReadExpect, renderer::SpriteSheet};
 
@@ -53,6 +52,7 @@ use crate::{
 use log::info;
 use num_traits::Zero;
 use pizzatopia_utils::EnumCycle;
+use ultraviolet::{Vec2, Vec3};
 
 pub const EDITOR_MODIFIERS_ALL: &[&str] = &["modifier1", "modifier2"];
 pub const EDITOR_MODIFIERS_UI: &[&str] = &["modifier1"];
@@ -105,19 +105,17 @@ fn snap_cursor_position_to_grid_corner(position: &mut Vec2) {
 fn get_tile_at_position(
     pos: &Vec2,
     current_layer: &TileLayer,
-    positions: &WriteStorage<Position>,
+    rigid_bodies: &WriteStorage<Position>,
     size_for_editor: &ReadStorage<SizeForEditorGrid>,
     cursors: &ReadStorage<EditorCursor>,
     entities: &Entities,
     layers: &ReadStorage<TileLayer>,
-) -> Option<(Vec3, Vec2, u32)> {
+) -> Option<(Vec2, Vec2, u32)> {
     for (position, size, entity, _, layer) in
-        (positions, size_for_editor, entities, !cursors, layers).join()
+        (rigid_bodies, size_for_editor, entities, !cursors, layers).join()
     {
         let cuboid = PlatformCuboid::create(size.0.x, size.0.y);
-        if cuboid.intersects_point(pos, &position.0.to_vec2())
-            && *layer as usize == *current_layer as usize
-        {
+        if cuboid.intersects_point(pos, &position.0) && *layer as usize == *current_layer as usize {
             return Some((position.0.clone(), size.0.clone(), entity.id()));
         }
     }
@@ -210,7 +208,7 @@ impl<'s> System<'s> for CursorPositionSystem {
             );
 
             if let Some((position, _size, tile_at_cursor_id)) = tile_at_cursor {
-                new_cursor_display_pos = position.to_vec2();
+                new_cursor_display_pos = position;
                 new_tile_id = Some(tile_at_cursor_id);
 
                 if prev_block_id == tile_at_cursor_id && cursor_is_moving {
@@ -300,8 +298,8 @@ impl<'s> System<'s> for CursorStateSystem {
         let mut cursor_state = EditorCursorState::Normal;
         // Get cursor stats
         for (pos, size, _cursor) in (&positions, &size_for_editor, &cursors).join() {
-            cursor_pos = pos.0.to_vec2();
-            cursor_size = size.0.clone();
+            cursor_pos = pos.0;
+            cursor_size = size.0;
         }
         let half_size = Vec2::new(cursor_size.x / 2.0, cursor_size.y / 2.0);
         let tl1 = Vec2::new(cursor_pos.x - half_size.x, cursor_pos.y + half_size.y);
@@ -580,7 +578,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         // We only add the GameObject if the cursor isn't currently in a tile
                         match cursor.state {
                             EditorCursorState::Normal => {
-                                let pos = position.0.to_vec2();
+                                let pos = position.0;
                                 insertion_serialized_object.0.pos = Some(pos);
                                 world_events_channel.single_write(Events::AddGameObject);
                             }
@@ -625,7 +623,7 @@ impl<'s> System<'s> for EditorEventHandlingSystem {
                         }
                         CursorState::InsertMode => {
                             for (position, _cursor) in (&mut positions, &cursors).join() {
-                                let mut pos: Vec2 = position.0.to_vec2();
+                                let mut pos: Vec2 = position.0;
                                 snap_cursor_position_to_grid_corner(&mut pos);
                                 let mut size = Vec2::new(TILE_WIDTH, TILE_HEIGHT);
                                 size = insertion_serialized_object.0.size.unwrap_or(size);

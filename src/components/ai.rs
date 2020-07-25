@@ -8,11 +8,12 @@ use amethyst::{
 use derivative::Derivative;
 
 use serde::{Deserialize, Serialize};
+use crate::components::physics::Orientation;
 
-#[derive(Derivative, Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Derivative, Copy, Clone)]
 #[derivative(Default)]
 pub struct BasicWalkAi {
-    pub going_right: bool,
+    pub orientation: Orientation,
 }
 impl Component for BasicWalkAi {
     type Storage = DenseVecStorage<Self>;

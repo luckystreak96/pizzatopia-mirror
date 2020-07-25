@@ -15,12 +15,12 @@ pub mod entity_builder {
                 TimedExistence,
             },
             graphics::{
-                AbsolutePositioning, AnimationCounter, BackgroundParallax, CameraLimit,
-                PulseAnimation, Scale, SpriteSheetType,
+                AnimationCounter, BackgroundParallax, CameraLimit, PulseAnimation, Scale,
+                SpriteSheetType,
             },
             physics::{
                 Collidee, GravityDirection, Grounded, PlatformCollisionPoints, PlatformCuboid,
-                Position, RTreeEntity, Sticky, Velocity,
+                Position, RTreeEntity, Sticky,
             },
         },
         states::{
@@ -33,7 +33,6 @@ pub mod entity_builder {
         },
         systems::{editor::EditorButtonEventSystem, physics::CollisionDirection},
         ui::file_picker::{FilePickerFilename, DIR_LEVELS},
-        utils::{Vec2, Vec3},
     };
     use amethyst::{
         animation::*,
@@ -67,8 +66,9 @@ pub mod entity_builder {
     use crate::components::game::{
         AnimatedTile, AnimatedTileComp, Block, Drops, PicksThingsUp, Pickup,
     };
-    use crate::components::physics::ChildTo;
+    use crate::components::physics::{ChildTo, MoveIntent, Orientation, Velocity};
     use std::collections::BTreeMap;
+    use ultraviolet::Vec2;
 
     pub fn entity_to_serialized_object(world: &mut World, id: u32) -> SerializedObject {
         let entity = world.entities().entity(id);
@@ -107,7 +107,7 @@ pub mod entity_builder {
 
         let mut result: SerializedObject = SerializedObject::default();
         result.size = Some(size);
-        result.pos = Some(position.0.to_vec2());
+        result.pos = Some(position.0);
         result.sprite = Some(SpriteRenderData::new(
             sprite_sheet_type.clone(),
             sprite_render.sprite_number,
@@ -164,7 +164,7 @@ pub mod entity_builder {
             //.with(PlatformCuboid::new())
             .with(Transparent)
             .with(helper.layer)
-            .with(helper.pos.clone())
+            .with(helper.pos)
             .with(helper.transform.clone())
             .with(helper.sprite_render.clone())
             .with(helper.scale.clone())
@@ -182,7 +182,7 @@ pub mod entity_builder {
             .with(helper.layer)
             .with(helper.transform.clone())
             .with(helper.sprite_render.clone())
-            .with(helper.pos.clone().with_depth(helper.pos.0.z + 1.0))
+            .with(helper.pos)
             .with(amethyst::core::Hidden)
             .with(helper.scale.clone())
             .with(SizeForEditorGrid(helper.size.clone()))
@@ -226,6 +226,8 @@ pub mod entity_builder {
             .with(helper.pos.clone())
             .with(scale.clone())
             .with(helper.layer)
+            .with(Orientation::default())
+            .with(MoveIntent::default())
             .with(Transparent)
             .with(GravityDirection(CollisionDirection::FromTop))
             .with(Grounded(false))
@@ -274,7 +276,7 @@ pub mod entity_builder {
                 .with(Player(player))
                 .with(helper.layer)
                 .with(helper.sprite_render.clone())
-                .with(helper.pos.clone().with_depth(helper.pos.0.z + 1.0))
+                .with(helper.pos)
                 .with(scale.clone())
                 .with(Transparent)
                 .with(Resettable)
@@ -293,11 +295,7 @@ pub mod entity_builder {
         let scale = Scale(Vec2::new(CAM_WIDTH / size.x, CAM_HEIGHT / size.y));
 
         // Correctly position the tile.
-        let mut pos = Position(Vec3::new(
-            CAM_WIDTH / 2.0,
-            CAM_HEIGHT / 2.0,
-            DEPTH_BACKGROUND,
-        ));
+        let pos = Position(Vec2::new(CAM_WIDTH / 2.0, CAM_HEIGHT / 2.0));
 
         let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             [&(SpriteSheetType::RollingHillsBg as u8)]
@@ -310,9 +308,9 @@ pub mod entity_builder {
                     sprite_sheet: sprite_sheet.clone(),
                     sprite_number: i, // grass is the first sprite in the sprite_sheet
                 };
-                pos.0.z = DEPTH_BACKGROUND - 0.1 * i as f32;
+                let z = DEPTH_BACKGROUND - 0.1 * i as f32;
                 let mut transform = Transform::default();
-                transform.set_translation_xyz(pos.0.x, pos.0.y, pos.0.z);
+                transform.set_translation_xyz(pos.0.x, pos.0.y, z);
                 transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
 
                 // Create gameplay entity
@@ -343,13 +341,13 @@ pub mod entity_builder {
             sprite_number: 2,
         };
 
-        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
+        let position = Position(Vec2::new(pos.x, pos.y));
 
         let size = Vec2::new(TILE_WIDTH / 2., TILE_HEIGHT / 2.);
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2., size.y / 2.);
         let mut velocity = Velocity::default();
-        velocity.vel = vel.clone();
+        velocity.0 = vel.clone();
 
         // Data common to both editor and entity
         let entity = world
@@ -386,13 +384,13 @@ pub mod entity_builder {
             sprite_number: 5,
         };
 
-        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
+        let position = Position(Vec2::new(pos.x, pos.y));
 
         let size = Vec2::new(TILE_WIDTH / 3.0, TILE_HEIGHT / 3.0);
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
         let mut velocity = Velocity::default();
-        velocity.vel = vel.clone();
+        velocity.0 = vel.clone();
 
         // Data common to both editor and entity
         let entity = world
@@ -434,7 +432,7 @@ pub mod entity_builder {
             sprite_number: 0,
         };
 
-        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
+        let position = Position(Vec2::new(pos.x, pos.y));
 
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2., size.y / 2.);
@@ -455,7 +453,7 @@ pub mod entity_builder {
             .with(team.clone());
         if let Some(parent) = parent {
             let parent = ChildTo {
-                parent: parent,
+                parent,
                 offset: pos.clone(),
             };
             entity = entity.with(parent);
@@ -485,7 +483,7 @@ pub mod entity_builder {
             sprite_number: 5,
         };
 
-        let position = Position(Vec3::new(pos.x, pos.y, DEPTH_PROJECTILES));
+        let position = Position(Vec2::new(pos.x, pos.y));
 
         let scale = Scale(Vec2::new(size.x / TILE_WIDTH, size.y / TILE_HEIGHT));
         let collision_points = PlatformCollisionPoints::plus(size.x / 2.25, size.y / 2.25);
@@ -509,7 +507,7 @@ pub mod entity_builder {
             .with(Damage(1));
         if let Some(parent) = parent {
             let parent = ChildTo {
-                parent: parent,
+                parent,
                 offset: pos.clone(),
             };
             entity = entity.with(parent);
@@ -521,13 +519,12 @@ pub mod entity_builder {
 
     pub fn initialize_cursor(world: &mut World) {
         let mut transform = Transform::default();
-        let scale = Vec3::new(0.5, 0.5, 1.0);
-        transform.set_scale(Vector3::new(scale.x, scale.y, scale.z));
+        let scale = Vec2::new(0.5, 0.5);
+        transform.set_scale(Vector3::new(scale.x, scale.y, 1.0));
 
         // Correctly position the tile.
-        let mut pos = get_camera_center(world).to_vec3();
-        pos.z = DEPTH_UI;
-        let pos = Position(pos);
+        let pos = Position(get_camera_center(world));
+        transform.set_translation_z(DEPTH_UI);
 
         let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             [&(SpriteSheetType::Tiles as u8)]
@@ -544,7 +541,7 @@ pub mod entity_builder {
             .with(EditorFlag)
             .with(crate::components::editor::EditorCursor::default())
             .with(Tint(Srgba::new(1.0, 1.0, 1.0, 1.0).into()))
-            .with(RealCursorPosition(pos.0.to_vec2()))
+            .with(RealCursorPosition(pos.0))
             .with(PulseAnimation::default())
             .with(Scale(Vec2::new(scale.x, scale.y)))
             .with(SizeForEditorGrid(Vec2::new(
@@ -555,7 +552,6 @@ pub mod entity_builder {
             .with(transform.clone())
             .with(sprite_render.clone())
             .with(pos.clone())
-            .with(AbsolutePositioning)
             .with(Transparent)
             .build();
     }

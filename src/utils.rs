@@ -2,7 +2,7 @@ use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, io};
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize, Derivative)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Derivative)]
 #[derivative(Default)]
 pub struct Vec2 {
     pub x: f32,
@@ -89,7 +89,7 @@ impl Ord for Vec2 {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize, Derivative)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Derivative)]
 #[derivative(Default)]
 pub struct Vec3 {
     pub x: f32,
