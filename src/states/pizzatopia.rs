@@ -65,7 +65,7 @@ use amethyst::{
     },
     winit::Event,
 };
-use pizzatopia_input::{Input, InputManagementSystem};
+use pizzatopia_input::{gilrs::GilRsControllerSystem, Input, InputManagementSystem};
 use ultraviolet::Vec2;
 
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -273,6 +273,11 @@ pub fn get_camera_center(world: &mut World) -> Vec2 {
 impl<'a, 'b> Pizzatopia<'a, 'b> {
     fn create_pizzatopia_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
+        dispatcher_builder.add(
+            GilRsControllerSystem::<StringBindings>::default(),
+            "gilrs_system",
+            &[],
+        );
         dispatcher_builder.add(
             InputManagementSystem::<StringBindings>::default(),
             "input_management_system",

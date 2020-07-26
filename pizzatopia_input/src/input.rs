@@ -2,8 +2,6 @@ use amethyst::{
     input::{BindingTypes, InputHandler},
     prelude::{World, WorldExt},
 };
-use derivative::Derivative;
-use log::error;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -11,13 +9,9 @@ use std::marker::PhantomData;
 use std::time::Instant;
 
 /// Information used to track input state.
-#[derive(Derivative)]
-#[derivative(Default)]
 pub(crate) struct InputStatistics {
-    #[derivative(Default(value = "Instant::now()"))]
     /// Updates every time a key is released
     last_released: Instant,
-    #[derivative(Default(value = "Instant::now()"))]
     /// Updates whenever an input switches from `action_is_down: false` to `action_is_down: true`
     last_pressed: Instant,
     /// Count the number of frames the input has been pressed for
@@ -36,9 +30,20 @@ impl InputStatistics {
     }
 }
 
+impl Default for InputStatistics {
+    fn default() -> Self {
+        Self {
+            last_released: Instant::now(),
+            last_pressed: Instant::now(),
+            same_action_frame_count: 0,
+            action_is_down: false,
+            action_axis_value: 0.,
+        }
+    }
+}
+
 /// Represents the input status given the desired restrictions
-#[derive(Derivative, Clone)]
-#[derivative(Default)]
+#[derive(Default, Clone)]
 pub struct InputResult {
     /// Is true if all conditions are met and the input is being pressed
     pub is_down: bool,
@@ -101,7 +106,7 @@ where
                 return InputResult::new(input);
             }
         } else {
-            error!("Action {:?} not registered!", action);
+            eprintln!("Action {:?} not registered!", action);
         }
         return InputResult::default();
     }
@@ -258,7 +263,7 @@ mod tests {
 
         // Repeat press
         let mut counter = 0;
-        for i in 0..10 {
+        for _ in 0..10 {
             manager.update_statistics(test_action.clone(), true);
             if manager.repeat_press(test_action.clone(), 0, 2).is_down {
                 counter += 1;
