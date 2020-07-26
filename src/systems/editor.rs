@@ -31,12 +31,8 @@ use crate::{
         editor::EDITOR_GRID_SIZE,
         pizzatopia::{CAM_HEIGHT, DEPTH_UI, TILE_HEIGHT, TILE_WIDTH},
     },
-    systems::{
-        input::{InputManager, REPEAT_DELAY},
-        physics::{
-            gravitationally_adapted_velocity, gravitationally_de_adapted_velocity,
-            ActorCollisionSystem,
-        },
+    systems::physics::{
+        gravitationally_adapted_velocity, gravitationally_de_adapted_velocity, ActorCollisionSystem,
     },
     ui::{
         tile_characteristics::{EditorButton, EditorButtonType, UiIndex},
@@ -51,6 +47,7 @@ use crate::{
 };
 use log::info;
 use num_traits::Zero;
+use pizzatopia_input::{Input, InputManager};
 use pizzatopia_utils::EnumCycle;
 use ultraviolet::{Vec2, Vec3};
 
@@ -130,7 +127,7 @@ impl<'s> System<'s> for CursorPositionSystem {
         Write<'s, EventChannel<Events>>,
         ReadExpect<'s, CursorState>,
         Write<'s, DebugLines>,
-        Read<'s, InputManager>,
+        Read<'s, Input<StringBindings>>,
         Read<'s, UiStack>,
         Read<'s, TileLayer>,
         WriteStorage<'s, Position>,
@@ -169,13 +166,19 @@ impl<'s> System<'s> for CursorPositionSystem {
         }
 
         let mut vertical_move = input
-            .is_valid_repeat_press("vertical", REPEAT_DELAY, 2)
-            .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+            .axes
+            .is_valid_repeat_press("vertical".to_string(), 250, 2)
             .axis;
         let mut horizontal_move = input
-            .is_valid_repeat_press("horizontal", REPEAT_DELAY, 2)
-            .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+            .axes
+            .is_valid_repeat_press("horizontal".to_string(), 250, 2)
             .axis;
+        if input.actions.action_status("modifier1".to_string()).is_down
+            || input.actions.action_status("modifier2".to_string()).is_down
+        {
+            vertical_move = 0.0;
+            horizontal_move = 0.0;
+        }
         if ui.is_blocking_all_input() {
             vertical_move = 0.;
             horizontal_move = 0.;
@@ -407,7 +410,7 @@ pub struct EditorButtonEventSystem;
 impl<'s> System<'s> for EditorButtonEventSystem {
     type SystemData = (
         ReadExpect<'s, CursorState>,
-        Read<'s, InputManager>,
+        Read<'s, Input<StringBindings>>,
         Read<'s, UiStack>,
         Write<'s, EventChannel<EditorEvents>>,
         Write<'s, EventChannel<Events>>,
@@ -421,20 +424,26 @@ impl<'s> System<'s> for EditorButtonEventSystem {
             return;
         }
 
-        let vertical_with_modifier2 = input
-            .action_single_press("vertical")
-            .including_modifiers(&["modifier2"])
-            .axis;
-        if !vertical_with_modifier2.is_zero() {
+        let vertical_with_modifier2 = input.axes.action_single_press("vertical".to_string()).axis;
+        let modifier2 = input.actions.action_status("modifier2".to_string()).is_down;
+        if !vertical_with_modifier2.is_zero() && modifier2 {
             editor_event_writer
                 .single_write(EditorEvents::CycleActiveLayer(vertical_with_modifier2 > 0.));
         }
 
-        if input.action_single_press("save").is_down {
+        if input
+            .actions
+            .action_single_press("save".to_string())
+            .is_down
+        {
             editor_event_writer.single_write(EditorEvents::SaveLevelToFile);
         }
 
-        if input.action_single_press("load").is_down {
+        if input
+            .actions
+            .action_single_press("load".to_string())
+            .is_down
+        {
             global_event_writer.single_write(Events::LoadLevel);
         }
 
@@ -442,28 +451,28 @@ impl<'s> System<'s> for EditorButtonEventSystem {
             CursorState::EditMode => {
                 // Controller input
                 if input
-                    .action_single_press("cancel")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .actions
+                    .action_single_press("cancel".to_string())
                     .is_down
                 {
                     editor_event_writer.single_write(EditorEvents::RemoveGameObject);
                 } else if input
-                    .action_single_press("accept")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .actions
+                    .action_single_press("accept".to_string())
                     .is_down
                 {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(CursorState::EditGameObject));
                 } else if input
-                    .action_single_press("insert")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .actions
+                    .action_single_press("insert".to_string())
                     .is_down
                 {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(CursorState::InsertMode));
                 } else if input
-                    .action_single_press("start")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .actions
+                    .action_single_press("start".to_string())
                     .is_down
                 {
                     global_event_writer.single_write(Events::OpenFilePickerUi);
@@ -472,43 +481,35 @@ impl<'s> System<'s> for EditorButtonEventSystem {
             CursorState::InsertMode => {
                 // Controller input
                 if input
-                    .action_single_press("cancel")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .actions
+                    .action_single_press("cancel".to_string())
                     .is_down
                 {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(CursorState::EditMode));
                 } else if input
-                    .action_single_press("accept")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .actions
+                    .action_single_press("accept".to_string())
                     .is_down
                 {
                     editor_event_writer.single_write(EditorEvents::AddGameObject);
-                } else if input
-                    .action_single_press("1")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
-                    .is_down
-                {
+                } else if input.actions.action_single_press("1".to_string()).is_down {
                     editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(0));
-                } else if input
-                    .action_single_press("2")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
-                    .is_down
-                {
+                } else if input.actions.action_single_press("2".to_string()).is_down {
                     editor_event_writer.single_write(EditorEvents::ChangeInsertionGameObject(1));
                 }
             }
             CursorState::EditGameObject => {
                 if input
-                    .action_single_press("cancel")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .actions
+                    .action_single_press("cancel".to_string())
                     .is_down
                 {
                     editor_event_writer
                         .single_write(EditorEvents::ChangeState(CursorState::EditMode));
                 } else if input
-                    .action_single_press("accept")
-                    .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+                    .actions
+                    .action_single_press("accept".to_string())
                     .is_down
                 {
                     editor_event_writer.single_write(EditorEvents::AddGameObject);

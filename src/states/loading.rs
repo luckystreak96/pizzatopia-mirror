@@ -6,7 +6,6 @@ use crate::{
         load_level::LoadLevelState,
         pizzatopia::{MyEvents, Pizzatopia},
     },
-    systems::input::InputManager,
     ui::{
         file_picker::{FilePickerFilename, DIR_LEVELS},
         UiStack,
@@ -50,6 +49,7 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+use pizzatopia_input::{InputManager, Input};
 
 pub struct AssetsDir(pub PathBuf);
 
@@ -113,7 +113,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
             SpriteSheetType::Animation as u8,
         );
 
-        data.world.insert(InputManager::new(data.world));
+        data.world.insert(Input::<StringBindings>::new(data.world));
         data.world.insert(FilePickerFilename::new(
             "level0.ron".to_string(),
             "level0.ron".to_string(),

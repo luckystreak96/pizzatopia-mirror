@@ -5,10 +5,7 @@ use crate::{
         physics::Position,
     },
     states::pizzatopia::TILE_HEIGHT,
-    systems::{
-        editor::{EditorEvents, EDITOR_MODIFIERS_ALL, EDITOR_MODIFIERS_UI},
-        input::InputManager,
-    },
+    systems::editor::{EditorEvents, EDITOR_MODIFIERS_ALL, EDITOR_MODIFIERS_UI},
     ui::{
         with_transparent, UiComponent, COLOR_BLACK, COLOR_GOLD, COLOR_GOLDEN_RED, COLOR_GRAY,
         COLOR_RED, COLOR_WHITE,

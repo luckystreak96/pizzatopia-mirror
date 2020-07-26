@@ -7,7 +7,7 @@ use crate::{
         physics::Position,
     },
     states::pizzatopia::TILE_HEIGHT,
-    systems::{editor::EDITOR_MODIFIERS_UI, input::InputManager},
+    systems::editor::EDITOR_MODIFIERS_UI,
     ui::{with_transparent, UiComponent, COLOR_BLACK},
 };
 use amethyst::{
@@ -20,7 +20,9 @@ use amethyst::{
     ui::{Anchor, FontAsset, UiEvent, UiEventType, UiImage, UiText, UiTransform},
 };
 use derivative::Derivative;
+use log::warn;
 use num_traits::Zero;
+use pizzatopia_input::*;
 use pizzatopia_utils::EnumCycle;
 use std::collections::BTreeMap;
 
@@ -247,18 +249,18 @@ impl EditorFieldUiComponents {
 
     fn handle_input(&mut self, world: &World) {
         let state = world.read_resource::<CursorState>();
-        let input = world.read_resource::<InputManager>();
+        let input = world.read_resource::<Input<StringBindings>>();
         match *state {
             CursorState::EditGameObject | CursorState::InsertMode => {
                 let horizontal = input
-                    .action_single_press("horizontal")
-                    .including_modifiers(EDITOR_MODIFIERS_UI)
+                    .axes
+                    .is_valid_repeat_press("horizontal".to_string(), 250, 10)
                     .axis;
                 let vertical = input
-                    .action_single_press("vertical")
-                    .including_modifiers(EDITOR_MODIFIERS_UI)
+                    .axes
+                    .is_valid_repeat_press("vertical".to_string(), 250, 10)
                     .axis;
-                if input.action_status("modifier1").is_down {
+                if input.actions.action_status("modifier1".to_string()).is_down {
                     self.ui_index.active = true;
                     if vertical > 0.0 && self.ui_index.index > 0 {
                         self.ui_index.index -= 1;
@@ -280,7 +282,7 @@ impl EditorFieldUiComponents {
                         }
                         _ => {}
                     }
-                } else if input.action_just_released("modifier1") {
+                } else if input.actions.action_just_released("modifier1".to_string()) {
                     self.ui_index.active = false;
                 }
             }
@@ -321,7 +323,6 @@ impl EditorFieldUiComponents {
             }
         }
         self.hide_components(world, counter, 9);
-        // self.ui_index.index = self.ui_index.index.clamp(0, counter - 1);
         self.ui_index.index = self.ui_index.index.max(0).min(counter - 1);
     }
 

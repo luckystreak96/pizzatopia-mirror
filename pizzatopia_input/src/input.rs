@@ -32,12 +32,7 @@ impl InputStatistics {
     /// Return `true` if the axis value is high enough to be considered pressed
     pub(crate) fn set_axis_value(&mut self, axis_value: f32) -> bool {
         self.action_axis_value = axis_value;
-        if axis_value.abs() >= 0.3 {
-            self.action_is_down = true;
-        } else {
-            self.action_is_down = false;
-        }
-        self.action_is_down
+        axis_value.abs() >= 0.3
     }
 }
 

@@ -21,14 +21,12 @@ use crate::{
     events::Events,
     level::Level,
     states::pizzatopia::{CAM_HEIGHT, TILE_HEIGHT, TILE_WIDTH},
-    systems::{
-        input::InputManager,
-        physics::{gravitationally_adapted_velocity, gravitationally_de_adapted_velocity},
-    },
+    systems::physics::{gravitationally_adapted_velocity, gravitationally_de_adapted_velocity},
 };
 use amethyst::prelude::WorldExt;
 use log::error;
 use num_traits::identities::Zero;
+use pizzatopia_input::Input;
 use std::sync::Arc;
 use ultraviolet::Vec2;
 
@@ -42,7 +40,7 @@ impl<'s> System<'s> for PlayerInputSystem {
         WriteStorage<'s, MoveIntent>,
         WriteStorage<'s, AnimationCounter>,
         ReadStorage<'s, Position>,
-        Read<'s, InputManager>,
+        Read<'s, Input<StringBindings>>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, Health>,
         ReadStorage<'s, Grounded>,
@@ -94,17 +92,20 @@ impl<'s> System<'s> for PlayerInputSystem {
 
             {
                 // Controller input
-                let h_move = input.action_status("horizontal").axis;
-                let v_move = input.action_status("vertical").axis;
+                let h_move = input.axes.action_status("horizontal".to_string()).axis;
+                let v_move = input.axes.action_status("vertical".to_string()).axis;
 
                 intent.vec.x = h_move;
                 intent.vec.y = v_move;
             }
 
-            let jumping = input.action_status("accept").is_down;
-            let release = input.action_just_released("accept");
-            let slowing = input.action_status("insert").is_down;
-            let attacking = input.action_single_press("attack").is_down;
+            let jumping = input.actions.action_status("accept".to_string()).is_down;
+            let release = input.actions.action_just_released("accept".to_string());
+            let slowing = input.actions.action_status("insert".to_string()).is_down;
+            let attacking = input
+                .actions
+                .action_single_press("attack".to_string())
+                .is_down;
 
             if attacking {
                 let animation = AnimationCounter::new(

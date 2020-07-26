@@ -6,6 +6,7 @@ use amethyst::{
 use std::marker::PhantomData;
 
 /// Updates input statistics, ideally called at the start of every frame
+#[derive(Default)]
 pub struct InputManagementSystem<B>
 where
     B: BindingTypes + Default,
@@ -16,15 +17,17 @@ where
 impl<'s, B> System<'s> for InputManagementSystem<B>
 where
     B: BindingTypes + Default,
-    B::Axis: Default + Copy,
-    B::Action: Default + Copy,
+    B::Axis: Default + Clone,
+    B::Action: Default + Clone,
 {
     type SystemData = (Read<'s, InputHandler<B>>, Write<'s, Input<B>>);
 
     fn run(&mut self, (input_handler, mut input): Self::SystemData) {
         for action in input_handler.bindings.actions() {
             let action_is_down = input_handler.action_is_down(action).unwrap_or(false);
-            input.actions.update_statistics(*action, action_is_down);
+            input
+                .actions
+                .update_statistics(action.clone(), action_is_down);
         }
 
         for axis in input_handler.bindings.axes() {
@@ -35,7 +38,7 @@ where
                 false
             };
 
-            input.axes.update_statistics(*axis, action_is_down);
+            input.axes.update_statistics(axis.clone(), action_is_down);
         }
     }
 }

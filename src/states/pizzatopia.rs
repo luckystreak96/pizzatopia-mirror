@@ -25,7 +25,6 @@ use crate::{
         console::ConsoleInputSystem,
         game::AnimationCounterSystem,
         graphics::CollisionDebugLinesSystem,
-        input::{InputManagementSystem, InputManager},
         physics::{CollisionDirection, DuckTransferSystem},
     },
     ui::{
@@ -66,6 +65,7 @@ use amethyst::{
     },
     winit::Event,
 };
+use pizzatopia_input::{Input, InputManagementSystem};
 use ultraviolet::Vec2;
 
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -166,12 +166,20 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         if let MyEvents::Window(_) = &event {
-            let input = data.world.read_resource::<InputManager>();
-            if input.action_status("exit").is_down {
+            let input = data.world.read_resource::<Input<StringBindings>>();
+            if input.actions.action_status("exit".to_string()).is_down {
                 return Trans::Quit;
-            } else if input.action_single_press("editor").is_down {
+            } else if input
+                .actions
+                .action_single_press("editor".to_string())
+                .is_down
+            {
                 return Trans::Push(Box::new(Editor::default()));
-            } else if input.action_single_press("toggle_debug").is_down {
+            } else if input
+                .actions
+                .action_single_press("toggle_debug".to_string())
+                .is_down
+            {
                 let current = data.world.read_resource::<DrawDebugLines>().0;
                 data.world.write_resource::<DrawDebugLines>().0 = !current;
             }
@@ -269,7 +277,11 @@ pub fn get_camera_center(world: &mut World) -> Vec2 {
 impl<'a, 'b> Pizzatopia<'a, 'b> {
     fn create_pizzatopia_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
-        dispatcher_builder.add(InputManagementSystem, "input_management_system", &[]);
+        dispatcher_builder.add(
+            InputManagementSystem::<StringBindings>::default(),
+            "input_management_system",
+            &[],
+        );
         dispatcher_builder.add(
             systems::physics::ActorCollisionSystem,
             "actor_collision_system",

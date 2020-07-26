@@ -1,5 +1,5 @@
 use crate::{
-    systems::{editor::EDITOR_MODIFIERS_ALL, input::InputManager},
+    systems::editor::EDITOR_MODIFIERS_ALL,
     ui::{
         with_transparent, UiComponent, COLOR_BLACK, COLOR_GOLD, COLOR_GOLDEN_RED, COLOR_GRAY,
         COLOR_RED,
@@ -8,6 +8,7 @@ use crate::{
 use amethyst::{
     assets::Handle,
     ecs::prelude::{Component, DenseVecStorage, Entity},
+    input::StringBindings,
     prelude::{Builder, World, WorldExt},
     ui::{
         Anchor, FontAsset, Interactable, Selectable, Selected, TextEditing, UiEvent, UiEventType,
@@ -16,6 +17,7 @@ use amethyst::{
 };
 use derivative::Derivative;
 
+use pizzatopia_input::Input;
 use std::{fs, path::PathBuf};
 
 pub const DIR_ASSETS: &str = "assets";
@@ -253,8 +255,12 @@ impl FilePickerUi {
     }
 
     fn handle_input(&mut self, world: &World) {
-        let input = world.read_resource::<InputManager>();
-        if input.action_single_press("start").is_down {
+        let input = world.read_resource::<Input<StringBindings>>();
+        if input
+            .actions
+            .action_single_press("start".to_string())
+            .is_down
+        {
             let mut ui_texts = world.write_storage::<UiText>();
             let mut text = None;
             if let Some(ui_text) = ui_texts.get_mut(self.editable_label.unwrap()) {
@@ -275,13 +281,10 @@ impl FilePickerUi {
         }
 
         let horizontal = input
-            .action_single_press("horizontal")
-            .excluding_modifiers(EDITOR_MODIFIERS_ALL)
+            .axes
+            .action_single_press("horizontal".to_string())
             .axis;
-        let vertical = input
-            .action_single_press("vertical")
-            .excluding_modifiers(EDITOR_MODIFIERS_ALL)
-            .axis;
+        let vertical = input.axes.action_single_press("vertical".to_string()).axis;
 
         if vertical > 0.0 && self.ui_index.index > 0 {
             self.ui_index.index -= 1;
@@ -297,13 +300,21 @@ impl FilePickerUi {
             self.ui_index.index -= self.ui_index.items_per_column;
         }
 
-        if input.action_single_press("accept").is_down {
+        if input
+            .actions
+            .action_single_press("accept".to_string())
+            .is_down
+        {
             let button_info =
                 FilePickerButton::new(FilePickerButtonType::Label, self.ui_index.index);
             self.handle_click(world, &button_info);
         }
 
-        if input.action_single_press("cancel").is_down {
+        if input
+            .actions
+            .action_single_press("cancel".to_string())
+            .is_down
+        {
             self.should_destroy = true;
         }
     }

@@ -83,7 +83,6 @@ dependencies = [
  "amethyst_derive",
  "amethyst_error",
  "amethyst_input",
- "amethyst_rendy",
  "amethyst_ui",
  "amethyst_utils",
  "amethyst_window",
@@ -248,7 +247,6 @@ dependencies = [
  "amethyst_core",
  "amethyst_derive",
  "amethyst_error",
- "amethyst_window",
  "approx 0.3.2",
  "derivative 1.0.4",
  "derive-new",
@@ -1153,17 +1151,6 @@ dependencies = [
  "proc-macro2 1.0.19",
  "quote 1.0.7",
  "syn 1.0.35",
-]
-
-[[package]]
-name = "gfx-backend-empty"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdf40d1cd04f92f8555db32dd9fb5bb13d17ae4624318b73604b4186b1d66f0a"
-dependencies = [
- "gfx-hal",
- "raw-window-handle 0.1.2",
- "winit",
 ]
 
 [[package]]
@@ -2271,15 +2258,6 @@ dependencies = [
 
 [[package]]
 name = "raw-window-handle"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af3d3b2e1053b3ff2171efc29a8bff3439ce6b2ce6a0432695134bc1c7ff8e87"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "raw-window-handle"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a441a7a6c80ad6473bd4b74ec1c9a4c951794285bf941c2126f607c72e48211"
@@ -2607,7 +2585,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa01882dc9f3f64684393724d0d49d2315b612eeeb029eded2181385d796c75f"
 dependencies = [
  "derivative 1.0.4",
- "gfx-backend-empty",
  "gfx-hal",
  "lazy_static",
  "log",
@@ -2631,7 +2608,6 @@ dependencies = [
  "rendy-resource",
  "rendy-util",
  "smallvec 0.6.13",
- "winit",
 ]
 
 [[package]]
@@ -3373,7 +3349,7 @@ dependencies = [
  "objc",
  "parking_lot 0.9.0",
  "percent-encoding",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
  "serde",
  "smithay-client-toolkit",
  "wayland-client",

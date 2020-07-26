@@ -15,16 +15,16 @@ use amethyst::{
 
 use crate::{
     events::{Events, PlayerEvent},
-    systems::input::InputManager,
     utils::read_line_from_console,
 };
+use pizzatopia_input::Input;
 
 #[derive(SystemDesc)]
 pub struct ConsoleInputSystem;
 
 impl<'s> System<'s> for ConsoleInputSystem {
     type SystemData = (
-        Read<'s, InputManager>,
+        Read<'s, Input<StringBindings>>,
         Write<'s, EventChannel<Events>>,
         Write<'s, EventChannel<PlayerEvent>>,
     );
@@ -32,11 +32,23 @@ impl<'s> System<'s> for ConsoleInputSystem {
     fn run(&mut self, (input, mut events_channel, mut player_event_channel): Self::SystemData) {
         let input_string;
 
-        if input.action_single_press("console").is_down {
+        if input
+            .actions
+            .action_single_press("console".to_string())
+            .is_down
+        {
             input_string = read_line_from_console();
-        } else if input.action_single_press("reset").is_down {
+        } else if input
+            .actions
+            .action_single_press("reset".to_string())
+            .is_down
+        {
             input_string = String::from("reset");
-        } else if input.action_single_press("revive").is_down {
+        } else if input
+            .actions
+            .action_single_press("revive".to_string())
+            .is_down
+        {
             input_string = String::from("revive");
         } else {
             input_string = String::new();

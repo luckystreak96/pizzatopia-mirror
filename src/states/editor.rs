@@ -31,7 +31,6 @@ use crate::{
             EditorEventHandlingSystem, EditorEvents,
         },
         graphics::{CursorColorUpdateSystem, CursorSpriteUpdateSystem, PulseAnimationSystem},
-        input::{InputManagementSystem, InputManager},
         physics::CollisionDirection,
     },
     ui::{
@@ -84,6 +83,7 @@ use amethyst::{
     winit::Event,
 };
 use log::{error, warn};
+use pizzatopia_input::{Input, InputManagementSystem};
 
 pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
 pub const EDITOR_LAYER_TRANSPARENCY: f32 = 0.5;
@@ -168,10 +168,14 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
         event: MyEvents,
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         if let MyEvents::Window(_) = &event {
-            let input = data.world.read_resource::<InputManager>();
-            if input.action_status("exit").is_down {
+            let input = data.world.read_resource::<Input<StringBindings>>();
+            if input.actions.action_status("exit".to_string()).is_down {
                 return Trans::Quit;
-            } else if input.action_single_press("editor").is_down {
+            } else if input
+                .actions
+                .action_single_press("editor".to_string())
+                .is_down
+            {
                 return Trans::Pop;
             }
         }
@@ -300,7 +304,11 @@ impl<'a, 'b> Editor<'a, 'b> {
     fn create_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         // Main logic
         let mut dispatcher_builder = DispatcherBuilder::new();
-        dispatcher_builder.add(InputManagementSystem, "input_management_system", &[]);
+        dispatcher_builder.add(
+            InputManagementSystem::<StringBindings>::default(),
+            "input_management_system",
+            &[],
+        );
         dispatcher_builder.add(
             CursorPositionSystem,
             "cursor_position_system",

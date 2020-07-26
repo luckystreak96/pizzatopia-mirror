@@ -7,8 +7,8 @@ use amethyst::{
 };
 use derivative::Derivative;
 
-use serde::{Deserialize, Serialize};
 use crate::components::physics::Orientation;
+use serde::{Deserialize, Serialize};
 
 #[derive(Derivative, Copy, Clone)]
 #[derivative(Default)]

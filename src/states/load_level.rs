@@ -3,7 +3,6 @@ use crate::{
     components::{graphics::SpriteSheetType, physics::PlatformCuboid},
     level::Level,
     states::pizzatopia::{MyEvents, Pizzatopia},
-    systems::input::InputManager,
     ui::{
         file_picker::{FilePickerFilename, DIR_LEVELS},
         UiStack,

@@ -14,11 +14,8 @@ use amethyst::{
 use log::debug;
 
 use crate::components::game::{Block, PicksThingsUp, Pickup};
+use crate::components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team};
 use crate::components::physics::{ChildTo, MoveIntent, Orientation};
-use crate::{
-    components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team},
-    systems::input::InputManager,
-};
 use amethyst::{
     core::{
         bundle::SystemBundle,
@@ -37,6 +34,7 @@ use amethyst::{
 use derivative::Derivative;
 use log::info;
 use num_traits::identities::Zero;
+use pizzatopia_input::Input;
 use rstar::{RTree, AABB};
 use std::collections::HashSet;
 use std::ops::Sub;
@@ -303,7 +301,7 @@ impl<'s> System<'s> for DuckTransferSystem {
         WriteStorage<'s, Ducking>,
         WriteStorage<'s, PlatformCollisionPoints>,
         Entities<'s>,
-        Read<'s, InputManager>,
+        Read<'s, Input<StringBindings>>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, Grounded>,
         ReadStorage<'s, Position>,
@@ -319,7 +317,7 @@ impl<'s> System<'s> for DuckTransferSystem {
         for (_duck, points, entity, position) in
             (&mut duckings, &mut collisions, &entities, &positions).join()
         {
-            if input.action_status("vertical").axis >= threshold {
+            if input.axes.action_status("vertical".to_string()).axis >= threshold {
                 let bottom_left = [
                     position.0.x - points.half_size.x,
                     position.0.y - points.half_size.y,
@@ -343,7 +341,7 @@ impl<'s> System<'s> for DuckTransferSystem {
             (&players, &mut collisions, &entities, &groundeds).join()
         {
             if player.0 && grounded.0 {
-                if input.action_status("vertical").axis < threshold {
+                if input.axes.action_status("vertical".to_string()).axis < threshold {
                     if !duckings.contains(entity) {
                         let mut new_half = coll_points.half_size;
                         new_half.y /= 2.0;
