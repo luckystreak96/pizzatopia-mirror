@@ -3,7 +3,6 @@ name = "pizzatopia"
 version = "0.0.1"
 authors = ["Yanik Lyth <yanik.lyth@gmail.com>"]
 edition = "2018"
-build = "build.rs"
 
 [dependencies]
 pizzatopia_utils = { path = "./pizzatopia_utils/" }

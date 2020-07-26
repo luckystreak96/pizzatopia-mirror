@@ -29,7 +29,7 @@ impl<'s, B: BindingTypes> System<'s> for GilRsControllerSystem<B> {
     fn run(&mut self, (mut input_handler, mut events): Self::SystemData) {
         if let Some(ref mut gilrs) = &mut self.gilrs {
             if !self.controllers_registered {
-                for (id, gamepad) in gilrs.gamepads() {
+                for (id, _gamepad) in gilrs.gamepads() {
                     let id: usize = id.into();
                     let which = id as u32;
                     input_handler.send_controller_event(
