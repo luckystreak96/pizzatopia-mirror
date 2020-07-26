@@ -169,13 +169,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         if let MyEvents::Window(_) = &event {
             let input = data.world.read_resource::<Input<StringBindings>>();
-            if input.actions.action_status("exit".to_string()).is_down {
+            if input.actions.status("exit".to_string()).is_down {
                 return Trans::Quit;
-            } else if input
-                .actions
-                .action_single_press("editor".to_string())
-                .is_down
-            {
+            } else if input.actions.single_press("editor".to_string()).is_down {
                 return Trans::Pop;
             }
         }

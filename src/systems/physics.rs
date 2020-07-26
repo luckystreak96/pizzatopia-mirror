@@ -317,7 +317,7 @@ impl<'s> System<'s> for DuckTransferSystem {
         for (_duck, points, entity, position) in
             (&mut duckings, &mut collisions, &entities, &positions).join()
         {
-            if input.axes.action_status("vertical".to_string()).axis >= threshold {
+            if input.axes.status("vertical".to_string()).axis >= threshold {
                 let bottom_left = [
                     position.0.x - points.half_size.x,
                     position.0.y - points.half_size.y,
@@ -341,7 +341,7 @@ impl<'s> System<'s> for DuckTransferSystem {
             (&players, &mut collisions, &entities, &groundeds).join()
         {
             if player.0 && grounded.0 {
-                if input.axes.action_status("vertical".to_string()).axis < threshold {
+                if input.axes.status("vertical".to_string()).axis < threshold {
                     if !duckings.contains(entity) {
                         let mut new_half = coll_points.half_size;
                         new_half.y /= 2.0;

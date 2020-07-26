@@ -84,7 +84,7 @@ where
     /// Returns `InputResult` with positive results only on:
     /// - The first frame of a keypress
     /// - Every `repeat_every_x_frames` frames after a delay of `repeat_delay_millis`
-    pub fn is_valid_repeat_press(
+    pub fn repeat_press(
         &self,
         action: T,
         repeat_delay_millis: u128,
@@ -109,7 +109,7 @@ where
     /// Returns `InputResult` with positive results only if:
     /// - The input has not been pressed for at least `cooldown_millis` time
     /// - The input gets pressed
-    pub fn is_valid_cooldown_press(&self, action: T, cooldown_millis: u128) -> InputResult {
+    pub fn cooldown_press(&self, action: T, cooldown_millis: u128) -> InputResult {
         if let Some(input) = self.statistics.get(&action) {
             let is_cooldown_elapsed = input.last_released.elapsed().as_millis() >= cooldown_millis;
             if input.action_is_down && is_cooldown_elapsed {
@@ -121,12 +121,12 @@ where
 
     /// Returns `InputResult` with positive results only if:
     /// - The input gets pressed after having been released
-    pub fn action_single_press(&self, action: T) -> InputResult {
-        return self.is_valid_repeat_press(action, 5000, 5000);
+    pub fn single_press(&self, action: T) -> InputResult {
+        return self.repeat_press(action, 5000, 5000);
     }
 
     /// Returns `true` if the input was released this frame:
-    pub fn action_just_released(&self, action: T) -> bool {
+    pub fn just_released(&self, action: T) -> bool {
         if let Some(stats) = self.statistics.get(&action) {
             if stats.same_action_frame_count == 1 && !stats.action_is_down {
                 return true;
@@ -137,7 +137,7 @@ where
 
     /// Returns `InputResult` with the current input status.
     /// Simply indicates whether the input in being pressed or not, without any extra conditions.
-    pub fn action_status(&self, action: T) -> InputResult {
+    pub fn status(&self, action: T) -> InputResult {
         if let Some(input) = self.statistics.get(&action) {
             return InputResult::new(input);
         }
@@ -227,49 +227,46 @@ mod tests {
             .insert(test_action.clone(), InputStatistics::default());
 
         // Default
-        let result = manager.action_status(test_action.clone());
+        let result = manager.status(test_action.clone());
         assert_eq!(result.is_down, false);
 
         // Action status
         manager.update_statistics(test_action.clone(), true);
-        let result = manager.action_status(test_action.clone());
+        let result = manager.status(test_action.clone());
         assert_eq!(result.is_down, true);
         assert_eq!(result.axis, 0.0);
 
         manager.update_statistics(test_action.clone(), false);
-        let result = manager.action_status(test_action.clone());
+        let result = manager.status(test_action.clone());
         assert_eq!(result.is_down, false);
 
         // Action single press
         manager.update_statistics(test_action.clone(), true);
-        let result = manager.action_single_press(test_action.clone());
+        let result = manager.single_press(test_action.clone());
         assert_eq!(result.is_down, true);
 
         manager.update_statistics(test_action.clone(), true);
-        let result = manager.action_single_press(test_action.clone());
+        let result = manager.single_press(test_action.clone());
         assert_eq!(result.is_down, false);
 
         // Cool down press
         manager.update_statistics(test_action.clone(), true);
-        let result = manager.is_valid_cooldown_press(test_action.clone(), 1000);
+        let result = manager.cooldown_press(test_action.clone(), 1000);
         assert_eq!(result.is_down, false);
-        let result = manager.is_valid_cooldown_press(test_action.clone(), 0);
+        let result = manager.cooldown_press(test_action.clone(), 0);
         assert_eq!(result.is_down, true);
 
         // Repeat press
         let mut counter = 0;
         for i in 0..10 {
             manager.update_statistics(test_action.clone(), true);
-            if manager
-                .is_valid_repeat_press(test_action.clone(), 0, 2)
-                .is_down
-            {
+            if manager.repeat_press(test_action.clone(), 0, 2).is_down {
                 counter += 1;
             }
         }
         assert_eq!(counter, 5);
 
-        let result = manager.is_valid_repeat_press(test_action.clone(), 10000, 0);
+        let result = manager.repeat_press(test_action.clone(), 10000, 0);
         assert_eq!(result.is_down, false);
     }
 }

@@ -44,12 +44,12 @@ use amethyst::{
     winit::Event,
 };
 use log::warn;
+use pizzatopia_input::{Input, InputManager};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
     time::Duration,
 };
-use pizzatopia_input::{InputManager, Input};
 
 pub struct AssetsDir(pub PathBuf);
 
