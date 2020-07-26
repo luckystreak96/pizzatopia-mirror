@@ -1,7 +1,7 @@
 [package]
 name = "pizzatopia"
 version = "0.0.1"
-authors = ["Yanik Lyth <yanik.lyth@gmail.com>"]
+authors = ["Yanik Lyth <yaniklyth@gmail.com>"]
 edition = "2018"
 
 [dependencies]
@@ -24,7 +24,6 @@ version = "0.15.0"
 default-features = false
 features = [
  "vulkan",
-# "sdl_controller",
  "no-slow-safety-checks",
  "animation",
  "audio",

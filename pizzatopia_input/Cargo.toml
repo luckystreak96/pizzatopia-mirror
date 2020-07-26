@@ -1,15 +1,15 @@
 [package]
 name = "pizzatopia_input"
 version = "0.1.0"
-authors = ["Yanik <lyty2101@usherbrooke.ca>"]
+authors = ["Yanik Lyth <lyty2101@usherbrooke.ca>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Input wrapper for amethyst"
+respository = ""
+readme = "README.md"
+keywords = ["input", "amethyst", "controller"]
+license = "MIT/Apache-2.0"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 gilrs = { version = "0.7.4", optional = true }
-
-[dependencies.amethyst]
-version = "0.15.0"
-default-features = false
+amethyst = { version = "0.15.0", default-features = false }
