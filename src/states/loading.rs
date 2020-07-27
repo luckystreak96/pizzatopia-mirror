@@ -43,8 +43,8 @@ use amethyst::{
     },
     winit::Event,
 };
+use bami::{Input, InputManager};
 use log::warn;
-use pizzatopia_input::{Input, InputManager};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -113,7 +113,6 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for LoadingState {
             SpriteSheetType::Animation as u8,
         );
 
-        data.world.insert(Input::<StringBindings>::new(data.world));
         data.world.insert(FilePickerFilename::new(
             "level0.ron".to_string(),
             "level0.ron".to_string(),

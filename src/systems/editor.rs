@@ -45,9 +45,9 @@ use crate::{
     components::editor::TileLayer,
     states::editor::{Editor, EDITOR_LAYER_TRANSPARENCY},
 };
+use bami::{Input, InputManager};
 use log::info;
 use num_traits::Zero;
-use pizzatopia_input::{Input, InputManager};
 use pizzatopia_utils::EnumCycle;
 use ultraviolet::{Vec2, Vec3};
 

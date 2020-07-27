@@ -15,14 +15,15 @@ use amethyst::{
     assets::Handle,
     core::HiddenPropagate,
     ecs::prelude::{Component, DenseVecStorage, Entity, Join},
+    input::StringBindings,
     prelude::{Builder, World, WorldExt},
     renderer::SpriteSheet,
     ui::{Anchor, FontAsset, UiEvent, UiEventType, UiImage, UiText, UiTransform},
 };
+use bami::*;
 use derivative::Derivative;
 use log::warn;
 use num_traits::Zero;
-use pizzatopia_input::*;
 use pizzatopia_utils::EnumCycle;
 use std::collections::BTreeMap;
 

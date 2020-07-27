@@ -24,9 +24,9 @@ use crate::{
     systems::physics::{gravitationally_adapted_velocity, gravitationally_de_adapted_velocity},
 };
 use amethyst::prelude::WorldExt;
+use bami::Input;
 use log::error;
 use num_traits::identities::Zero;
-use pizzatopia_input::Input;
 use std::sync::Arc;
 use ultraviolet::Vec2;
 

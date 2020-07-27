@@ -17,7 +17,7 @@ use crate::{
     events::{Events, PlayerEvent},
     utils::read_line_from_console,
 };
-use pizzatopia_input::Input;
+use bami::Input;
 
 #[derive(SystemDesc)]
 pub struct ConsoleInputSystem;

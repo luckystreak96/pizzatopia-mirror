@@ -82,8 +82,8 @@ use amethyst::{
     },
     winit::Event,
 };
+use bami::{Input, InputManagementSystem};
 use log::{error, warn};
-use pizzatopia_input::{Input, InputManagementSystem};
 
 pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
 pub const EDITOR_LAYER_TRANSPARENCY: f32 = 0.5;

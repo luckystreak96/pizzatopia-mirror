@@ -31,10 +31,10 @@ use amethyst::{
     },
     input::{InputHandler, StringBindings},
 };
+use bami::Input;
 use derivative::Derivative;
 use log::info;
 use num_traits::identities::Zero;
-use pizzatopia_input::Input;
 use rstar::{RTree, AABB};
 use std::collections::HashSet;
 use std::ops::Sub;

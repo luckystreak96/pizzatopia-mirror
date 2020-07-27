@@ -476,6 +476,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bami"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e01ffb42f9ca324b39e91fd4f9e424fc7c254a7b14f777b697681884ea599be"
+dependencies = [
+ "amethyst_core",
+ "amethyst_input",
+ "gilrs",
+ "serde",
+]
+
+[[package]]
 name = "base-x"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2201,10 +2213,10 @@ name = "pizzatopia"
 version = "0.0.1"
 dependencies = [
  "amethyst",
+ "bami",
  "derivative",
  "log",
  "num-traits 0.1.43",
- "pizzatopia_input",
  "pizzatopia_utils",
  "rand 0.7.3",
  "ron",
@@ -2221,15 +2233,6 @@ version = "0.1.0"
 dependencies = [
  "quote 0.6.13",
  "syn 0.15.44",
-]
-
-[[package]]
-name = "pizzatopia_input"
-version = "0.1.0"
-dependencies = [
- "amethyst",
- "gilrs",
- "serde",
 ]
 
 [[package]]

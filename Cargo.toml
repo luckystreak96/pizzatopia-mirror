@@ -1,13 +1,11 @@
 [package]
 name = "pizzatopia"
 version = "0.0.1"
-authors = ["Yanik Lyth <yaniklyth@gmail.com>"]
+authors = ["Yanik Lyth <yanik@yaniklyth.ca>"]
 edition = "2018"
 
 [dependencies]
 pizzatopia_utils = { path = "./pizzatopia_utils/" }
-pizzatopia_input = { path = "./pizzatopia_input/", features = ["gilrs"] }
-#amethyst = {  git = "https://github.com/amethyst/amethyst.git", branch = "master", features = ["vulkan", "no-slow-safety-checks"]}
 log = "0.4.8"
 serde = { version = "1.0", features = ["derive"] }
 derivative = "1.0.3"
@@ -17,7 +15,8 @@ strum = "0.18.0"
 strum_macros = "0.18.0"
 rstar = "0.8.0"
 rand = "0.7.3"
-ultraviolet = { git="https://github.com/termhn/ultraviolet", features = ["serde"] }
+ultraviolet = { git = "https://github.com/termhn/ultraviolet", features = ["serde"] }
+bami = { version = "0.1.0", features = ["gilrs"] }
 
 [dependencies.amethyst]
 version = "0.15.0"

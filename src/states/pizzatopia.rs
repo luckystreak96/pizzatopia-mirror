@@ -65,7 +65,7 @@ use amethyst::{
     },
     winit::Event,
 };
-use pizzatopia_input::{gilrs::GilRsControllerSystem, Input, InputManagementSystem};
+use bami::{gilrs::GilRsControllerSystem, Input, InputManagementSystem};
 use ultraviolet::Vec2;
 
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;

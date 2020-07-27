@@ -17,7 +17,7 @@ use amethyst::{
 };
 use derivative::Derivative;
 
-use pizzatopia_input::Input;
+use bami::Input;
 use std::{fs, path::PathBuf};
 
 pub const DIR_ASSETS: &str = "assets";
