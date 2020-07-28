@@ -477,14 +477,12 @@ dependencies = [
 
 [[package]]
 name = "bami"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e01ffb42f9ca324b39e91fd4f9e424fc7c254a7b14f777b697681884ea599be"
+version = "0.2.0"
 dependencies = [
  "amethyst_core",
+ "amethyst_error",
  "amethyst_input",
  "gilrs",
- "serde",
 ]
 
 [[package]]

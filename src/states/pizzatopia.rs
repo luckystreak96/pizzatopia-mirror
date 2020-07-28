@@ -65,7 +65,7 @@ use amethyst::{
     },
     winit::Event,
 };
-use bami::{gilrs::GilRsControllerSystem, Input, InputManagementSystem};
+use bami::{GilRsControllerSystem, Input};
 use ultraviolet::Vec2;
 
 pub const CAM_WIDTH: f32 = TILE_WIDTH * 16.0;
@@ -167,13 +167,13 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         if let MyEvents::Window(_) = &event {
             let input = data.world.read_resource::<Input<StringBindings>>();
-            if input.actions.status("exit".to_string()).is_down {
+            if input.actions.status(&"exit".to_string()).is_down {
                 return Trans::Quit;
-            } else if input.actions.single_press("editor".to_string()).is_down {
+            } else if input.actions.single_press(&"editor".to_string()).is_down {
                 return Trans::Push(Box::new(Editor::default()));
             } else if input
                 .actions
-                .single_press("toggle_debug".to_string())
+                .single_press(&"toggle_debug".to_string())
                 .is_down
             {
                 let current = data.world.read_resource::<DrawDebugLines>().0;
@@ -273,16 +273,16 @@ pub fn get_camera_center(world: &mut World) -> Vec2 {
 impl<'a, 'b> Pizzatopia<'a, 'b> {
     fn create_pizzatopia_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         let mut dispatcher_builder = DispatcherBuilder::new();
-        dispatcher_builder.add(
-            GilRsControllerSystem::<StringBindings>::default(),
-            "gilrs_system",
-            &[],
-        );
-        dispatcher_builder.add(
-            InputManagementSystem::<StringBindings>::default(),
-            "input_management_system",
-            &[],
-        );
+        // dispatcher_builder.add(
+        //     GilRsControllerSystem::<StringBindings>::default(),
+        //     "gilrs_system",
+        //     &[],
+        // );
+        // dispatcher_builder.add(
+        //     InputManagementSystem::<StringBindings>::default(),
+        //     "input_management_system",
+        //     &[],
+        // );
         dispatcher_builder.add(
             systems::physics::ActorCollisionSystem,
             "actor_collision_system",
@@ -293,16 +293,8 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
             "apply_gravity_system",
             &[],
         );
-        dispatcher_builder.add(
-            ConsoleInputSystem,
-            "console_input_system",
-            &["input_management_system"],
-        );
-        dispatcher_builder.add(
-            DuckTransferSystem,
-            "duck_transfer_system",
-            &["input_management_system"],
-        );
+        dispatcher_builder.add(ConsoleInputSystem, "console_input_system", &[]);
+        dispatcher_builder.add(DuckTransferSystem, "duck_transfer_system", &[]);
         dispatcher_builder.add(
             systems::PlayerInputSystem,
             "player_input_system",

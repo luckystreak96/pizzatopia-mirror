@@ -43,7 +43,7 @@ use amethyst::{
     },
     winit::Event,
 };
-use bami::{Input, InputManager};
+use bami::Input;
 use log::warn;
 use std::{
     collections::BTreeMap,

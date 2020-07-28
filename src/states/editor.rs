@@ -82,7 +82,7 @@ use amethyst::{
     },
     winit::Event,
 };
-use bami::{Input, InputManagementSystem};
+use bami::Input;
 use log::{error, warn};
 
 pub const EDITOR_GRID_SIZE: f32 = TILE_WIDTH / 2.0;
@@ -169,9 +169,9 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Editor<'_, '_> {
     ) -> Trans<GameData<'s, 's>, MyEvents> {
         if let MyEvents::Window(_) = &event {
             let input = data.world.read_resource::<Input<StringBindings>>();
-            if input.actions.status("exit".to_string()).is_down {
+            if input.actions.status(&"exit".to_string()).is_down {
                 return Trans::Quit;
-            } else if input.actions.single_press("editor".to_string()).is_down {
+            } else if input.actions.single_press(&"editor".to_string()).is_down {
                 return Trans::Pop;
             }
         }
@@ -300,16 +300,7 @@ impl<'a, 'b> Editor<'a, 'b> {
     fn create_dispatcher(world: &mut World) -> Dispatcher<'a, 'b> {
         // Main logic
         let mut dispatcher_builder = DispatcherBuilder::new();
-        dispatcher_builder.add(
-            InputManagementSystem::<StringBindings>::default(),
-            "input_management_system",
-            &[],
-        );
-        dispatcher_builder.add(
-            CursorPositionSystem,
-            "cursor_position_system",
-            &["input_management_system"],
-        );
+        dispatcher_builder.add(CursorPositionSystem, "cursor_position_system", &[]);
         dispatcher_builder.add(
             CursorSizeSystem,
             "cursor_size_system",

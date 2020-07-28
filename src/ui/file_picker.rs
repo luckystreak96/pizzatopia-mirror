@@ -256,7 +256,7 @@ impl FilePickerUi {
 
     fn handle_input(&mut self, world: &World) {
         let input = world.read_resource::<Input<StringBindings>>();
-        if input.actions.single_press("start".to_string()).is_down {
+        if input.actions.single_press(&"start".to_string()).is_down {
             let mut ui_texts = world.write_storage::<UiText>();
             let mut text = None;
             if let Some(ui_text) = ui_texts.get_mut(self.editable_label.unwrap()) {
@@ -276,8 +276,8 @@ impl FilePickerUi {
             return;
         }
 
-        let horizontal = input.axes.single_press("horizontal".to_string()).axis;
-        let vertical = input.axes.single_press("vertical".to_string()).axis;
+        let horizontal = input.axes.single_press(&"horizontal".to_string()).axis;
+        let vertical = input.axes.single_press(&"vertical".to_string()).axis;
 
         if vertical > 0.0 && self.ui_index.index > 0 {
             self.ui_index.index -= 1;
@@ -293,13 +293,13 @@ impl FilePickerUi {
             self.ui_index.index -= self.ui_index.items_per_column;
         }
 
-        if input.actions.single_press("accept".to_string()).is_down {
+        if input.actions.single_press(&"accept".to_string()).is_down {
             let button_info =
                 FilePickerButton::new(FilePickerButtonType::Label, self.ui_index.index);
             self.handle_click(world, &button_info);
         }
 
-        if input.actions.single_press("cancel".to_string()).is_down {
+        if input.actions.single_press(&"cancel".to_string()).is_down {
             self.should_destroy = true;
         }
     }

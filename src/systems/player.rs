@@ -92,17 +92,17 @@ impl<'s> System<'s> for PlayerInputSystem {
 
             {
                 // Controller input
-                let h_move = input.axes.status("horizontal".to_string()).axis;
-                let v_move = input.axes.status("vertical".to_string()).axis;
+                let h_move = input.axes.status(&"horizontal".to_string()).axis;
+                let v_move = input.axes.status(&"vertical".to_string()).axis;
 
                 intent.vec.x = h_move;
                 intent.vec.y = v_move;
             }
 
-            let jumping = input.actions.status("accept".to_string()).is_down;
-            let release = input.actions.just_released("accept".to_string());
-            let slowing = input.actions.status("insert".to_string()).is_down;
-            let attacking = input.actions.single_press("attack".to_string()).is_down;
+            let jumping = input.actions.status(&"accept".to_string()).is_down;
+            let release = input.actions.just_released(&"accept".to_string());
+            let slowing = input.actions.status(&"insert".to_string()).is_down;
+            let attacking = input.actions.single_press(&"attack".to_string()).is_down;
 
             if attacking {
                 let animation = AnimationCounter::new(

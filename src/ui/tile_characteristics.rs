@@ -255,13 +255,13 @@ impl EditorFieldUiComponents {
             CursorState::EditGameObject | CursorState::InsertMode => {
                 let horizontal = input
                     .axes
-                    .repeat_press("horizontal".to_string(), 250, 10)
+                    .repeat_press(&"horizontal".to_string(), 250, 10)
                     .axis;
                 let vertical = input
                     .axes
-                    .repeat_press("vertical".to_string(), 250, 10)
+                    .repeat_press(&"vertical".to_string(), 250, 10)
                     .axis;
-                if input.actions.status("modifier1".to_string()).is_down {
+                if input.actions.status(&"modifier1".to_string()).is_down {
                     self.ui_index.active = true;
                     if vertical > 0.0 && self.ui_index.index > 0 {
                         self.ui_index.index -= 1;
@@ -283,7 +283,7 @@ impl EditorFieldUiComponents {
                         }
                         _ => {}
                     }
-                } else if input.actions.just_released("modifier1".to_string()) {
+                } else if input.actions.just_released(&"modifier1".to_string()) {
                     self.ui_index.active = false;
                 }
             }

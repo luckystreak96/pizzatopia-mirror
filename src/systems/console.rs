@@ -32,11 +32,11 @@ impl<'s> System<'s> for ConsoleInputSystem {
     fn run(&mut self, (input, mut events_channel, mut player_event_channel): Self::SystemData) {
         let input_string;
 
-        if input.actions.single_press("console".to_string()).is_down {
+        if input.actions.single_press(&"console".to_string()).is_down {
             input_string = read_line_from_console();
-        } else if input.actions.single_press("reset".to_string()).is_down {
+        } else if input.actions.single_press(&"reset".to_string()).is_down {
             input_string = String::from("reset");
-        } else if input.actions.single_press("revive".to_string()).is_down {
+        } else if input.actions.single_press(&"revive".to_string()).is_down {
             input_string = String::from("revive");
         } else {
             input_string = String::new();
