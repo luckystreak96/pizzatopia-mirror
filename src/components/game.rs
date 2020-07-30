@@ -48,6 +48,8 @@ pub enum CollisionEvent {
     // Picker, pickee
     ItemCollect(u32, u32),
     Talk(String, u32),
+    // Give heart, give veggie
+    Gift(bool, bool, u32),
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
@@ -56,10 +58,13 @@ impl Component for Player {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
-pub struct Pickup;
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub enum Pickup {
+    Veggie,
+    Heart,
+}
 impl Component for Pickup {
-    type Storage = NullStorage<Self>;
+    type Storage = DenseVecStorage<Self>;
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
@@ -117,6 +122,15 @@ pub struct Talks {
     pub text: String,
 }
 impl Component for Talks {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct Gifts {
+    pub(crate) hearts: u8,
+    pub(crate) veggies: u8,
+}
+impl Component for Gifts {
     type Storage = DenseVecStorage<Self>;
 }
 

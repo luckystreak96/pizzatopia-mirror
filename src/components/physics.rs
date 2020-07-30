@@ -28,7 +28,7 @@ impl Component for MoveIntent {
 #[derive(Copy, Clone, Derivative)]
 #[derivative(Default)]
 pub struct Orientation {
-    #[derivative(Default(value = "Vec2::new(-1.0, 0.0)"))]
+    #[derivative(Default(value = "Vec2::new(1.0, 0.0)"))]
     pub vec: Vec2,
 }
 impl Component for Orientation {

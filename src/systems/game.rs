@@ -35,9 +35,9 @@ use amethyst::{
 };
 
 use crate::components::entity_builder::entity_builder::initialize_pickup;
-use crate::components::game::{Drops, PicksThingsUp};
+use crate::components::game::{Drops, PicksThingsUp, Pickup};
 use crate::components::graphics::Pan;
-use crate::components::physics::ChildTo;
+use crate::components::physics::{ChildTo, Orientation};
 use crate::events::Events;
 use crate::ui::ui_builder::initialize_ui_label;
 use crate::{
@@ -72,6 +72,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
         WriteStorage<'s, Velocity>,
         WriteStorage<'s, Position>,
         WriteStorage<'s, PicksThingsUp>,
+        WriteStorage<'s, Pickup>,
         Entities<'s>,
         Read<'s, EventChannel<CollisionEvent>>,
         Read<'s, LazyUpdate>,
@@ -89,6 +90,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
             mut velocities,
             mut positions,
             mut pickers,
+            picked,
             entities,
             event_channel,
             lazy,
@@ -152,6 +154,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                                                             .0
                                                             .add(Vec2::new(0.0, TILE_HEIGHT)),
                                                         &Vec2::new(x_vel, y_vel),
+                                                        Pickup::Veggie,
                                                     );
                                                 }
                                             }
@@ -178,6 +181,7 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                                                     world,
                                                     &pos_clone.0,
                                                     &Vec2::new(x_vel, y_vel),
+                                                    Pickup::Heart,
                                                 );
                                             }
                                         });
@@ -215,9 +219,24 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                         .expect("Failed to delete blocked projectile.");
                 }
                 CollisionEvent::ItemCollect(character_id, item_id) => {
-                    let picker = pickers.get_mut(entities.entity(*character_id)).unwrap();
-                    picker.amount_gathered += 1;
-                    info!("Picked up item! New amount: {:?}", picker.amount_gathered);
+                    if let Some(picked) = picked.get(entities.entity(*item_id)) {
+                        match picked {
+                            Pickup::Veggie => {
+                                let picker =
+                                    pickers.get_mut(entities.entity(*character_id)).unwrap();
+                                picker.amount_gathered += 1;
+                                info!("Picked up item! New amount: {:?}", picker.amount_gathered);
+                            }
+                            Pickup::Heart => {
+                                if let Some(health) =
+                                    healths.get_mut(entities.entity(*character_id))
+                                {
+                                    health.0 += 1;
+                                    info!("Picked up health! New health: {}", health.0);
+                                }
+                            }
+                        }
+                    }
                     entities
                         .delete(entities.entity(*item_id))
                         .expect("Failed to delete pickup");
@@ -233,6 +252,39 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                             .with(ChildTo { parent, offset })
                             .with(TimedExistence(2.0))
                             .build();
+                    });
+                }
+                CollisionEvent::Gift(heart, veggie, id) => {
+                    let parent = entities.entity(*id);
+                    let heart = *heart;
+                    let veggie = *veggie;
+                    lazy.exec_mut(move |world| {
+                        let parent_pos = world
+                            .read_storage::<Position>()
+                            .get(parent)
+                            .unwrap()
+                            .0
+                            .clone();
+                        let dir = world
+                            .read_storage::<Orientation>()
+                            .get(parent)
+                            .unwrap()
+                            .clone();
+                        let pos = Vec2::new(dir.vec.x * TILE_WIDTH / 2., TILE_HEIGHT / 4.)
+                            .add(parent_pos);
+                        let mut rng = rand::thread_rng();
+                        if heart {
+                            let x_vel: f32 = rng.gen_range(0.0, 8.0);
+                            let y_vel: f32 = rng.gen_range(7.0, 15.0);
+                            let vel = Vec2::new(x_vel, y_vel).mul(dir.vec);
+                            initialize_pickup(world, &pos, &vel, Pickup::Heart);
+                        }
+                        if veggie {
+                            let x_vel: f32 = rng.gen_range(0.0, 8.0);
+                            let y_vel: f32 = rng.gen_range(7.0, 15.0);
+                            let vel = Vec2::new(x_vel, y_vel).mul(dir.vec);
+                            initialize_pickup(world, &pos, &vel, Pickup::Veggie);
+                        }
                     });
                 }
             }

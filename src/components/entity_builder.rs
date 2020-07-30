@@ -64,7 +64,7 @@ pub mod entity_builder {
 
     use crate::components::ai::BasicAttackAi;
     use crate::components::game::{
-        AnimatedTile, AnimatedTileComp, Block, Drops, PicksThingsUp, Pickup, Talks,
+        AnimatedTile, AnimatedTileComp, Block, Drops, Gifts, PicksThingsUp, Pickup, Talks,
     };
     use crate::components::physics::{ChildTo, MoveIntent, Orientation, Velocity};
     use amethyst::ui::{FontAsset, UiText, UiTransform};
@@ -236,11 +236,13 @@ pub mod entity_builder {
             .with(collision_points)
             .with(Collidee::new())
             .with(Health(5))
-            .with(PicksThingsUp::default())
             .with(Invincibility(0.0));
         // .with(Sticky(false))
         if player {
-            builder = builder.with(Player(player)).with(Team::GoodGuys);
+            builder = builder
+                .with(Player(player))
+                .with(Team::GoodGuys)
+                .with(PicksThingsUp::default());
         } else {
             builder = builder
                 // .with(BasicWalkAi::default())
@@ -249,6 +251,10 @@ pub mod entity_builder {
                 .with(Team::Neutral)
                 .with(Talks {
                     text: String::from("Hello!"),
+                })
+                .with(Gifts {
+                    hearts: 2,
+                    veggies: 2,
                 })
                 .with(Drops(10))
                 .with(Damage(1));
@@ -331,7 +337,7 @@ pub mod entity_builder {
         }
     }
 
-    pub fn initialize_pickup(world: &mut World, pos: &Vec2, vel: &Vec2) -> u32 {
+    pub fn initialize_pickup(world: &mut World, pos: &Vec2, vel: &Vec2, kind: Pickup) -> u32 {
         let mut transform = Transform::default();
         transform.set_translation_xyz(pos.x, pos.y, DEPTH_PROJECTILES);
 
@@ -339,10 +345,16 @@ pub mod entity_builder {
         let sprite_sheet = world.read_resource::<BTreeMap<u8, Handle<SpriteSheet>>>()
             [&(sprite_sheet_type as u8)]
             .clone();
+
+        let sprite_number = match kind {
+            Pickup::Heart => 5,
+            Pickup::Veggie => 2,
+        };
+
         // Assign the sprite
         let sprite_render = SpriteRender {
             sprite_sheet: sprite_sheet.clone(),
-            sprite_number: 2,
+            sprite_number,
         };
 
         let position = Position(Vec2::new(pos.x, pos.y));
@@ -368,7 +380,7 @@ pub mod entity_builder {
             .with(Team::Neutral)
             .with(GravityDirection::default())
             .with(Grounded(false))
-            .with(Pickup)
+            .with(kind)
             .build();
 
         return entity.id();

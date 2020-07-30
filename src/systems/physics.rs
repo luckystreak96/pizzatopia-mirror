@@ -13,7 +13,7 @@ use amethyst::{
 };
 use log::debug;
 
-use crate::components::game::{Block, PicksThingsUp, Pickup, Talks};
+use crate::components::game::{Block, Gifts, PicksThingsUp, Pickup, Talks};
 use crate::components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team};
 use crate::components::physics::{ChildTo, MoveIntent, Orientation};
 use amethyst::{
@@ -33,7 +33,7 @@ use amethyst::{
 };
 use bami::Input;
 use derivative::Derivative;
-use log::info;
+use log::{info, warn};
 use num_traits::identities::Zero;
 use rstar::{RTree, AABB};
 use std::collections::HashSet;
@@ -484,6 +484,7 @@ impl<'s> System<'s> for ActorCollisionSystem {
         ReadStorage<'s, Pickup>,
         ReadStorage<'s, Talks>,
         ReadStorage<'s, Player>,
+        WriteStorage<'s, Gifts>,
         Read<'s, Input<StringBindings>>,
         Entities<'s>,
         Write<'s, EventChannel<CollisionEvent>>,
@@ -503,6 +504,7 @@ impl<'s> System<'s> for ActorCollisionSystem {
             pickeds,
             talkers,
             players,
+            mut gifters,
             input,
             entities,
             mut channel,
@@ -543,13 +545,28 @@ impl<'s> System<'s> for ActorCollisionSystem {
                                     ))
                                 }
                                 let talks = talkers.get(entity2);
-                                if let Some(talks) = talks {
-                                    if players.get(entity1).is_some()
-                                        && input.axes.single_press(&String::from("vertical")).axis
-                                            < 0.0
-                                    {
+                                if input.axes.single_press(&String::from("vertical")).axis < 0.0
+                                    && players.get(entity1).is_some()
+                                {
+                                    if let Some(talks) = talks {
                                         result.push(CollisionEvent::Talk(
                                             talks.text.clone(),
+                                            entity2.id(),
+                                        ));
+                                    }
+                                    let gifts = gifters.get_mut(entity2);
+                                    if let Some(gifts) = gifts {
+                                        let heart = gifts.hearts > 0;
+                                        let veggie = gifts.veggies > 0;
+                                        if heart {
+                                            gifts.hearts -= 1;
+                                        }
+                                        if veggie {
+                                            gifts.veggies -= 1;
+                                        }
+                                        result.push(CollisionEvent::Gift(
+                                            heart,
+                                            veggie,
                                             entity2.id(),
                                         ));
                                     }
