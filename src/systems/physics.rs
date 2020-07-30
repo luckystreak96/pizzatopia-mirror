@@ -13,7 +13,7 @@ use amethyst::{
 };
 use log::debug;
 
-use crate::components::game::{Block, PicksThingsUp, Pickup};
+use crate::components::game::{Block, PicksThingsUp, Pickup, Talks};
 use crate::components::game::{CollisionEvent, Damage, Player, Projectile, Reflect, Team};
 use crate::components::physics::{ChildTo, MoveIntent, Orientation};
 use amethyst::{
@@ -482,6 +482,9 @@ impl<'s> System<'s> for ActorCollisionSystem {
         ReadStorage<'s, Block>,
         ReadStorage<'s, PicksThingsUp>,
         ReadStorage<'s, Pickup>,
+        ReadStorage<'s, Talks>,
+        ReadStorage<'s, Player>,
+        Read<'s, Input<StringBindings>>,
         Entities<'s>,
         Write<'s, EventChannel<CollisionEvent>>,
     );
@@ -498,6 +501,9 @@ impl<'s> System<'s> for ActorCollisionSystem {
             blocks,
             pickers,
             pickeds,
+            talkers,
+            players,
+            input,
             entities,
             mut channel,
         ): Self::SystemData,
@@ -535,6 +541,18 @@ impl<'s> System<'s> for ActorCollisionSystem {
                                         entity1.id(),
                                         entity2.id(),
                                     ))
+                                }
+                                let talks = talkers.get(entity2);
+                                if let Some(talks) = talks {
+                                    if players.get(entity1).is_some()
+                                        && input.axes.single_press(&String::from("vertical")).axis
+                                            < 0.0
+                                    {
+                                        result.push(CollisionEvent::Talk(
+                                            talks.text.clone(),
+                                            entity2.id(),
+                                        ));
+                                    }
                                 }
                             }
                             _ => {
@@ -580,7 +598,7 @@ impl<'s> System<'s> for ActorCollisionSystem {
             })
             .collect();
         for event in no_collide_when_block {
-            channel.single_write(*event);
+            channel.single_write(event.clone());
         }
     }
 }

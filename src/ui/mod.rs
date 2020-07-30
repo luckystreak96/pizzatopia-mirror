@@ -9,6 +9,7 @@ use derivative::Derivative;
 pub mod current_actions;
 pub mod file_picker;
 pub mod tile_characteristics;
+pub mod ui_builder;
 
 const COLOR_WHITE: [f32; 4] = [1., 1., 1., 1.];
 const COLOR_BLACK: [f32; 4] = [0., 0., 0., 1.];

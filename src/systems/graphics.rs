@@ -42,7 +42,9 @@ use amethyst::{
 use crate::components::game::AnimatedTileComp;
 use crate::components::graphics::Pan;
 use crate::components::physics::Orientation;
+use amethyst::ui::{ScaleMode, UiTransform};
 use std::collections::BTreeMap;
+use std::ops::Sub;
 use ultraviolet::{Lerp, Vec2, Vec3};
 
 #[derive(SystemDesc)]
@@ -101,6 +103,33 @@ impl<'s> System<'s> for TransformUpdateSystem {
             transform.set_translation_y(position.0.y);
             if let Some(scale) = scale {
                 transform.set_scale(Vector3::new(scale.0.x, scale.0.y, 1.0));
+            }
+        }
+    }
+}
+
+#[derive(SystemDesc)]
+pub struct UiTransformUpdateSystem;
+
+impl<'s> System<'s> for UiTransformUpdateSystem {
+    type SystemData = (
+        WriteStorage<'s, UiTransform>,
+        ReadStorage<'s, Position>,
+        ReadStorage<'s, Camera>,
+    );
+
+    fn run(&mut self, (mut transforms, positions, cameras): Self::SystemData) {
+        let mut camera_pos = None;
+        for (position, _camera) in (&positions, &cameras).join() {
+            camera_pos = Some(position.0);
+        }
+        if let Some(cam_pos) = camera_pos {
+            for (transform, position) in (&mut transforms, &positions).join() {
+                transform.scale_mode = ScaleMode::Percent;
+                let new_pos = position.0.sub(cam_pos);
+                let new_pos_scaled = Vec2::new(new_pos.x / CAM_WIDTH, new_pos.y / CAM_HEIGHT);
+                transform.local_x = new_pos_scaled.x;
+                transform.local_y = new_pos_scaled.y;
             }
         }
     }

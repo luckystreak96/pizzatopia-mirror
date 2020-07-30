@@ -39,7 +39,7 @@ impl Component for Team {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum CollisionEvent {
     // (Entity getting hit id, entity hitting id, damage dealt)
     EnemyCollision(u32, u32, u32),
@@ -47,6 +47,7 @@ pub enum CollisionEvent {
     ProjectileBlock(u32),
     // Picker, pickee
     ItemCollect(u32, u32),
+    Talk(String, u32),
 }
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
@@ -108,6 +109,14 @@ impl Component for Projectile {
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Damage(pub u32);
 impl Component for Damage {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct Talks {
+    pub text: String,
+}
+impl Component for Talks {
     type Storage = DenseVecStorage<Self>;
 }
 

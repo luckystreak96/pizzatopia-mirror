@@ -64,9 +64,10 @@ pub mod entity_builder {
 
     use crate::components::ai::BasicAttackAi;
     use crate::components::game::{
-        AnimatedTile, AnimatedTileComp, Block, Drops, PicksThingsUp, Pickup,
+        AnimatedTile, AnimatedTileComp, Block, Drops, PicksThingsUp, Pickup, Talks,
     };
     use crate::components::physics::{ChildTo, MoveIntent, Orientation, Velocity};
+    use amethyst::ui::{FontAsset, UiText, UiTransform};
     use std::collections::BTreeMap;
     use ultraviolet::Vec2;
 
@@ -242,10 +243,13 @@ pub mod entity_builder {
             builder = builder.with(Player(player)).with(Team::GoodGuys);
         } else {
             builder = builder
-                .with(BasicWalkAi::default())
+                // .with(BasicWalkAi::default())
                 // .with(BasicShootAi::default())
                 // .with(BasicAttackAi::default())
-                .with(Team::BadGuys)
+                .with(Team::Neutral)
+                .with(Talks {
+                    text: String::from("Hello!"),
+                })
                 .with(Drops(10))
                 .with(Damage(1));
         }

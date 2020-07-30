@@ -1,4 +1,4 @@
-use crate::components::game::{Block, Drops, PicksThingsUp, Pickup};
+use crate::components::game::{Block, Drops, PicksThingsUp, Pickup, Talks};
 use crate::components::graphics::Pan;
 use crate::{
     animations::AnimationId,
@@ -137,6 +137,7 @@ impl<'s> State<GameData<'s, 's>, MyEvents> for Pizzatopia<'_, '_> {
         data.world.register::<EditorButton>();
         data.world.register::<FilePickerButton>();
         data.world.register::<TileLayer>();
+        data.world.register::<Talks>();
 
         // setup dispatcher
         let mut dispatcher = Pizzatopia::create_pizzatopia_dispatcher(data.world);
@@ -418,6 +419,11 @@ impl<'a, 'b> Pizzatopia<'a, 'b> {
         dispatcher_builder.add(
             systems::graphics::TransformUpdateSystem,
             "transform_update_system",
+            &["sprite_sampler_interpolation_system"],
+        );
+        dispatcher_builder.add(
+            systems::graphics::UiTransformUpdateSystem,
+            "ui_transform_update_system",
             &["sprite_sampler_interpolation_system"],
         );
         dispatcher_builder.add(

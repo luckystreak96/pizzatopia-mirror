@@ -37,12 +37,14 @@ use amethyst::{
 use crate::components::entity_builder::entity_builder::initialize_pickup;
 use crate::components::game::{Drops, PicksThingsUp};
 use crate::components::graphics::Pan;
+use crate::components::physics::ChildTo;
 use crate::events::Events;
+use crate::ui::ui_builder::initialize_ui_label;
 use crate::{
     audio::{play_damage_sound, Sounds},
     components::editor::{EditorCursor, EditorFlag},
 };
-use amethyst::prelude::WorldExt;
+use amethyst::prelude::{Builder, WorldExt};
 use rand::{random, Rng};
 use std::ops::{Add, Mul};
 use ultraviolet::Vec2;
@@ -219,6 +221,19 @@ impl<'s> System<'s> for EnemyCollisionSystem {
                     entities
                         .delete(entities.entity(*item_id))
                         .expect("Failed to delete pickup");
+                }
+                CollisionEvent::Talk(text, id) => {
+                    let parent = entities.entity(*id);
+                    let text = text.clone();
+                    let offset = Vec2::new(0., TILE_HEIGHT / 1.5);
+                    lazy.exec_mut(move |world| {
+                        let builder = initialize_ui_label(world, text.clone(), 20.);
+                        builder
+                            .with(Position(offset.clone()))
+                            .with(ChildTo { parent, offset })
+                            .with(TimedExistence(2.0))
+                            .build();
+                    });
                 }
             }
         }
