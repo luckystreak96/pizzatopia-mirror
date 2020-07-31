@@ -1,0 +1,17 @@
+[package]
+name = "pizzatopia_physics"
+version = "0.1.0"
+authors = ["Yanik Lyth <luckystreak63@protonmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+amethyst_core = "0.10.0"
+amethyst_error = "0.5.0"
+
+ultraviolet = "0.4.6"
+rstar = "0.8.1"
+
+derivative = "2.1.1"
+specs-derive = "0.4.1"
