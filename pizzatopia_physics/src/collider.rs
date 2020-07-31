@@ -29,7 +29,7 @@ pub struct Collider {
     pub position: Vec2,
     pub lower: Vec2,
     pub upper: Vec2,
-    pub is_trigger: bool,
+    pub opaque: bool,
     pub(crate) projected_movement: Vec2,
 }
 impl Collider {
