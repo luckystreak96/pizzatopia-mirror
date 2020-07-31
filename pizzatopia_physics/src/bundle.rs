@@ -1,7 +1,9 @@
+use crate::collider::RTreeCollider;
+use crate::system::GravitySystem;
+use amethyst_core::ecs::{DispatcherBuilder, World};
 use amethyst_core::SystemBundle;
-use amethyst_core::ecs::{World, DispatcherBuilder};
 use amethyst_error::Error;
-use crate::collider::Gravity;
+use rstar::RTree;
 
 pub struct PhysicsBundle;
 
@@ -12,13 +14,9 @@ impl<'a, 'b> SystemBundle<'a, 'b> for PhysicsBundle {
         dispatcher: &mut DispatcherBuilder<'a, 'b>,
     ) -> Result<(), Error> {
         // Set gravity strength
-        world.insert(Gravity { strength: -10. });
+        world.insert(RTree::<RTreeCollider>::new());
 
-        dispatcher.add(
-            InputManagementSystem::<B>::default(),
-            "input_management_system",
-            &[],
-        );
+        dispatcher.add(GravitySystem, "gravity_system", &[]);
         Ok(())
     }
 }

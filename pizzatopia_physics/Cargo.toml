@@ -9,9 +9,7 @@ edition = "2018"
 [dependencies]
 amethyst_core = "0.10.0"
 amethyst_error = "0.5.0"
-
 ultraviolet = "0.4.6"
 rstar = "0.8.1"
-
 derivative = "2.1.1"
 specs-derive = "0.4.1"

@@ -1,13 +1,21 @@
+use amethyst_core::ecs::{Component, DenseVecStorage, Entity};
 use derivative::Derivative;
-use ultraviolet::Vec2;
-use amethyst_core::ecs::{DenseVecStorage, Component, Entity};
-use ultraviolet::wide::{Mul, Add, AddAssign};
 use rstar::{RTreeObject, AABB};
+use std::ops::{Add, Mul};
+use ultraviolet::Vec2;
 
 /// When inserted as a `Resource` into `World`,
 /// affects the base strength of gravity on `RigidBody` components.
+#[derive(Derivative)]
+#[derivative(Default)]
 pub struct Gravity {
+    #[derivative(Default(value = "-10.0"))]
     pub strength: f32,
+}
+
+pub struct CollisionResult {
+    pub horizontal: Option<(Entity, f32)>,
+    pub vertical: Option<(Entity, f32)>,
 }
 
 #[derive(Derivative, Component)]
@@ -22,6 +30,13 @@ impl RigidBody {
     pub fn project_move(&self, time_scale: f32) -> Vec2 {
         self.velocity.mul(time_scale)
     }
+
+    pub fn stop_at_collisions(&mut self, intersections: Vec<&RTreeCollider>) -> CollisionResult {
+        CollisionResult {
+            horizontal: None,
+            vertical: None,
+        }
+    }
 }
 
 #[derive(Component, Clone)]
@@ -30,26 +45,67 @@ pub struct Collider {
     pub lower: Vec2,
     pub upper: Vec2,
     pub opaque: bool,
-    pub(crate) projected_movement: Vec2,
 }
+
 impl Collider {
-    pub fn intersects(&self, other: &Self) -> bool {
+    fn intersects(&self, other: &Self) -> bool {
         (self.lower.x <= other.upper.x && self.upper.x >= other.lower.x)
             && (self.lower.y <= other.upper.y && self.upper.y >= other.lower.y)
     }
 
-    fn project(&self) -> (Vec2, Vec2) {
-        let projected = self.position.add(self.projected_movement);
+    fn project(&self, rigid_body: &RigidBody, time_scale: f32) -> (Vec2, Vec2) {
+        let projected = self.position.add(rigid_body.project_move(time_scale));
         (self.lower.add(projected), self.upper.add(projected))
     }
 }
 
-impl RTreeObject for Collider {
+pub struct RTreeCollider {
+    entity: Entity,
+    pub opaque: bool,
+    lower: Vec2,
+    upper: Vec2,
+}
+
+impl PartialEq for RTreeCollider {
+    fn eq(&self, other: &Self) -> bool {
+        (self.lower.x == other.lower.x)
+            && (self.lower.y == other.lower.y)
+            && (self.upper.x == other.upper.x)
+            && (self.upper.y == other.upper.y)
+    }
+}
+
+impl RTreeCollider {
+    pub fn from_projected(
+        entity: Entity,
+        collider: &Collider,
+        rigid_body: &RigidBody,
+        time_scale: f32,
+    ) -> Self {
+        let (lower, upper) = collider.project(rigid_body, time_scale);
+        RTreeCollider {
+            entity,
+            opaque: collider.opaque,
+            lower,
+            upper,
+        }
+    }
+
+    pub fn from_current(entity: Entity, collider: &Collider) -> Self {
+        RTreeCollider {
+            entity,
+            opaque: collider.opaque,
+            lower: collider.lower,
+            upper: collider.upper,
+        }
+    }
+}
+
+impl RTreeObject for RTreeCollider {
     type Envelope = AABB<[f32; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
-        let corners = self.project();
-        AABB::from_corners(corners.0, corners.1)
+        AABB::from_corners(*self.lower.as_array(), *self.upper.as_array())
     }
 }
 
@@ -58,4 +114,3 @@ pub struct ChildTo {
     pub parent: Entity,
     pub offset: Vec2,
 }
-

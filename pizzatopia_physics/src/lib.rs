@@ -1,7 +1,7 @@
 mod bundle;
-mod system;
-mod event;
 mod collider;
+mod event;
+mod system;
 
 #[cfg(test)]
 mod tests {
