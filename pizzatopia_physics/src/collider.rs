@@ -1,5 +1,6 @@
 use amethyst_core::ecs::{Component, DenseVecStorage, Entity};
 use amethyst_core::num::Zero;
+use amethyst_core::Axis2;
 use derivative::Derivative;
 use noisy_float::prelude::*;
 use rstar::{RTreeObject, AABB};
@@ -35,94 +36,10 @@ impl RigidBody {
         current_collider: &RTreeCollider,
         intersections: &Vec<&RTreeCollider>,
         time_scale: f32,
-    ) -> (Option<(f32, Entity)>, Option<(f32, Entity)>) {
-        let projected = self.project_move(time_scale);
-        let horizontal = intersections
-            .iter()
-            .filter(|col| match projected.x > 0.0 {
-                true => current_collider.upper.x <= col.lower.x,
-                false => current_collider.lower.x >= col.upper.x,
-            })
-            .filter(|col| {
-                projected.y.is_zero()
-                    || !projected.x.is_zero()
-                        && match projected.x > 0.0 {
-                            true => {
-                                let percent_distance = Vec2::new(
-                                    (col.lower.x - current_collider.upper.x) / projected.x,
-                                    (col.lower.y - current_collider.upper.y) / projected.y,
-                                );
-                                percent_distance.x > percent_distance.y
-                                    && percent_distance.x <= 1.0
-                                    && percent_distance.x > 0.0
-                            }
-                            false => {
-                                let percent_distance = Vec2::new(
-                                    (col.upper.x - current_collider.lower.x) / projected.x,
-                                    (col.upper.y - current_collider.lower.y) / projected.y,
-                                );
-                                percent_distance.x > percent_distance.y
-                                    && percent_distance.x <= 1.0
-                                    && percent_distance.x > 0.0
-                            }
-                        }
-            })
-            .min_by_key(|col| match projected.x > 0.0 {
-                true => n32(col.lower.x),
-                false => n32(-col.upper.x),
-            });
-
-        let vertical = intersections
-            .iter()
-            .filter(|col| match projected.y > 0.0 {
-                true => current_collider.upper.y <= col.lower.y,
-                false => current_collider.lower.y >= col.upper.y,
-            })
-            .filter(|col| {
-                projected.x.is_zero()
-                    || !projected.y.is_zero()
-                        && match projected.y > 0.0 {
-                            true => {
-                                let percent_distance = Vec2::new(
-                                    (col.lower.x - current_collider.upper.x) / projected.x,
-                                    (col.lower.y - current_collider.upper.y) / projected.y,
-                                );
-                                percent_distance.x < percent_distance.y
-                                    && percent_distance.y <= 1.0
-                                    && percent_distance.y > 0.0
-                            }
-                            false => {
-                                let percent_distance = Vec2::new(
-                                    (col.upper.x - current_collider.lower.x) / projected.x,
-                                    (col.upper.y - current_collider.lower.y) / projected.y,
-                                );
-                                percent_distance.x < percent_distance.y
-                                    && percent_distance.y <= 1.0
-                                    && percent_distance.y > 0.0
-                            }
-                        }
-            })
-            .min_by_key(|col| match projected.y > 0.0 {
-                true => n32(col.lower.y),
-                false => n32(-col.upper.y),
-            });
-
-        let mut result = (None, None);
-        if let Some(col) = horizontal {
-            let x = match projected.x > 0.0 {
-                true => col.lower.x - current_collider.upper.x - 0.0001,
-                false => col.upper.x - current_collider.lower.x + 0.0001,
-            };
-            result.0 = Some((x / time_scale, col.entity));
-        }
-        if let Some(col) = vertical {
-            let y = match projected.y > 0.0 {
-                true => col.lower.y - current_collider.upper.y - 0.0001,
-                false => col.upper.y - current_collider.lower.y + 0.0001,
-            };
-            result.1 = Some((y / time_scale, col.entity));
-        }
-        result
+    ) -> (Option<(Entity, f32)>, Option<(Entity, f32)>) {
+        let result_x = current_collider.nearest_collider(self, intersections, time_scale, Axis2::X);
+        let result_y = current_collider.nearest_collider(self, intersections, time_scale, Axis2::Y);
+        (result_x, result_y)
     }
 
     pub fn collide_with_nearest_axis(
@@ -136,20 +53,20 @@ impl RigidBody {
         match new_vel {
             (Some(x), Some(y)) => {
                 if x < y {
-                    self.velocity.x = x.0;
-                    Some(x.1)
+                    self.velocity.x = x.1;
+                    Some(x.0)
                 } else {
-                    self.velocity.y = y.0;
-                    Some(y.1)
+                    self.velocity.y = y.1;
+                    Some(y.0)
                 }
             }
             (Some(x), None) => {
-                self.velocity.x = x.0;
-                Some(x.1)
+                self.velocity.x = x.1;
+                Some(x.0)
             }
             (None, Some(y)) => {
-                self.velocity.y = y.0;
-                Some(y.1)
+                self.velocity.y = y.1;
+                Some(y.0)
             }
             (None, None) => None,
         }
@@ -191,11 +108,68 @@ impl RTreeCollider {
         }
     }
 
-    pub fn translated(&self, amount: Vec2) -> Self {
+    pub(crate) fn translated(&self, amount: Vec2) -> Self {
         let mut translated = self.clone();
         translated.lower.add_assign(amount);
         translated.upper.add_assign(amount);
         translated
+    }
+
+    fn nearest_collider(
+        &self,
+        rigid_body: &RigidBody,
+        intersections: &Vec<&RTreeCollider>,
+        time_scale: f32,
+        axis: Axis2,
+    ) -> Option<(Entity, f32)> {
+        let a = axis as usize;
+        let b = 1 - a;
+
+        let projected = rigid_body.project_move(time_scale);
+        let horizontal = intersections
+            .iter()
+            .filter(|col| match projected.idx(a) > 0.0 {
+                true => self.upper.idx(a) <= col.lower.idx(a),
+                false => self.lower.idx(a) >= col.upper.idx(a),
+            })
+            .filter(|col| {
+                projected.idx(b).is_zero()
+                    || !projected.idx(a).is_zero()
+                    && match projected.idx(a) > 0.0 {
+                    true => {
+                        let percent_distance = Vec2::new(
+                            (col.lower.x - self.upper.x) / projected.x,
+                            (col.lower.y - self.upper.y) / projected.y,
+                        );
+                        percent_distance.idx(a) > percent_distance.idx(b)
+                            && percent_distance.idx(a) <= 1.0
+                            && percent_distance.idx(a) > 0.0
+                    }
+                    false => {
+                        let percent_distance = Vec2::new(
+                            (col.upper.x - self.lower.x) / projected.x,
+                            (col.upper.y - self.lower.y) / projected.y,
+                        );
+                        percent_distance.idx(a) > percent_distance.idx(b)
+                            && percent_distance.idx(a) <= 1.0
+                            && percent_distance.idx(a) > 0.0
+                    }
+                }
+            })
+            .min_by_key(|col| match projected.idx(a) > 0.0 {
+                true => n32(col.lower.idx(a)),
+                false => n32(-col.upper.idx(a)),
+            });
+
+        let mut result = None;
+        if let Some(col) = horizontal {
+            let x = match projected.idx(a) > 0.0 {
+                true => col.lower.idx(a) - self.upper.idx(a) - 0.0001,
+                false => col.upper.idx(a) - self.lower.idx(a) + 0.0001,
+            };
+            result = Some((col.entity, x / time_scale));
+        }
+        result
     }
 }
 
@@ -204,6 +178,16 @@ impl RTreeObject for RTreeCollider {
 
     fn envelope(&self) -> Self::Envelope {
         AABB::from_corners(*self.lower.as_array(), *self.upper.as_array())
+    }
+}
+
+trait AxisIndex {
+    fn idx(&self, index: usize) -> f32;
+}
+
+impl AxisIndex for Vec2 {
+    fn idx(&self, index: usize) -> f32 {
+        self.as_array()[index]
     }
 }
 
