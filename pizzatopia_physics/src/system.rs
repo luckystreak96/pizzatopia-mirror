@@ -39,7 +39,7 @@ impl<'s> System<'s> for CollisionSystem {
     fn run(&mut self, (mut colliders, mut bodies, time, mut rtree, entities): Self::SystemData) {
         for (collider, body, entity) in (&mut colliders, &mut bodies, &entities).join() {
             // Remove the current collider from the tree
-            rtree.remove(&RTreeCollider::from_current_pos(entity, collider));
+            rtree.remove(&RTreeCollider::new(entity, collider));
 
             // Go through this twice
             // The first time will adjust velocity according to collision on one axis
@@ -49,7 +49,8 @@ impl<'s> System<'s> for CollisionSystem {
                 // Get all intersecting envelopes with future pos
                 // Filter out non-opaque peeps
                 let intersections = rtree.locate_in_envelope_intersecting(
-                    &RTreeCollider::from_projected(entity, collider, body, time.time_scale())
+                    &RTreeCollider::new(entity, collider)
+                        .translated(body.project_move(time.time_scale()))
                         .envelope(),
                 );
                 let intersects: Vec<&RTreeCollider> =
@@ -58,7 +59,7 @@ impl<'s> System<'s> for CollisionSystem {
                 // Find distance to nearest hor/ver colliders like before
                 // Adjust new velocity
                 let entity = body.collide_with_nearest_axis(
-                    &RTreeCollider::from_current_pos(entity, &collider),
+                    &RTreeCollider::new(entity, &collider),
                     intersects,
                     time.time_scale(),
                 );
@@ -71,12 +72,10 @@ impl<'s> System<'s> for CollisionSystem {
             // Create collision events
 
             // Re-insert in correct spot
-            rtree.insert(RTreeCollider::from_projected(
-                entity,
-                collider,
-                body,
-                time.time_scale(),
-            ));
+            rtree.insert(
+                RTreeCollider::new(entity, collider)
+                    .translated(body.project_move(time.time_scale())),
+            );
         }
     }
 }

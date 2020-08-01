@@ -3,7 +3,7 @@ use amethyst_core::num::Zero;
 use derivative::Derivative;
 use noisy_float::prelude::*;
 use rstar::{RTreeObject, AABB};
-use std::ops::{Add, Mul};
+use std::ops::{Add, AddAssign, Mul};
 use ultraviolet::Vec2;
 
 /// When inserted as a `Resource` into `World`,
@@ -28,6 +28,8 @@ impl RigidBody {
         self.velocity.mul(time_scale)
     }
 
+    // TODO : Split in 2 - The x and y calculations are completely independent
+    // TODO : Or just generalize using traits
     fn collision_velocity_xy(
         &self,
         current_collider: &RTreeCollider,
@@ -129,6 +131,7 @@ impl RigidBody {
         intersections: Vec<&RTreeCollider>,
         time_scale: f32,
     ) -> Option<Entity> {
+        // TODO : Stop calling this from here - get as 2 params instead
         let new_vel = self.collision_velocity_xy(current_collider, &intersections, time_scale);
         match new_vel {
             (Some(x), Some(y)) => {
@@ -161,18 +164,7 @@ pub struct Collider {
     pub opaque: bool,
 }
 
-impl Collider {
-    fn intersects(&self, other: &Self) -> bool {
-        (self.lower.x <= other.upper.x && self.upper.x >= other.lower.x)
-            && (self.lower.y <= other.upper.y && self.upper.y >= other.lower.y)
-    }
-
-    fn project(&self, rigid_body: &RigidBody, time_scale: f32) -> (Vec2, Vec2) {
-        let projected = self.position.add(rigid_body.project_move(time_scale));
-        (self.lower.add(projected), self.upper.add(projected))
-    }
-}
-
+#[derive(Clone)]
 pub struct RTreeCollider {
     entity: Entity,
     pub opaque: bool,
@@ -190,28 +182,20 @@ impl PartialEq for RTreeCollider {
 }
 
 impl RTreeCollider {
-    pub fn from_projected(
-        entity: Entity,
-        collider: &Collider,
-        rigid_body: &RigidBody,
-        time_scale: f32,
-    ) -> Self {
-        let (lower, upper) = collider.project(rigid_body, time_scale);
-        RTreeCollider {
-            entity,
-            opaque: collider.opaque,
-            lower,
-            upper,
-        }
-    }
-
-    pub fn from_current_pos(entity: Entity, collider: &Collider) -> Self {
+    pub fn new(entity: Entity, collider: &Collider) -> Self {
         RTreeCollider {
             entity,
             opaque: collider.opaque,
             lower: collider.lower.add(collider.position),
             upper: collider.upper.add(collider.position),
         }
+    }
+
+    pub fn translated(&self, amount: Vec2) -> Self {
+        let mut translated = self.clone();
+        translated.lower.add_assign(amount);
+        translated.upper.add_assign(amount);
+        translated
     }
 }
 
@@ -285,22 +269,22 @@ mod tests {
             .build();
         let obstacle1 = world.create_entity().with(obstacle_1.clone()).build();
         let obstacle2 = world.create_entity().with(obstacle_2.clone()).build();
-        let rcollider = RTreeCollider::from_current_pos(moving_entity, &move_collider);
+        let rcollider = RTreeCollider::new(moving_entity, &move_collider);
         let non_refs = vec![
-            RTreeCollider::from_current_pos(obstacle1, &obstacle_1.clone()),
-            RTreeCollider::from_current_pos(obstacle2, &obstacle_2.clone()),
+            RTreeCollider::new(obstacle1, &obstacle_1.clone()),
+            RTreeCollider::new(obstacle2, &obstacle_2.clone()),
         ];
         let obstacles: Vec<&RTreeCollider> = non_refs.iter().collect();
         let obstacles2 = obstacles.clone();
         move_body.collide_with_nearest_axis(
-            &RTreeCollider::from_current_pos(moving_entity, &move_collider),
+            &RTreeCollider::new(moving_entity, &move_collider),
             obstacles,
             1.0,
         );
         assert!(move_body.velocity.x.eq_eps(0.5));
         assert!(move_body.velocity.y.eq_eps(1.75));
         move_body.collide_with_nearest_axis(
-            &RTreeCollider::from_current_pos(moving_entity, &move_collider),
+            &RTreeCollider::new(moving_entity, &move_collider),
             obstacles2,
             1.0,
         );
