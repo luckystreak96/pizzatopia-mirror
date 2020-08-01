@@ -13,9 +13,6 @@ impl<'a, 'b> SystemBundle<'a, 'b> for PhysicsBundle {
         world: &mut World,
         dispatcher: &mut DispatcherBuilder<'a, 'b>,
     ) -> Result<(), Error> {
-        // Set gravity strength
-        world.insert(RTree::<RTreeCollider>::new());
-
         dispatcher.add(GravitySystem, "gravity_system", &[]);
         Ok(())
     }

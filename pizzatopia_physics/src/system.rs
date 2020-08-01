@@ -39,21 +39,31 @@ impl<'s> System<'s> for CollisionSystem {
     fn run(&mut self, (mut colliders, mut bodies, time, mut rtree, entities): Self::SystemData) {
         for (collider, body, entity) in (&mut colliders, &mut bodies, &entities).join() {
             // Remove the current collider from the tree
-            rtree.remove(&RTreeCollider::from_current(entity, collider));
+            rtree.remove(&RTreeCollider::from_current_pos(entity, collider));
 
-            // Get all intersecting envelopes with future pos
-            // Filter out non-opaque peeps
-            let intersections = rtree.locate_in_envelope_intersecting(
-                &RTreeCollider::from_projected(entity, collider, body, time.time_scale())
-                    .envelope(),
-            );
-            let opaque: Vec<&RTreeCollider> =
-                intersections.into_iter().filter(|rtc| rtc.opaque).collect();
+            // Go through this twice
+            // The first time will adjust velocity according to collision on one axis
+            // The second time will adjust according to other axis
+            let mut collision_entities = Vec::new();
+            for _ in 0..2 {
+                // Get all intersecting envelopes with future pos
+                // Filter out non-opaque peeps
+                let intersections = rtree.locate_in_envelope_intersecting(
+                    &RTreeCollider::from_projected(entity, collider, body, time.time_scale())
+                        .envelope(),
+                );
+                let intersects: Vec<&RTreeCollider> =
+                    intersections.into_iter().filter(|rtc| rtc.opaque).collect();
 
-            // # Do this in file [collider.rs]
-            // Find distance to nearest hor/ver colliders like before
-            // Adjust new velocity
-            let new_velocity = body.stop_at_collisions(opaque);
+                // Find distance to nearest hor/ver colliders like before
+                // Adjust new velocity
+                let entity = body.collide_with_nearest_axis(
+                    &RTreeCollider::from_current_pos(entity, &collider),
+                    intersects,
+                    time.time_scale(),
+                );
+                collision_entities.push(entity);
+            }
 
             // TODO
             // Toss out some collision events with the opaque peeps

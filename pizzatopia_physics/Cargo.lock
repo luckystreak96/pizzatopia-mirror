@@ -461,6 +461,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "noisy_float"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1b3e1bd47a70dc23b4b1d4c7dabe09135cf86a5eb2ad5a60c853cb69c64d32e"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "nom"
 version = "5.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -541,6 +550,7 @@ dependencies = [
  "amethyst_core",
  "amethyst_error",
  "derivative 2.1.1",
+ "noisy_float",
  "rstar",
  "specs-derive",
  "ultraviolet",

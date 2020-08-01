@@ -3,6 +3,7 @@ use derivative::Derivative;
 use rstar::{RTreeObject, AABB};
 use std::ops::{Add, Mul};
 use ultraviolet::Vec2;
+use noisy_float::prelude::*;
 
 /// When inserted as a `Resource` into `World`,
 /// affects the base strength of gravity on `RigidBody` components.
@@ -11,11 +12,6 @@ use ultraviolet::Vec2;
 pub struct Gravity {
     #[derivative(Default(value = "-10.0"))]
     pub strength: f32,
-}
-
-pub struct CollisionResult {
-    pub horizontal: Option<(Entity, f32)>,
-    pub vertical: Option<(Entity, f32)>,
 }
 
 #[derive(Derivative, Component)]
@@ -31,10 +27,79 @@ impl RigidBody {
         self.velocity.mul(time_scale)
     }
 
-    pub fn stop_at_collisions(&mut self, intersections: Vec<&RTreeCollider>) -> CollisionResult {
-        CollisionResult {
-            horizontal: None,
-            vertical: None,
+    fn collision_velocity_xy(
+        &self,
+        current_collider: &RTreeCollider,
+        intersections: &Vec<&RTreeCollider>,
+        time_scale: f32,
+    ) -> (Option<(f32, Entity)>, Option<(f32, Entity)>) {
+        let projected = self.project_move(time_scale);
+        let horizontal = intersections
+            .iter()
+            .filter(|col| match projected.x > 0.0 {
+                true => current_collider.upper.x <= col.lower.x,
+                false => current_collider.lower.x >= col.upper.x,
+            })
+            .min_by_key(|col| match projected.x > 0.0 {
+                true => n32(col.lower.x),
+                false => n32(-col.upper.x),
+            });
+
+        let vertical = intersections
+            .iter()
+            .filter(|col| match projected.y > 0.0 {
+                true => current_collider.upper.y <= col.lower.y,
+                false => current_collider.lower.y >= col.upper.y,
+            })
+            .min_by_key(|col| match projected.y > 0.0 {
+                true => n32(col.lower.y),
+                false => n32(-col.upper.y),
+            });
+
+        let mut result = (None, None);
+        if let Some(col) = horizontal {
+            let x = match projected.x > 0.0 {
+                true => col.lower.x - current_collider.upper.x,
+                false => col.upper.x - current_collider.lower.x,
+            };
+            result.0 = Some((x / time_scale, col.entity));
+        }
+        if let Some(col) = vertical {
+            let y = match projected.y > 0.0 {
+                true => col.lower.y - current_collider.upper.y,
+                false => col.upper.y - current_collider.lower.y,
+            };
+            result.1 = Some((y / time_scale, col.entity));
+        }
+        result
+    }
+
+    pub fn collide_with_nearest_axis(
+        &mut self,
+        current_collider: &RTreeCollider,
+        intersections: Vec<&RTreeCollider>,
+        time_scale: f32,
+    ) -> Option<Entity> {
+        let new_vel = self.collision_velocity_xy(current_collider, &intersections, time_scale);
+        match new_vel {
+            (Some(x), Some(y)) => {
+                if x < y {
+                    self.velocity.x = x.0;
+                    Some(x.1)
+                } else {
+                    self.velocity.y = y.0;
+                    Some(y.1)
+                }
+            }
+            (Some(x), None) => {
+                self.velocity.x = x.0;
+                Some(x.1)
+            }
+            (None, Some(y)) => {
+                self.velocity.y = y.0;
+                Some(y.1)
+            }
+            (None, None) => None,
         }
     }
 }
@@ -91,7 +156,7 @@ impl RTreeCollider {
         }
     }
 
-    pub fn from_current(entity: Entity, collider: &Collider) -> Self {
+    pub fn from_current_pos(entity: Entity, collider: &Collider) -> Self {
         RTreeCollider {
             entity,
             opaque: collider.opaque,
