@@ -29,27 +29,16 @@ impl RigidBody {
         self.velocity.mul(time_scale)
     }
 
-    // TODO : Split in 2 - The x and y calculations are completely independent
-    // TODO : Or just generalize using traits
-    fn collision_velocity_xy(
-        &self,
-        current_collider: &RTreeCollider,
-        intersections: &Vec<&RTreeCollider>,
-        time_scale: f32,
-    ) -> (Option<(Entity, f32)>, Option<(Entity, f32)>) {
-        let result_x = current_collider.nearest_collider(self, intersections, time_scale, Axis2::X);
-        let result_y = current_collider.nearest_collider(self, intersections, time_scale, Axis2::Y);
-        (result_x, result_y)
-    }
-
     pub fn collide_with_nearest_axis(
         &mut self,
         current_collider: &RTreeCollider,
         intersections: Vec<&RTreeCollider>,
         time_scale: f32,
     ) -> Option<Entity> {
-        // TODO : Stop calling this from here - get as 2 params instead
-        let new_vel = self.collision_velocity_xy(current_collider, &intersections, time_scale);
+        let collide_x = current_collider.nearest_collider(self, &intersections, time_scale, Axis2::X);
+        let collide_y = current_collider.nearest_collider(self, &intersections, time_scale, Axis2::Y);
+
+        let new_vel = (collide_x, collide_y);
         match new_vel {
             (Some(x), Some(y)) => {
                 if x < y {
@@ -127,25 +116,32 @@ impl RTreeCollider {
         let b = 1 - a;
         velocity.idx(b).is_zero()
             || !velocity.idx(a).is_zero()
-            && match velocity.idx(a) > 0.0 {
-            true => {
-                let percent_distance = Vec2::new(
-                    (other.lower.x - self.upper.x) / velocity.x,
-                    (other.lower.y - self.upper.y) / velocity.y,
-                );
-                percent_distance.idx(a) > percent_distance.idx(b)
-                    && percent_distance.idx(a) <= 1.0
-                    && percent_distance.idx(a) > 0.0
-            }
-            false => {
-                let percent_distance = Vec2::new(
-                    (other.upper.x - self.lower.x) / velocity.x,
-                    (other.upper.y - self.lower.y) / velocity.y,
-                );
-                percent_distance.idx(a) > percent_distance.idx(b)
-                    && percent_distance.idx(a) <= 1.0
-                    && percent_distance.idx(a) > 0.0
-            }
+                && match velocity.idx(a) > 0.0 {
+                    true => {
+                        let percent_distance = Vec2::new(
+                            (other.lower.x - self.upper.x) / velocity.x,
+                            (other.lower.y - self.upper.y) / velocity.y,
+                        );
+                        percent_distance.idx(a) > percent_distance.idx(b)
+                            && percent_distance.idx(a) <= 1.0
+                            && percent_distance.idx(a) > 0.0
+                    }
+                    false => {
+                        let percent_distance = Vec2::new(
+                            (other.upper.x - self.lower.x) / velocity.x,
+                            (other.upper.y - self.lower.y) / velocity.y,
+                        );
+                        percent_distance.idx(a) > percent_distance.idx(b)
+                            && percent_distance.idx(a) <= 1.0
+                            && percent_distance.idx(a) > 0.0
+                    }
+                }
+    }
+
+    fn distance_to_collide(&self, other: &RTreeCollider, axis: usize, velocity: &Vec2) -> f32 {
+        match velocity.idx(axis) > 0.0 {
+            true => other.lower.idx(axis) - self.upper.idx(axis) - 0.0001,
+            false => other.upper.idx(axis) - self.lower.idx(axis) + 0.0001,
         }
     }
 
@@ -157,36 +153,12 @@ impl RTreeCollider {
         axis: Axis2,
     ) -> Option<(Entity, f32)> {
         let a = axis as usize;
-        let b = 1 - a;
 
         let velocity = rigid_body.project_move(time_scale);
         let horizontal = intersections
             .iter()
             .filter(|col| self.can_collide_with_axis(col, a, &velocity))
-            .filter(|col| {
-                velocity.idx(b).is_zero()
-                    || !velocity.idx(a).is_zero()
-                        && match velocity.idx(a) > 0.0 {
-                            true => {
-                                let percent_distance = Vec2::new(
-                                    (col.lower.x - self.upper.x) / velocity.x,
-                                    (col.lower.y - self.upper.y) / velocity.y,
-                                );
-                                percent_distance.idx(a) > percent_distance.idx(b)
-                                    && percent_distance.idx(a) <= 1.0
-                                    && percent_distance.idx(a) > 0.0
-                            }
-                            false => {
-                                let percent_distance = Vec2::new(
-                                    (col.upper.x - self.lower.x) / velocity.x,
-                                    (col.upper.y - self.lower.y) / velocity.y,
-                                );
-                                percent_distance.idx(a) > percent_distance.idx(b)
-                                    && percent_distance.idx(a) <= 1.0
-                                    && percent_distance.idx(a) > 0.0
-                            }
-                        }
-            })
+            .filter(|col| self.collides_on_axis(col, a, &velocity))
             .min_by_key(|col| match velocity.idx(a) > 0.0 {
                 true => n32(col.lower.idx(a)),
                 false => n32(-col.upper.idx(a)),
@@ -194,11 +166,8 @@ impl RTreeCollider {
 
         let mut result = None;
         if let Some(col) = horizontal {
-            let x = match velocity.idx(a) > 0.0 {
-                true => col.lower.idx(a) - self.upper.idx(a) - 0.0001,
-                false => col.upper.idx(a) - self.lower.idx(a) + 0.0001,
-            };
-            result = Some((col.entity, x / time_scale));
+            let distance = self.distance_to_collide(col, a, &velocity);
+            result = Some((col.entity, distance / time_scale));
         }
         result
     }
