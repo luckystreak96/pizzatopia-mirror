@@ -115,6 +115,40 @@ impl RTreeCollider {
         translated
     }
 
+    fn can_collide_with_axis(&self, other: &RTreeCollider, axis: usize, velocity: &Vec2) -> bool {
+        match velocity.idx(axis) > 0.0 {
+            true => self.upper.idx(axis) <= other.lower.idx(axis),
+            false => self.lower.idx(axis) >= other.upper.idx(axis),
+        }
+    }
+
+    fn collides_on_axis(&self, other: &RTreeCollider, axis: usize, velocity: &Vec2) -> bool {
+        let a = axis;
+        let b = 1 - a;
+        velocity.idx(b).is_zero()
+            || !velocity.idx(a).is_zero()
+            && match velocity.idx(a) > 0.0 {
+            true => {
+                let percent_distance = Vec2::new(
+                    (other.lower.x - self.upper.x) / velocity.x,
+                    (other.lower.y - self.upper.y) / velocity.y,
+                );
+                percent_distance.idx(a) > percent_distance.idx(b)
+                    && percent_distance.idx(a) <= 1.0
+                    && percent_distance.idx(a) > 0.0
+            }
+            false => {
+                let percent_distance = Vec2::new(
+                    (other.upper.x - self.lower.x) / velocity.x,
+                    (other.upper.y - self.lower.y) / velocity.y,
+                );
+                percent_distance.idx(a) > percent_distance.idx(b)
+                    && percent_distance.idx(a) <= 1.0
+                    && percent_distance.idx(a) > 0.0
+            }
+        }
+    }
+
     fn nearest_collider(
         &self,
         rigid_body: &RigidBody,
@@ -125,45 +159,42 @@ impl RTreeCollider {
         let a = axis as usize;
         let b = 1 - a;
 
-        let projected = rigid_body.project_move(time_scale);
+        let velocity = rigid_body.project_move(time_scale);
         let horizontal = intersections
             .iter()
-            .filter(|col| match projected.idx(a) > 0.0 {
-                true => self.upper.idx(a) <= col.lower.idx(a),
-                false => self.lower.idx(a) >= col.upper.idx(a),
-            })
+            .filter(|col| self.can_collide_with_axis(col, a, &velocity))
             .filter(|col| {
-                projected.idx(b).is_zero()
-                    || !projected.idx(a).is_zero()
-                    && match projected.idx(a) > 0.0 {
-                    true => {
-                        let percent_distance = Vec2::new(
-                            (col.lower.x - self.upper.x) / projected.x,
-                            (col.lower.y - self.upper.y) / projected.y,
-                        );
-                        percent_distance.idx(a) > percent_distance.idx(b)
-                            && percent_distance.idx(a) <= 1.0
-                            && percent_distance.idx(a) > 0.0
-                    }
-                    false => {
-                        let percent_distance = Vec2::new(
-                            (col.upper.x - self.lower.x) / projected.x,
-                            (col.upper.y - self.lower.y) / projected.y,
-                        );
-                        percent_distance.idx(a) > percent_distance.idx(b)
-                            && percent_distance.idx(a) <= 1.0
-                            && percent_distance.idx(a) > 0.0
-                    }
-                }
+                velocity.idx(b).is_zero()
+                    || !velocity.idx(a).is_zero()
+                        && match velocity.idx(a) > 0.0 {
+                            true => {
+                                let percent_distance = Vec2::new(
+                                    (col.lower.x - self.upper.x) / velocity.x,
+                                    (col.lower.y - self.upper.y) / velocity.y,
+                                );
+                                percent_distance.idx(a) > percent_distance.idx(b)
+                                    && percent_distance.idx(a) <= 1.0
+                                    && percent_distance.idx(a) > 0.0
+                            }
+                            false => {
+                                let percent_distance = Vec2::new(
+                                    (col.upper.x - self.lower.x) / velocity.x,
+                                    (col.upper.y - self.lower.y) / velocity.y,
+                                );
+                                percent_distance.idx(a) > percent_distance.idx(b)
+                                    && percent_distance.idx(a) <= 1.0
+                                    && percent_distance.idx(a) > 0.0
+                            }
+                        }
             })
-            .min_by_key(|col| match projected.idx(a) > 0.0 {
+            .min_by_key(|col| match velocity.idx(a) > 0.0 {
                 true => n32(col.lower.idx(a)),
                 false => n32(-col.upper.idx(a)),
             });
 
         let mut result = None;
         if let Some(col) = horizontal {
-            let x = match projected.idx(a) > 0.0 {
+            let x = match velocity.idx(a) > 0.0 {
                 true => col.lower.idx(a) - self.upper.idx(a) - 0.0001,
                 false => col.upper.idx(a) - self.lower.idx(a) + 0.0001,
             };
